@@ -32,7 +32,7 @@ public static class ContractValidator
             // under-planned or (after making up for it elsewhere) over-planned.
             var absenceDays = (absences ?? [])
                 .Where(a => a.EmployeeId == group.Key)
-                .Sum(a => OverlapDays(a.From, a.To, schedule.StartDate, schedule.EndDate));
+                .Sum(a => WorkingTimeCalculator.OverlapDays(a.From, a.To, schedule.StartDate, schedule.EndDate));
             var effectiveDays = Math.Max(0, scheduleDays - absenceDays);
 
             var expectedHours = contract.WeeklyHours * effectiveDays / 7m;
@@ -45,12 +45,5 @@ public static class ContractValidator
                     group.Key));
             }
         }
-    }
-
-    private static int OverlapDays(DateOnly from, DateOnly to, DateOnly rangeStart, DateOnly rangeEnd)
-    {
-        var start = from > rangeStart ? from : rangeStart;
-        var end = to < rangeEnd ? to : rangeEnd;
-        return end >= start ? end.DayNumber - start.DayNumber + 1 : 0;
     }
 }
