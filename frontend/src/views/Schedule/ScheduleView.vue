@@ -105,6 +105,8 @@ const weekdayFmt = new Intl.DateTimeFormat('de-DE', {
 const monthFmt = new Intl.DateTimeFormat('de-DE', { month: 'long', year: 'numeric' })
 
 const toast = useToastStore()
+const route = useRoute()
+const router = useRouter()
 const employees = ref<Employee[]>([])
 const teams = ref<Team[]>([])
 const shiftTypes = ref<ShiftType[]>([])
@@ -121,11 +123,26 @@ const loading = ref(true)
 const error = ref('')
 const creatingSchedule = ref(false)
 const copyingMonth = ref(false)
-const search = ref('')
-const teamFilter = ref('')
+// issue #41: the sidebar's nav links are plain `to="/"` with no query string, so a URL-based
+// approach doesn't actually survive the "navigate away and back" case this was reported for —
+// only a direct/bookmarked link with the query already on it would restore it. localStorage
+// does actually persist across that navigation.
+const FILTER_STORAGE_KEY = 'schichtplaner.scheduleFilter'
+function loadPersistedFilter(): { search: string; team: string } {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(FILTER_STORAGE_KEY) ?? '{}')
+    return {
+      search: typeof parsed.search === 'string' ? parsed.search : '',
+      team: typeof parsed.team === 'string' ? parsed.team : '',
+    }
+  } catch {
+    return { search: '', team: '' }
+  }
+}
+const persistedFilter = loadPersistedFilter()
+const search = ref(persistedFilter.search)
+const teamFilter = ref(persistedFilter.team)
 const searchInputRef = ref<HTMLInputElement | null>(null)
-const route = useRoute()
-const router = useRouter()
 const tableWrapRef = ref<HTMLElement | null>(null)
 
 const monthStart = computed(() => firstOfMonth(anchorDate.value))
@@ -310,6 +327,18 @@ watch(monthStartIso, () => {
   if (!loading.value) {
     loadBalances()
     loadHolidays()
+  }
+})
+// issue #41: keep localStorage in sync as the filter changes.
+watch([search, teamFilter], () => {
+  try {
+    localStorage.setItem(
+      FILTER_STORAGE_KEY,
+      JSON.stringify({ search: search.value, team: teamFilter.value }),
+    )
+  } catch {
+    // Private-browsing/storage-full edge cases: the filter still works for this session, it
+    // just won't survive a reload — not worth surfacing to the user over.
   }
 })
 

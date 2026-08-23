@@ -26,11 +26,11 @@ issue #27 is fully closed out. A UX/UI audit turned up 8 more issues (#36–#43:
 system, replacing native `confirm()` dialogs, skeleton loaders, a clickable validation panel,
 responsive Employees/Stammdaten tables, filter persistence, keyboard-shortcut discoverability,
 and real `SettingsView` content) — issues #36 (toast system), #37 (`ConfirmDialog`), #38
-(skeleton loaders), #39 (clickable validation panel), and #40 (responsive Employees/Stammdaten)
-are now built, the rest are still open. Building #40 surfaced a further gap outside its own
-scope — `AppShell.vue`'s sidebar isn't responsive at all and dominates a real phone's viewport
-regardless of how responsive the page content underneath it is — filed as issue #44, not
-started.
+(skeleton loaders), #39 (clickable validation panel), #40 (responsive Employees/Stammdaten), and
+#41 (filter persistence) are now built, the rest are still open. Building #40 surfaced a further
+gap outside its own scope — `AppShell.vue`'s sidebar isn't responsive at all and dominates a
+real phone's viewport regardless of how responsive the page content underneath it is — filed as
+issue #44, not started.
 What's built:
 
 - **Backend** (`src/`): 4-project skeleton (Domain → Application → Infrastructure → Api)
@@ -614,6 +614,21 @@ What's built:
     issue (#44) rather than silently folded into this one, since it's an app-wide problem
     (every route behind `AppShell`, not just these two views) that deserves its own scoping
     rather than an ad-hoc fix bundled into an unrelated issue.
+  - **Persist the Dienstplan search/team filter** (issue #41) — `ScheduleView.vue`'s search box
+    and team filter reset on every navigation away and back. First attempt was a URL-query
+    approach (`?q=&team=`, mirroring how the file already touches `route.query` for the
+    dashboard's `?scheduleId=` deep link) — but a headless-Chromium repro of the exact scenario
+    the issue described (set a filter, click "Mitarbeiter" in the sidebar, click back to
+    "Dienstplan") caught that this doesn't actually work: the sidebar's `router-link`s are plain
+    `to="/"` with no query string, so a normal in-app nav away and back lands on a bare `/` and
+    the filter is gone regardless — only a *direct* bookmarked link with the query already on it
+    would have restored it. Switched to `localStorage` instead (`schichtplaner.scheduleFilter`,
+    `{search, team}`), which actually persists across a plain route change since it isn't tied
+    to the URL at all — re-ran the same repro against the localStorage version and confirmed it
+    actually restores both fields this time. Wrapped the `localStorage` read/write in `try/catch`
+    (private-browsing/storage-full edge cases degrade to "works for the session, doesn't survive
+    a reload" rather than throwing). The existing `?scheduleId=` deep-link handling was untouched
+    — it never overlapped with this since it's cleared immediately after use, not persisted.
   - `components/AppShell.vue` — sidebar nav (Übersicht/Dienstplan/Mitarbeiter/Stammdaten/
     Einstellungen) + user identity + logout, applying CLAUDE.md's "Visual design" tokens (dark
     glass, Inter, blue→indigo accent). `SettingsView` is still a styled-but-minimal placeholder
