@@ -119,6 +119,8 @@ const creatingSchedule = ref(false)
 const copyingMonth = ref(false)
 const search = ref('')
 const teamFilter = ref('')
+const searchInputRef = ref<HTMLInputElement | null>(null)
+const tableWrapRef = ref<HTMLElement | null>(null)
 
 const monthStart = computed(() => firstOfMonth(anchorDate.value))
 const monthEnd = computed(() => lastOfMonth(anchorDate.value))
@@ -266,8 +268,26 @@ async function load() {
     loading.value = false
   }
 }
+function isTyping(): boolean {
+  const tag = document.activeElement?.tagName
+  return tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA'
+}
+function onKeydown(e: KeyboardEvent) {
+  if (selectedAssignment.value) return
+  if (e.key === '/' && !isTyping()) {
+    e.preventDefault()
+    searchInputRef.value?.focus()
+  } else if (e.key === 'ArrowLeft' && !isTyping()) {
+    prevMonth()
+  } else if (e.key === 'ArrowRight' && !isTyping()) {
+    nextMonth()
+  }
+}
+
 onMounted(load)
+onMounted(() => window.addEventListener('keydown', onKeydown))
 onUnmounted(cleanupDrag)
+onUnmounted(() => window.removeEventListener('keydown', onKeydown))
 watch(monthStartIso, () => {
   if (!loading.value) {
     loadBalances()
@@ -398,6 +418,12 @@ function onChipPointerDown(e: PointerEvent, payload: DragPayload) {
   window.addEventListener('pointermove', onDragPointerMove)
   window.addEventListener('pointerup', onDragPointerUp)
   window.addEventListener('pointercancel', onDragPointerCancel)
+  // Ticks on an interval rather than off pointermove alone — a pointer parked
+  // right at the table edge stops firing move events, but the scroll should
+  // still keep going while it's held there.
+  dragScrollTimer = window.setInterval(() => {
+    if (drag.value?.active) autoScrollTableWrap(drag.value.x)
+  }, 16)
 }
 function onDragPointerMove(e: PointerEvent) {
   if (!drag.value || e.pointerId !== drag.value.pointerId) return
@@ -414,6 +440,19 @@ function onDragPointerMove(e: PointerEvent) {
     .elementFromPoint(e.clientX, e.clientY)
     ?.closest<HTMLElement>('[data-employee-id]')
   dragOverKey.value = cell ? `${cell.dataset.employeeId}|${cell.dataset.date}` : null
+}
+// Auto-scrolls the horizontally-scrolling table while dragging near its edge —
+// otherwise a month with 28+ day columns has no way to reach off-screen days
+// mid-drag.
+const DRAG_SCROLL_EDGE_PX = 60
+const DRAG_SCROLL_SPEED_PX = 12
+let dragScrollTimer: number | null = null
+function autoScrollTableWrap(clientX: number) {
+  const wrap = tableWrapRef.value
+  if (!wrap) return
+  const rect = wrap.getBoundingClientRect()
+  if (clientX < rect.left + DRAG_SCROLL_EDGE_PX) wrap.scrollLeft -= DRAG_SCROLL_SPEED_PX
+  else if (clientX > rect.right - DRAG_SCROLL_EDGE_PX) wrap.scrollLeft += DRAG_SCROLL_SPEED_PX
 }
 async function onDragPointerUp(e: PointerEvent) {
   if (!drag.value || e.pointerId !== drag.value.pointerId) return
@@ -444,6 +483,10 @@ function cleanupDrag() {
   window.removeEventListener('pointermove', onDragPointerMove)
   window.removeEventListener('pointerup', onDragPointerUp)
   window.removeEventListener('pointercancel', onDragPointerCancel)
+  if (dragScrollTimer !== null) {
+    window.clearInterval(dragScrollTimer)
+    dragScrollTimer = null
+  }
 }
 
 async function performDrop(payload: DragPayload, employeeId: string, dateIso: string) {
@@ -570,9 +613,10 @@ async function onAssignmentUpdated() {
           <div class="relative">
             <Search :size="14" class="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500" />
             <input
+              ref="searchInputRef"
               v-model="search"
               type="text"
-              placeholder="Mitarbeiter suchen…"
+              placeholder="Mitarbeiter suchen… (/)"
               class="rounded-lg bg-white/5 border border-white/10 pl-8 pr-3 py-1.5 text-sm placeholder:text-slate-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
             />
           </div>
@@ -585,7 +629,7 @@ async function onAssignmentUpdated() {
           </select>
         </div>
 
-        <div class="glass rounded-xl overflow-x-auto">
+        <div ref="tableWrapRef" class="glass rounded-xl overflow-x-auto">
           <table class="w-full text-sm">
             <thead>
               <tr
