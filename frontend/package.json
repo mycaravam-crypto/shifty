@@ -10,7 +10,8 @@
     "lint": "eslint .",
     "format": "prettier --write src/",
     "format:check": "prettier --check src/",
-    "duplicates": "jscpd src"
+    "duplicates": "jscpd src",
+    "duplicates:backend": "jscpd ../src --config ../.jscpd.backend.json"
   },
   "dependencies": {
     "@lucide/vue": "^1.33.0",
