@@ -7,14 +7,18 @@ using ShiftPlanner.Infrastructure.Persistence;
 
 namespace ShiftPlanner.Api.Controllers;
 
-public record ShiftTypeDto(Guid Id, string Name, TimeOnly StartTime, TimeOnly EndTime, int BreakMinutes, string Color, bool Active);
+public record ShiftTypeDto(
+    Guid Id, string Name, TimeOnly StartTime, TimeOnly EndTime, int BreakMinutes, string Color, bool Active,
+    int? MinStaffing, int? MaxStaffing);
 
 public record CreateShiftTypeRequest(
     [Required, MaxLength(100)] string Name,
     TimeOnly StartTime,
     TimeOnly EndTime,
     [Range(0, 480)] int BreakMinutes,
-    [Required] string Color);
+    [Required] string Color,
+    [Range(1, 1000)] int? MinStaffing = null,
+    [Range(1, 1000)] int? MaxStaffing = null);
 
 public record UpdateShiftTypeRequest(
     [Required, MaxLength(100)] string Name,
@@ -22,7 +26,9 @@ public record UpdateShiftTypeRequest(
     TimeOnly EndTime,
     [Range(0, 480)] int BreakMinutes,
     [Required] string Color,
-    bool Active);
+    bool Active,
+    [Range(1, 1000)] int? MinStaffing = null,
+    [Range(1, 1000)] int? MaxStaffing = null);
 
 [ApiController]
 [Route("api/shift-types")]
@@ -34,7 +40,8 @@ public class ShiftTypesController(ApplicationDbContext db) : ControllerBase
     {
         var shiftTypes = await db.ShiftTypes
             .OrderBy(s => s.StartTime)
-            .Select(s => new ShiftTypeDto(s.Id, s.Name, s.StartTime, s.EndTime, s.BreakMinutes, s.Color, s.Active))
+            .Select(s => new ShiftTypeDto(s.Id, s.Name, s.StartTime, s.EndTime, s.BreakMinutes, s.Color, s.Active,
+                s.MinStaffing, s.MaxStaffing))
             .ToListAsync();
         return Ok(shiftTypes);
     }
@@ -53,12 +60,15 @@ public class ShiftTypesController(ApplicationDbContext db) : ControllerBase
             StartTime = request.StartTime,
             EndTime = request.EndTime,
             BreakMinutes = request.BreakMinutes,
-            Color = request.Color
+            Color = request.Color,
+            MinStaffing = request.MinStaffing,
+            MaxStaffing = request.MaxStaffing
         };
         db.ShiftTypes.Add(shiftType);
         await db.SaveChangesAsync();
 
-        var dto = new ShiftTypeDto(shiftType.Id, shiftType.Name, shiftType.StartTime, shiftType.EndTime, shiftType.BreakMinutes, shiftType.Color, shiftType.Active);
+        var dto = new ShiftTypeDto(shiftType.Id, shiftType.Name, shiftType.StartTime, shiftType.EndTime, shiftType.BreakMinutes, shiftType.Color, shiftType.Active,
+            shiftType.MinStaffing, shiftType.MaxStaffing);
         return CreatedAtAction(nameof(GetAll), new { id = shiftType.Id }, dto);
     }
 
@@ -79,6 +89,8 @@ public class ShiftTypesController(ApplicationDbContext db) : ControllerBase
         shiftType.BreakMinutes = request.BreakMinutes;
         shiftType.Color = request.Color;
         shiftType.Active = request.Active;
+        shiftType.MinStaffing = request.MinStaffing;
+        shiftType.MaxStaffing = request.MaxStaffing;
         await db.SaveChangesAsync();
 
         return NoContent();

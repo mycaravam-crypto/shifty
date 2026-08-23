@@ -11,8 +11,10 @@ snapshot of what exists right now.
 
 readme.md §22 "Phase 1: Foundation" is done (Employee, Team, Contract, ShiftType, backend +
 basic frontend). "Phase 2: Planung" (Schedule, ShiftAssignment, Wochenansicht, Drag & Drop,
-Stundenberechnung) is also now built, backend + frontend. Phase 3 (Validierung) and Phase 4
-(Usability: week-copy/filters/search/shortcuts) are not started. What's built:
+Stundenberechnung) is also now built, backend + frontend. Phase 3 (Validierung) has its
+core validation framework and rules built (see below) — legal/staffing rules needing
+cross-assignment history (Ruhezeit, max-consecutive-days) are not (issues #8/#9). Phase 4
+(Usability: week-copy/filters/search/shortcuts) is not started. What's built:
 
 - **Backend** (`src/`): 4-project skeleton (Domain → Application → Infrastructure → Api)
   matching readme.md §19/§20. Builds clean (`dotnet build ShiftPlanner.sln`, verified via
@@ -55,9 +57,9 @@ Stundenberechnung) is also now built, backend + frontend. Phase 3 (Validierung) 
     end-to-end (login, role-gated writes, refresh, tampered/wrong-purpose-token rejection)
     against a real local Postgres.
   - `Employee.EligibleShiftTypes` (EF many-to-many, join table `EmployeeShiftType`) models
-    "mögliche Schichten" (readme.md §3) — GET/PUT `/api/employees/{id}/eligible-shift-types`.
-    Data model only, no eligibility validator yet — that's Phase 3 Validierung, not wired to
-    anything today ([issue #6](https://github.com/mycaravam-crypto/shifty/issues/6)).
+    "mögliche Schichten" (readme.md §3) — GET/PUT `/api/employees/{id}/eligible-shift-types`,
+    enforced by `EligibilityValidator` (below) — closes
+    [issue #6](https://github.com/mycaravam-crypto/shifty/issues/6).
   - `Domain/Scheduling/Schedule.cs` + `ShiftAssignment.cs` + `WorkingTimeCalculator.cs` (Phase
     2, readme.md §6/§7/§14) — a `Schedule` (Name/StartDate/EndDate/Status: Draft/Published/
     Archived) owns `ShiftAssignment`s (EmployeeId/ShiftTypeId/Date/StartTime/EndTime/
@@ -68,13 +70,37 @@ Stundenberechnung) is also now built, backend + frontend. Phase 3 (Validierung) 
     re-derives the arithmetic. `SchedulesController`: `GET/POST /api/schedules`,
     `GET/PUT /api/schedules/{id}` (nests assignments with `netHours` precomputed; `PUT` is
     also how `Status` transitions — no dedicated `/publish` action),
-    `POST /api/schedules/{id}/assignments`, `PUT/DELETE /api/assignments/{id}`. No
-    `/validate` endpoint (Phase 3, no validators exist to gate on) and no unique/overlap
-    constraint on assignments (`ShiftOverlapValidator` is Phase 3, not a DB constraint).
-    `ManagerWrite` on writes, matching Program.cs's existing "Manager covers
-    Planung/Mitarbeiter" comment. Verified end-to-end against a real local Postgres: create
-    schedule → add assignment → `netHours` computed correctly, move via `PUT`, dangling-FK
-    `BadRequest`s, 404s, unauthenticated 401.
+    `POST /api/schedules/{id}/assignments`, `PUT/DELETE /api/assignments/{id}`, and now
+    `GET /api/schedules/{id}/validate`. No unique/overlap DB constraint on assignments —
+    `ShiftOverlapValidator` (below) flags it as a Warning at read time instead, matching the
+    readme's own §13 example where overlap is a Warning, not a hard Error. `ManagerWrite` on
+    writes, matching Program.cs's existing "Manager covers Planung/Mitarbeiter" comment.
+    Verified end-to-end against a real local Postgres: create schedule → add assignment →
+    `netHours` computed correctly, move via `PUT`, dangling-FK `BadRequest`s, 404s,
+    unauthenticated 401.
+  - **Phase 3 "Validierung" core** (readme.md §12/§13): a new `ShiftPlanner.Application`
+    layer — `PlanningDomain`'s actual first tenant, no controller talks to the DB for this.
+    `Application/Validation/ValidationResult.cs` mirrors the readme's exact shape
+    (`IsValid`/`Errors[]`/`Warnings[]`, not a bool). `ScheduleValidator.Validate(...)` runs
+    five rules (each its own static class, matching the readme's `PlanningDomain` diagram
+    naming where it named one): `ShiftOverlapValidator` (Warning), `ContractValidator`
+    (planned hours vs. the Contract active at the schedule's start, Error — the only two
+    outcomes the readme's own JSON example spells out), `EligibilityValidator` (issue #6,
+    Error — an employee with an empty `EligibleShiftTypes` list is treated as unrestricted,
+    since that's every employee's default today), `BreakMinutesValidator` (issue #10, ArbZG
+    §4 minimums — 30min over 6h worked, 45min over 9h — Error), `StaffingValidator` (issue
+    #7, needs the new nullable `ShiftType.MinStaffing`/`MaxStaffing` fields + migration
+    `ShiftTypeStaffing`; only checks (ShiftType, Date) pairs that actually have an
+    assignment — a day nobody scheduled a shift for isn't flagged; both directions are
+    Warnings, it's a target, not a legal minimum). Cross-midnight shifts (`EndTime <
+    StartTime`) are skipped everywhere per the still-open
+    [issue #11](https://github.com/mycaravam-crypto/shifty/issues/11). `SchedulesController`
+    loads the needed data (assignments, employees with `EligibleShiftTypes` included, shift
+    types, contracts) and calls the static validator — still no DI/service layer, matching
+    every other controller. Verified end-to-end against a real local Postgres: each rule
+    triggered individually via the API (staffing, eligibility, break minutes, overlap,
+    contract hours) and confirmed in the `ValidationResult` JSON; 401/404 on the new
+    endpoint. Closes issues #6/#7/#10.
 - **Frontend** (`frontend/`): Vite + Vue 3 + TS + Tailwind v4 + Pinia + Vue Router + Axios +
   ESLint/Prettier + `@lucide/vue` (the `lucide-vue-next` package readme.md/issue #5 named is
   deprecated upstream in favor of this). `services/api.ts`'s JWT-attach + 401-refresh now
@@ -110,6 +136,11 @@ Stundenberechnung) is also now built, backend + frontend. Phase 3 (Validierung) 
     Clicking an assignment chip opens `views/Schedule/ShiftAssignmentModal.vue`
     (`ModalShell`-based, mirrors `EmployeeDetailModal.vue`'s shape) to change ShiftType/times/
     break or delete — content edits only, moving stays drag-only, and it has no create mode.
+    A glass panel above the palette lists every issue from `GET
+    /schedules/{id}/validate` (❌ red for Errors, ⚠ amber for Warnings), refetched alongside
+    the assignments on every load/move/create — the existing per-employee "Xh / Yh ⚠" bar is
+    unchanged (still a client-side glance, not fed by `ValidationResult`) since it already
+    covers the same ground `ContractValidator` does for the common case.
   - `components/AppShell.vue` — sidebar nav (Dienstplan/Mitarbeiter/Einstellungen) + user
     identity + logout, applying CLAUDE.md's "Visual design" tokens (dark glass, Inter,
     blue→indigo accent). `SettingsView` is still a styled-but-minimal placeholder — this is a
@@ -118,7 +149,8 @@ Stundenberechnung) is also now built, backend + frontend. Phase 3 (Validierung) 
   - Verified end-to-end in a real headless browser against the local stack below: login
     success/failure, employee list load, create, 409-conflict surfaced in the UI, logout,
     Dienstplan empty-state schedule creation, drag-to-place, drag-to-move, hour-bar update,
-    modal edit, and delete.
+    modal edit, and delete. Re-verified after the validation panel landed: an assignment
+    violating `BreakMinutesValidator` renders the ❌ banner live in the browser.
 - **Docker/deploy**: `docker-compose.yml` (db/api/web) validated with `docker compose config`,
   never actually deployed. No `.env` exists anywhere yet (only `.env.example`).
 - **Versioning**: same scheme as vanspace3d. `frontend/package.json`'s `version` is shown

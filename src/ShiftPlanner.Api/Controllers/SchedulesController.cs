@@ -2,6 +2,7 @@ using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using ShiftPlanner.Application.Validation;
 using ShiftPlanner.Domain.Scheduling;
 using ShiftPlanner.Infrastructure.Persistence;
 
@@ -98,6 +99,23 @@ public class SchedulesController(ApplicationDbContext db) : ControllerBase
         await db.SaveChangesAsync();
 
         return NoContent();
+    }
+
+    [HttpGet("schedules/{id:guid}/validate")]
+    public async Task<ActionResult<Application.Validation.ValidationResult>> Validate(Guid id)
+    {
+        var schedule = await db.Schedules.FindAsync(id);
+        if (schedule is null)
+            return NotFound();
+
+        var assignments = await db.ShiftAssignments.Where(a => a.ScheduleId == id).ToListAsync();
+        var employeeIds = assignments.Select(a => a.EmployeeId).Distinct().ToList();
+        var employees = await db.Employees.Include(e => e.EligibleShiftTypes)
+            .Where(e => employeeIds.Contains(e.Id)).ToListAsync();
+        var shiftTypes = await db.ShiftTypes.ToListAsync();
+        var contracts = await db.Contracts.Where(c => employeeIds.Contains(c.EmployeeId)).ToListAsync();
+
+        return Ok(ScheduleValidator.Validate(schedule, assignments, employees, shiftTypes, contracts));
     }
 
     [HttpPost("schedules/{id:guid}/assignments")]

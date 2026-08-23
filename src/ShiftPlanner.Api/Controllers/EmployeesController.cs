@@ -113,7 +113,7 @@ public class EmployeesController(ApplicationDbContext db) : ControllerBase
     }
 
     // "mögliche Schichten" (readme.md §3) — which shift types this employee may be
-    // scheduled for. No StaffingValidator yet, see issue #6.
+    // scheduled for. Enforced by ShiftPlanner.Application.Validation.EligibilityValidator.
     [HttpGet("{id:guid}/eligible-shift-types")]
     public async Task<ActionResult<IEnumerable<ShiftTypeDto>>> GetEligibleShiftTypes(Guid id)
     {
@@ -123,7 +123,8 @@ public class EmployeesController(ApplicationDbContext db) : ControllerBase
 
         return Ok(employee.EligibleShiftTypes
             .OrderBy(s => s.StartTime)
-            .Select(s => new ShiftTypeDto(s.Id, s.Name, s.StartTime, s.EndTime, s.BreakMinutes, s.Color, s.Active)));
+            .Select(s => new ShiftTypeDto(s.Id, s.Name, s.StartTime, s.EndTime, s.BreakMinutes, s.Color, s.Active,
+                s.MinStaffing, s.MaxStaffing)));
     }
 
     [HttpPut("{id:guid}/eligible-shift-types")]

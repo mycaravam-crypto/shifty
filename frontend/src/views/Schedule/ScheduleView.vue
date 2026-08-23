@@ -43,6 +43,17 @@ interface Contract {
   validTo: string | null
   weeklyHours: number
 }
+interface ValidationIssue {
+  type: string
+  message: string
+  employeeId: string | null
+  shiftAssignmentId: string | null
+}
+interface ValidationResult {
+  errors: ValidationIssue[]
+  warnings: ValidationIssue[]
+  isValid: boolean
+}
 
 function mondayOf(date: Date): Date {
   const d = new Date(date)
@@ -83,6 +94,7 @@ const shiftTypes = ref<ShiftType[]>([])
 const schedules = ref<Schedule[]>([])
 const contractsByEmployee = ref<Map<string, Contract[]>>(new Map())
 const assignments = ref<Assignment[]>([])
+const validation = ref<ValidationResult | null>(null)
 const selectedAssignment = ref<Assignment | null>(null)
 const anchorDate = ref(new Date())
 const loading = ref(true)
@@ -138,10 +150,15 @@ function barWidth(employeeId: string) {
 async function loadDetail() {
   if (!currentSchedule.value) {
     assignments.value = []
+    validation.value = null
     return
   }
-  const res = await api.get(`/schedules/${currentSchedule.value.id}`)
-  assignments.value = res.data.assignments
+  const [detailRes, validationRes] = await Promise.all([
+    api.get(`/schedules/${currentSchedule.value.id}`),
+    api.get(`/schedules/${currentSchedule.value.id}/validate`),
+  ])
+  assignments.value = detailRes.data.assignments
+  validation.value = validationRes.data
 }
 watch(currentSchedule, loadDetail, { immediate: true })
 
@@ -267,6 +284,18 @@ async function onAssignmentUpdated() {
       </div>
 
       <template v-else>
+        <div
+          v-if="validation && (validation.errors.length || validation.warnings.length)"
+          class="glass rounded-xl p-4 mb-4 text-sm space-y-1"
+        >
+          <p v-for="(issue, i) in validation.errors" :key="'e' + i" class="text-rose-400">
+            ❌ {{ issue.message }}
+          </p>
+          <p v-for="(issue, i) in validation.warnings" :key="'w' + i" class="text-amber-400">
+            ⚠ {{ issue.message }}
+          </p>
+        </div>
+
         <div class="flex flex-wrap gap-2 mb-4">
           <div
             v-for="s in activeShiftTypes"

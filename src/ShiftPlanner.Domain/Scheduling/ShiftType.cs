@@ -10,4 +10,9 @@ public class ShiftType
     public int BreakMinutes { get; set; }
     public required string Color { get; set; }
     public bool Active { get; set; } = true;
+
+    // Optional headcount target per shift instance ("Mindest-/Maximalbesetzung", readme.md
+    // §3), checked by StaffingValidator. Null means unconstrained.
+    public int? MinStaffing { get; set; }
+    public int? MaxStaffing { get; set; }
 }
