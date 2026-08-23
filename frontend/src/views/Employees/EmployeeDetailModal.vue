@@ -4,6 +4,7 @@ import { Trash2 } from '@lucide/vue'
 import axios from 'axios'
 import api from '../../services/api'
 import ModalShell from '../../components/ModalShell.vue'
+import { formatDate } from '../../utils/date'
 
 interface Employee {
   id: string
@@ -306,8 +307,8 @@ onMounted(() => {
             </thead>
             <tbody>
               <tr v-for="c in contracts" :key="c.id" class="border-b border-white/5 last:border-0">
-                <td class="px-3 py-2">{{ c.validFrom }}</td>
-                <td class="px-3 py-2 text-slate-400">{{ c.validTo ?? '—' }}</td>
+                <td class="px-3 py-2">{{ formatDate(c.validFrom) }}</td>
+                <td class="px-3 py-2 text-slate-400">{{ formatDate(c.validTo) }}</td>
                 <td class="px-3 py-2 font-mono">{{ c.weeklyHours }}</td>
                 <td class="px-3 py-2">{{ c.workingDaysPerWeek }}</td>
                 <td class="px-3 py-2 font-mono">{{ c.dailyTargetHours }}</td>
@@ -404,8 +405,8 @@ onMounted(() => {
             </thead>
             <tbody>
               <tr v-for="a in absences" :key="a.id" class="border-b border-white/5 last:border-0">
-                <td class="px-3 py-2">{{ a.from }}</td>
-                <td class="px-3 py-2">{{ a.to }}</td>
+                <td class="px-3 py-2">{{ formatDate(a.from) }}</td>
+                <td class="px-3 py-2">{{ formatDate(a.to) }}</td>
                 <td class="px-3 py-2">{{ ABSENCE_TYPE_LABELS[a.type] }}</td>
                 <td class="px-3 py-2 text-slate-400">{{ a.comment ?? '—' }}</td>
                 <td class="px-3 py-2 text-right">
