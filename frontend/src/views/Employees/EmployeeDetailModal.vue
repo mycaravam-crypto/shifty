@@ -330,10 +330,12 @@ onMounted(() => {
         </div>
         <form class="grid grid-cols-3 gap-2" @submit.prevent="onCreateContract">
           <label class="text-xs text-slate-500 col-span-3 -mb-1">Neuer Vertrag</label>
-          <input v-model="contractForm.validFrom" type="date" required :class="inputClass" />
+          <!-- lang="de-DE" is a no-op in Chromium (picker format is OS-locale-driven, not page-lang) -->
+          <input v-model="contractForm.validFrom" type="date" lang="de-DE" required :class="inputClass" />
           <input
             v-model="contractForm.validTo"
             type="date"
+            lang="de-DE"
             :class="inputClass"
             placeholder="Gültig bis (optional)"
           />
@@ -428,8 +430,8 @@ onMounted(() => {
         </div>
         <form class="grid grid-cols-2 gap-2" @submit.prevent="onCreateAbsence">
           <label class="text-xs text-slate-500 col-span-2 -mb-1">Neue Abwesenheit</label>
-          <input v-model="absenceForm.from" type="date" required :class="inputClass" />
-          <input v-model="absenceForm.to" type="date" required :class="inputClass" />
+          <input v-model="absenceForm.from" type="date" lang="de-DE" required :class="inputClass" />
+          <input v-model="absenceForm.to" type="date" lang="de-DE" required :class="inputClass" />
           <select v-model.number="absenceForm.type" :class="inputClass">
             <option
               v-for="(label, value) in ABSENCE_TYPE_LABELS"
