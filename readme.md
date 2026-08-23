@@ -15,6 +15,11 @@ Die Anwendung verwaltet Mitarbeiter, Arbeitszeitverträge, Schichten und Wochenp
 * Änderungen nachvollziehbar speichern
 * Keine unnötige Übermodellierung
 
+**Setup/Installation (Dev & Prod):** konkrete, aktuell gehaltene Befehle stehen in
+[CLAUDE.md](CLAUDE.md) unter "Run it locally" (Docker + Vite, lokal) und "Deploy target"
+(VPS-Setup, GitHub-Actions-Pipeline) — dieses Dokument bleibt bewusst beim Konzept, nicht bei
+Schritt-für-Schritt-Anleitungen, die sich mit dem Projektstand ändern.
+
 ---
 
 # 2. Architektur

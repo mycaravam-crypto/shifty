@@ -244,12 +244,32 @@ docker run --rm -v "$PWD":/src -w /src mcr.microsoft.com/dotnet/sdk:10.0 dotnet 
 
 ## Deploy target
 
-`shifty.vi0lins.de`, same VPS as [vanspace3d](https://github.com/mycaravam-crypto/vanspace3d),
-behind that host's existing shared Caddy instance (not a containerized one — see the header
-comment in [deploy/Caddyfile](deploy/Caddyfile) for the one-time host-side snippet still
-needed). Deploy pipeline is [.github/workflows/deploy.yml](.github/workflows/deploy.yml) →
-[deploy/deploy.sh](deploy/deploy.sh), triggered on push to `main`. The pipeline isn't runnable
-yet — see [issue #4](https://github.com/mycaravam-crypto/shifty/issues/4) for what's missing.
+Live at `shifty.vi0lins.de`, same VPS as
+[vanspace3d](https://github.com/mycaravam-crypto/vanspace3d), behind that host's existing
+shared Caddy instance (not a containerized one). Deploy pipeline is
+[.github/workflows/deploy.yml](.github/workflows/deploy.yml) →
+[deploy/deploy.sh](deploy/deploy.sh), triggered on push to `main` — it bumps
+`frontend/package.json`'s patch version, rsyncs the repo to the server, then
+`docker compose build && up -d` + runs pending migrations there ([issue #4](https://github.com/mycaravam-crypto/shifty/issues/4),
+closed).
+
+First-time setup on a fresh target server (already done for `shifty.vi0lins.de`, needed again
+only for a new host):
+
+1. GitHub repo secrets: `SHIFTPLANNER_DEPLOY_SSH_KEY`, `SHIFTPLANNER_DEPLOY_HOST`,
+   `SHIFTPLANNER_DEPLOY_PATH` (read by `deploy.yml`).
+2. `.env` created on the server at `$SHIFTPLANNER_DEPLOY_PATH/.env` (from `.env.example` —
+   real `POSTGRES_PASSWORD`/`JWT_SIGNING_KEY`, no local dotnet SDK needed since everything
+   runs in the `api` container).
+3. One-time host-side Caddy block from [deploy/Caddyfile](deploy/Caddyfile)'s header comment
+   (`shifty.vi0lins.de { reverse_proxy 127.0.0.1:8090 }`, then `systemctl reload caddy`) — the
+   in-repo Caddyfile only runs *inside* the `web` container and has no TLS/public exposure of
+   its own.
+4. DNS: `shifty.vi0lins.de` → the server.
+5. Push to `main` (or run `deploy/deploy.sh` manually with `SHIFTPLANNER_DEPLOY_HOST`/`_PATH`
+   set) — first run needs `docker compose run --rm api dotnet ShiftPlanner.Api.dll --migrate`
+   and `--seed-user` on the server once, same as the local dev steps above, since a fresh DB
+   has no schema or Staff accounts yet.
 
 ## Visual design
 
