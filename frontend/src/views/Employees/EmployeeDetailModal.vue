@@ -34,6 +34,22 @@ interface Contract {
   dailyTargetHours: number
   hourlyRate: number | null
 }
+// Domain/Employees/Absence.cs's AbsenceType, serialized as its numeric ordinal.
+type AbsenceType = 0 | 1 | 2 | 3
+const ABSENCE_TYPE_LABELS: Record<AbsenceType, string> = {
+  0: 'Urlaub',
+  1: 'Krankheit',
+  2: 'Fortbildung',
+  3: 'Sonstiges',
+}
+interface Absence {
+  id: string
+  employeeId: string
+  from: string
+  to: string
+  type: AbsenceType
+  comment: string | null
+}
 
 const props = defineProps<{ employee: Employee; teams: Team[] }>()
 const emit = defineEmits<{ close: []; updated: [] }>()
@@ -148,9 +164,53 @@ async function onDeleteContract(id: string) {
   await loadContracts()
 }
 
+const absences = ref<Absence[]>([])
+const absenceForm = ref({
+  from: '',
+  to: '',
+  type: 0 as AbsenceType,
+  comment: '',
+})
+const savingAbsence = ref(false)
+const absenceError = ref('')
+
+async function loadAbsences() {
+  const res = await api.get(`/employees/${props.employee.id}/absences`)
+  absences.value = res.data
+}
+
+async function onCreateAbsence() {
+  savingAbsence.value = true
+  absenceError.value = ''
+  try {
+    await api.post(`/employees/${props.employee.id}/absences`, {
+      from: absenceForm.value.from,
+      to: absenceForm.value.to,
+      type: absenceForm.value.type,
+      comment: absenceForm.value.comment || null,
+    })
+    absenceForm.value = { from: '', to: '', type: 0, comment: '' }
+    await loadAbsences()
+  } catch (e) {
+    absenceError.value =
+      axios.isAxiosError(e) && e.response?.data
+        ? e.response.data
+        : 'Abwesenheit konnte nicht angelegt werden.'
+  } finally {
+    savingAbsence.value = false
+  }
+}
+
+async function onDeleteAbsence(id: string) {
+  if (!confirm('Abwesenheit wirklich löschen?')) return
+  await api.delete(`/absences/${id}`)
+  await loadAbsences()
+}
+
 onMounted(() => {
   loadEligibleShiftTypes()
   loadContracts()
+  loadAbsences()
 })
 </script>
 
@@ -322,6 +382,75 @@ onMounted(() => {
             {{ savingContract ? 'Anlegen…' : 'Anlegen' }}
           </button>
           <p v-if="contractError" class="col-span-3 text-sm text-rose-400">{{ contractError }}</p>
+        </form>
+      </section>
+
+      <section>
+        <h3 class="text-[10px] uppercase tracking-wider font-bold text-slate-500 mb-3">
+          Abwesenheiten
+        </h3>
+        <div class="rounded-xl border border-white/8 overflow-hidden mb-3">
+          <table class="w-full text-sm">
+            <thead>
+              <tr
+                class="text-left text-[10px] uppercase tracking-wider font-bold text-slate-500 border-b border-white/8"
+              >
+                <th class="px-3 py-2">Von</th>
+                <th class="px-3 py-2">Bis</th>
+                <th class="px-3 py-2">Typ</th>
+                <th class="px-3 py-2">Kommentar</th>
+                <th class="px-3 py-2"></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="a in absences" :key="a.id" class="border-b border-white/5 last:border-0">
+                <td class="px-3 py-2">{{ a.from }}</td>
+                <td class="px-3 py-2">{{ a.to }}</td>
+                <td class="px-3 py-2">{{ ABSENCE_TYPE_LABELS[a.type] }}</td>
+                <td class="px-3 py-2 text-slate-400">{{ a.comment ?? '—' }}</td>
+                <td class="px-3 py-2 text-right">
+                  <button
+                    class="text-slate-500 hover:text-rose-400 transition-colors"
+                    @click="onDeleteAbsence(a.id)"
+                  >
+                    <Trash2 :size="14" />
+                  </button>
+                </td>
+              </tr>
+              <tr v-if="!absences.length">
+                <td colspan="5" class="px-3 py-4 text-center text-slate-500">
+                  Keine Abwesenheiten.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <form class="grid grid-cols-2 gap-2" @submit.prevent="onCreateAbsence">
+          <label class="text-xs text-slate-500 col-span-2 -mb-1">Neue Abwesenheit</label>
+          <input v-model="absenceForm.from" type="date" required :class="inputClass" />
+          <input v-model="absenceForm.to" type="date" required :class="inputClass" />
+          <select v-model.number="absenceForm.type" :class="inputClass">
+            <option
+              v-for="(label, value) in ABSENCE_TYPE_LABELS"
+              :key="value"
+              :value="Number(value)"
+            >
+              {{ label }}
+            </option>
+          </select>
+          <input
+            v-model="absenceForm.comment"
+            placeholder="Kommentar (optional)"
+            :class="inputClass"
+          />
+          <button
+            type="submit"
+            :disabled="savingAbsence"
+            class="col-span-2 rounded-lg bg-white/10 hover:bg-white/15 transition-colors py-2 text-sm font-medium disabled:opacity-50"
+          >
+            {{ savingAbsence ? 'Anlegen…' : 'Anlegen' }}
+          </button>
+          <p v-if="absenceError" class="col-span-2 text-sm text-rose-400">{{ absenceError }}</p>
         </form>
       </section>
     </div>

@@ -15,9 +15,10 @@ Stundenberechnung) is also now built, backend + frontend. Phase 3 (Validierung) 
 built, including the two rules needing cross-assignment history (Ruhezeit, max-consecutive-days
 — issues #8/#9, see below). Phase 4 (Usability: week-copy/filters/search/shortcuts) has
 just started — only week-copy exists so far, frontend-only. Phase 5 (Erweiterungen) has also
-just started — hourly wage rates (issue #14) and touch/mobile drag-and-drop for the
-Wochenansicht (issue #19) — see below; the rest of the Phase 5 roadmap (issues #15–#18:
-holiday calendar, wage surcharges, absence tracking, overtime ledger) hasn't been started.
+just started — hourly wage rates (issue #14), touch/mobile drag-and-drop for the
+Wochenansicht (issue #19), and absence tracking (issue #17) — see below; issues #15/#16
+(holiday calendar, wage surcharges) and #18 (overtime ledger, depends on #17) haven't been
+started.
 What's built:
 
 - **Backend** (`src/`): 4-project skeleton (Domain → Application → Infrastructure → Api)
@@ -158,6 +159,47 @@ What's built:
     live-Postgres caveat as AuditLog above: Docker Hub pulls are blocked in this sandbox, so
     `SaveChangesAsync`/the API surface hasn't been exercised against a real database — only
     build + migration-script level.
+  - **Absence tracking** (issue #17, readme.md §8) — the `Absence` entity readme.md always
+    defined but nothing had ever built: `Domain/Employees/Absence.cs` (EmployeeId/From/To/
+    `AbsenceType` enum Vacation/Sick/Training/Other/Comment), same "doesn't live on Employee
+    directly" shape as Contract, cascade-deletes with the Employee. `AbsencesController` is a
+    line-for-line mirror of `ContractsController` (`GET`/`POST /employees/{id}/absences`,
+    `GET`/`PUT`/`DELETE /absences/{id}`, `ManagerWrite` — Absence is employee data, same policy
+    split). A new `AbsenceValidator` (readme.md §8's own framing, "Darf dieser Mitarbeiter an
+    diesem Zeitpunkt eingeplant werden?") flags a `ShiftAssignment` falling inside an
+    employee's Absence range as an Error; `SchedulesController`'s `validate` endpoint now also
+    fetches Absences overlapping the Schedule's span (no lookback needed, unlike the rest-time/
+    consecutive-days history window) and passes them into `ScheduleValidator`.
+    `ContractValidator` also now takes the same Absence list and subtracts absence days
+    overlapping the Schedule's span from the day-count it scales `Contract.WeeklyHours` by
+    (`OverlapDays` helper), so a week of vacation doesn't get counted as under- or (once made
+    up elsewhere) over-planned hours — the Wochenansicht's own "Xh / Yh" target-hours
+    calculation was given the equivalent client-side treatment (`overlapDays` in
+    `ScheduleView.vue`, mirroring the backend helper) for the same reason. This session's
+    sandbox could reach both `mcr.microsoft.com` (SDK image) and, for the first time, `nuget.org`
+    itself — Docker Hub's CDN is still blocked (`api.nuget.org`/`mcr.microsoft.com` aren't behind
+    it, `docker.io`'s cloudfront-backed blob storage is), but installing the proxy's CA into the
+    SDK container's trust store and running with `--network host` got `dotnet ef migrations add`
+    working directly instead of hand-writing the migration. It also turned out this machine
+    already has a local PostgreSQL 16 install (previous sessions hadn't found/used it, only ever
+    tried Docker Hub's `postgres` image) — starting that directly gave a real database without
+    Docker Hub at all. Verified properly end-to-end this time, not just build/script level:
+    `dotnet build`/`dotnet ef migrations add` clean, migrated + seeded against the local
+    Postgres, then exercised via curl — absence CRUD (including the `To < From` 400 and 401/404
+    cases), an assignment placed during an Absence correctly triggers `AssignedDuringAbsence`
+    on `/validate` (and a same-employee assignment outside the Absence range correctly doesn't),
+    and a contract/absence combination chosen so the *unscaled* day-count would pass but the
+    *absence-scaled* one correctly trips `ContractHoursExceeded` (confirms the day-subtraction
+    logic is actually being applied, not just present in the code). Frontend: `vue-tsc -b` and
+    `vite build` clean, and — Playwright's browser install issue from earlier sessions no longer
+    reproduces on this machine — actually clicked through in real headless Chromium against the
+    live local stack above: login, create-employee, open `EmployeeDetailModal`, add an Absence
+    (row appears with the right German type label), and the Dienstplan/Wochenansicht loading
+    with no console errors with an employee that has both a Contract and an Absence (exercises
+    `targetHoursFor`'s new absence-day subtraction without throwing). Delete was verified at the
+    API level (curl) rather than through the browser, since the second Playwright pass reused
+    state from the first and produced a duplicate row that made the delete-button locator
+    ambiguous — a test-script artifact, not a product issue.
 - **Frontend** (`frontend/`): Vite + Vue 3 + TS + Tailwind v4 + Pinia + Vue Router + Axios +
   ESLint/Prettier + `@lucide/vue` (the `lucide-vue-next` package readme.md/issue #5 named is
   deprecated upstream in favor of this). `services/api.ts`'s JWT-attach + 401-refresh now
@@ -175,7 +217,11 @@ What's built:
     edit/team-assignment, eligible-shift-types checkboxes (`GET`/`PUT
     /employees/{id}/eligible-shift-types`), and Contract list/create/delete
     (`/employees/{id}/contracts`, `/contracts/{id}`) — the Contract form/table now also
-    carries the optional `HourlyRate` (issue #14, "€/Std", blank means untracked).
+    carries the optional `HourlyRate` (issue #14, "€/Std", blank means untracked). A new
+    Abwesenheiten section (issue #17) below Verträge, same list/create/delete table pattern —
+    `AbsenceType`'s numeric enum values are mapped to German labels client-side
+    (Urlaub/Krankheit/Fortbildung/Sonstiges) since the backend serializes enums as their
+    ordinal, not a string.
   - `views/Stammdaten/StammdatenView.vue` — Teams (list + create only; the backend has no
     `PUT`/`DELETE` for Teams) and ShiftTypes (list + create + click-to-edit via
     `views/Stammdaten/ShiftTypeDetailModal.vue`, since `ShiftTypesController` does have a
@@ -218,7 +264,9 @@ What's built:
     backend's already-computed `netHours` (never re-derives the subtraction client-side),
     target hours scaled from the active Contract's `WeeklyHours` by the visible month's day
     count ÷ 7 (a Contract still only defines a weekly figure — no separate monthly-target field
-    was added). Below that, a `€`-formatted labor-cost line (issue #14) shown only when at
+    was added), now also reduced by any Absence days (issue #17) overlapping the visible month
+    per employee, matching `ContractValidator`'s equivalent backend scaling. Below that, a
+    `€`-formatted labor-cost line (issue #14) shown only when at
     least one of the employee's assignments has a non-null backend-computed `laborCost`; a
     schedule-wide "Lohnkosten" total sits in the toolbar row, same client-side-sum-of-backend-
     values pattern as the hour totals. Clicking an assignment chip opens `views/Schedule/ShiftAssignmentModal.vue`

@@ -138,7 +138,13 @@ public class SchedulesController(ApplicationDbContext db) : ControllerBase
             .Where(a => employeeIds.Contains(a.EmployeeId) && a.Date >= historyStart && a.Date <= historyEnd)
             .ToListAsync();
 
-        return Ok(ScheduleValidator.Validate(schedule, assignments, employees, shiftTypes, contracts, historyAssignments));
+        // issue #17: only absences overlapping this Schedule's own span matter here — unlike
+        // the rest-time/consecutive-days history window above, absences don't need lookback.
+        var absences = await db.Absences
+            .Where(a => employeeIds.Contains(a.EmployeeId) && a.From <= schedule.EndDate && a.To >= schedule.StartDate)
+            .ToListAsync();
+
+        return Ok(ScheduleValidator.Validate(schedule, assignments, employees, shiftTypes, contracts, historyAssignments, absences));
     }
 
     [HttpPost("schedules/{id:guid}/assignments")]

@@ -49,6 +49,11 @@ interface Contract {
   validTo: string | null
   weeklyHours: number
 }
+interface Absence {
+  employeeId: string
+  from: string
+  to: string
+}
 interface ValidationIssue {
   type: string
   message: string
@@ -97,6 +102,7 @@ const teams = ref<Team[]>([])
 const shiftTypes = ref<ShiftType[]>([])
 const schedules = ref<Schedule[]>([])
 const contractsByEmployee = ref<Map<string, Contract[]>>(new Map())
+const absencesByEmployee = ref<Map<string, Absence[]>>(new Map())
 const assignments = ref<Assignment[]>([])
 const validation = ref<ValidationResult | null>(null)
 const selectedAssignment = ref<Assignment | null>(null)
@@ -148,6 +154,14 @@ function netHoursFor(employeeId: string) {
     .filter((a) => a.employeeId === employeeId)
     .reduce((sum, a) => sum + a.netHours, 0)
 }
+// Mirrors ContractValidator.OverlapDays (backend) — days of [from, to] that fall within the
+// visible month, so a week of vacation doesn't count toward the expected hours.
+function overlapDays(from: string, to: string): number {
+  const start = from > monthStartIso.value ? from : monthStartIso.value
+  const end = to < monthEndIso.value ? to : monthEndIso.value
+  if (end < start) return 0
+  return Math.round((parseIso(end).getTime() - parseIso(start).getTime()) / 86400000) + 1
+}
 function targetHoursFor(employeeId: string): number | null {
   const contracts = contractsByEmployee.value.get(employeeId) ?? []
   if (!contracts.length) return null
@@ -156,7 +170,12 @@ function targetHoursFor(employeeId: string): number | null {
   const contract =
     active ?? [...contracts].sort((a, b) => b.validFrom.localeCompare(a.validFrom))[0]
   const daysInMonth = monthEnd.value.getDate()
-  return Math.round(((contract.weeklyHours * daysInMonth) / 7) * 10) / 10
+  const absenceDays = (absencesByEmployee.value.get(employeeId) ?? []).reduce(
+    (sum, a) => sum + overlapDays(a.from, a.to),
+    0,
+  )
+  const effectiveDays = Math.max(0, daysInMonth - absenceDays)
+  return Math.round(((contract.weeklyHours * effectiveDays) / 7) * 10) / 10
 }
 function barWidth(employeeId: string) {
   const target = targetHoursFor(employeeId)
@@ -203,11 +222,15 @@ async function load() {
     shiftTypes.value = shiftTypesRes.data
     teams.value = teamsRes.data
 
-    const contractsResults = await Promise.all(
-      employees.value.map((e) => api.get(`/employees/${e.id}/contracts`)),
-    )
+    const [contractsResults, absencesResults] = await Promise.all([
+      Promise.all(employees.value.map((e) => api.get(`/employees/${e.id}/contracts`))),
+      Promise.all(employees.value.map((e) => api.get(`/employees/${e.id}/absences`))),
+    ])
     contractsByEmployee.value = new Map(
       employees.value.map((e, i) => [e.id, contractsResults[i].data]),
+    )
+    absencesByEmployee.value = new Map(
+      employees.value.map((e, i) => [e.id, absencesResults[i].data]),
     )
   } catch {
     error.value = 'Dienstplan konnte nicht geladen werden.'
