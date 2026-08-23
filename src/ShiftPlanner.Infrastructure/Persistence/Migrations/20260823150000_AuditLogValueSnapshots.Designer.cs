@@ -11,9 +11,11 @@ using ShiftPlanner.Infrastructure.Persistence;
 namespace ShiftPlanner.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260823150000_AuditLogValueSnapshots")]
+    partial class AuditLogValueSnapshots
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
