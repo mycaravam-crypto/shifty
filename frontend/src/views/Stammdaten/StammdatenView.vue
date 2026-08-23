@@ -4,6 +4,7 @@ import { Plus } from '@lucide/vue'
 import axios from 'axios'
 import api from '../../services/api'
 import ShiftTypeDetailModal from './ShiftTypeDetailModal.vue'
+import SkeletonBlock from '../../components/SkeletonBlock.vue'
 import { useToastStore } from '../../stores/toast'
 
 interface Team {
@@ -128,9 +129,8 @@ onMounted(load)
     </div>
 
     <p v-if="error" class="text-sm text-rose-400">{{ error }}</p>
-    <p v-if="loading" class="text-sm text-slate-500">Lädt…</p>
 
-    <section v-if="!loading">
+    <section>
       <div class="flex items-center justify-between mb-4">
         <h2 class="text-lg font-semibold">Teams</h2>
         <button
@@ -160,7 +160,13 @@ onMounted(load)
               <th class="px-4 py-3">Status</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody v-if="loading">
+            <tr v-for="i in 3" :key="i" class="border-b border-white/5 last:border-0">
+              <td class="px-4 py-3"><SkeletonBlock class="h-4 w-32" /></td>
+              <td class="px-4 py-3"><SkeletonBlock class="h-5 w-14 rounded-full" /></td>
+            </tr>
+          </tbody>
+          <tbody v-else>
             <tr v-for="t in teams" :key="t.id" class="border-b border-white/5 last:border-0">
               <td class="px-4 py-3">{{ t.name }}</td>
               <td class="px-4 py-3">
@@ -180,7 +186,7 @@ onMounted(load)
       </div>
     </section>
 
-    <section v-if="!loading">
+    <section>
       <div class="flex items-center justify-between mb-4">
         <h2 class="text-lg font-semibold">Schichttypen</h2>
         <button
@@ -242,7 +248,16 @@ onMounted(load)
               <th class="px-4 py-3">Status</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody v-if="loading">
+            <tr v-for="i in 3" :key="i" class="border-b border-white/5 last:border-0">
+              <td class="px-4 py-3"><SkeletonBlock class="h-4 w-32" /></td>
+              <td class="px-4 py-3"><SkeletonBlock class="h-4 w-20" /></td>
+              <td class="px-4 py-3"><SkeletonBlock class="h-4 w-10" /></td>
+              <td class="px-4 py-3"><SkeletonBlock class="h-4 w-14" /></td>
+              <td class="px-4 py-3"><SkeletonBlock class="h-5 w-14 rounded-full" /></td>
+            </tr>
+          </tbody>
+          <tbody v-else>
             <tr
               v-for="s in shiftTypes"
               :key="s.id"

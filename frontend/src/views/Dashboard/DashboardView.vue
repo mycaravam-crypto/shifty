@@ -2,6 +2,7 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '../../services/api'
+import SkeletonBlock from '../../components/SkeletonBlock.vue'
 
 interface Team {
   id: string
@@ -181,7 +182,41 @@ function openSchedule(scheduleId: string) {
     </div>
 
     <p v-if="error" class="mb-4 text-sm text-rose-400">{{ error }}</p>
-    <p v-if="loading" class="text-sm text-slate-500">Lädt…</p>
+
+    <template v-if="loading">
+      <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4 mb-6">
+        <div v-for="i in 6" :key="i" class="glass rounded-xl p-4">
+          <SkeletonBlock class="h-3 w-16 mb-2" />
+          <SkeletonBlock class="h-7 w-14" />
+        </div>
+      </div>
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+        <div class="glass rounded-xl p-4">
+          <SkeletonBlock class="h-3 w-24 mb-3" />
+          <div v-for="i in 4" :key="i" class="flex items-center gap-2 py-1.5">
+            <SkeletonBlock class="h-3 w-16 shrink-0" />
+            <SkeletonBlock class="h-3 flex-1" />
+            <SkeletonBlock class="h-3 w-10 shrink-0" />
+          </div>
+        </div>
+        <div class="glass rounded-xl p-4">
+          <SkeletonBlock class="h-3 w-28 mb-3" />
+          <SkeletonBlock class="h-5 w-48" />
+        </div>
+      </div>
+      <div class="glass rounded-xl p-4 mb-6">
+        <SkeletonBlock class="h-3 w-20 mb-3" />
+        <SkeletonBlock class="h-4 w-3/4 mb-2" />
+        <SkeletonBlock class="h-4 w-1/2" />
+      </div>
+      <div class="glass rounded-xl p-4">
+        <SkeletonBlock class="h-3 w-28 mb-3" />
+        <div v-for="i in 3" :key="i" class="flex items-center justify-between gap-3 py-1.5">
+          <SkeletonBlock class="h-4 flex-1" />
+          <SkeletonBlock class="h-6 w-16 shrink-0" />
+        </div>
+      </div>
+    </template>
 
     <template v-else-if="dashboard">
       <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4 mb-6">

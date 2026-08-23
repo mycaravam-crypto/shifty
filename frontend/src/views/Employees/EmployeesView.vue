@@ -4,6 +4,7 @@ import { Plus, Trash2 } from '@lucide/vue'
 import axios from 'axios'
 import api from '../../services/api'
 import EmployeeDetailModal from './EmployeeDetailModal.vue'
+import SkeletonBlock from '../../components/SkeletonBlock.vue'
 import { useToastStore } from '../../stores/toast'
 import { useConfirmStore } from '../../stores/confirm'
 
@@ -158,8 +159,7 @@ onMounted(load)
       </button>
     </form>
 
-    <p v-if="loading" class="text-sm text-slate-500">Lädt…</p>
-    <div v-else class="glass rounded-xl overflow-hidden">
+    <div class="glass rounded-xl overflow-hidden">
       <table class="w-full text-sm">
         <thead>
           <tr
@@ -172,7 +172,16 @@ onMounted(load)
             <th class="px-4 py-3"></th>
           </tr>
         </thead>
-        <tbody>
+        <tbody v-if="loading">
+          <tr v-for="i in 5" :key="i" class="border-b border-white/5 last:border-0">
+            <td class="px-4 py-3"><SkeletonBlock class="h-4 w-32" /></td>
+            <td class="px-4 py-3"><SkeletonBlock class="h-4 w-20" /></td>
+            <td class="px-4 py-3"><SkeletonBlock class="h-4 w-24" /></td>
+            <td class="px-4 py-3"><SkeletonBlock class="h-5 w-14 rounded-full" /></td>
+            <td class="px-4 py-3"></td>
+          </tr>
+        </tbody>
+        <tbody v-else>
           <tr
             v-for="e in employees"
             :key="e.id"

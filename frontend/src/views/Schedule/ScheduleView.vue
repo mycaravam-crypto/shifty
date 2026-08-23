@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { ChevronLeft, ChevronRight, Copy, Search, Printer } from '@lucide/vue'
 import api from '../../services/api'
 import ShiftAssignmentModal from './ShiftAssignmentModal.vue'
+import SkeletonBlock from '../../components/SkeletonBlock.vue'
 import { useToastStore } from '../../stores/toast'
 
 interface Employee {
@@ -636,7 +637,22 @@ window.addEventListener('afterprint', () => {
     </div>
 
     <p v-if="error" class="mb-4 text-sm text-rose-400">{{ error }}</p>
-    <p v-if="loading" class="text-sm text-slate-500">Lädt…</p>
+
+    <div v-if="loading" class="glass rounded-xl overflow-hidden">
+      <table class="w-full text-sm">
+        <tbody>
+          <tr v-for="row in 6" :key="row" class="border-b border-white/5 last:border-0">
+            <td class="px-4 py-3">
+              <SkeletonBlock class="h-4 w-28 mb-1.5" />
+              <SkeletonBlock class="h-3 w-16" />
+            </td>
+            <td v-for="col in 8" :key="col" class="px-2 py-3">
+              <SkeletonBlock v-if="(row + col) % 3 !== 0" class="h-8 w-full" />
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
 
     <template v-else>
       <div v-if="!currentSchedule" class="glass rounded-xl p-8 text-center">

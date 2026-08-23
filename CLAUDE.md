@@ -25,8 +25,8 @@ the frontend view (issue #30), and its Action Required feed (issue #31) are all 
 issue #27 is fully closed out. A UX/UI audit turned up 8 more issues (#36–#43: a global toast
 system, replacing native `confirm()` dialogs, skeleton loaders, a clickable validation panel,
 responsive Employees/Stammdaten tables, filter persistence, keyboard-shortcut discoverability,
-and real `SettingsView` content) — issues #36 (toast system) and #37 (`ConfirmDialog`) are now
-built, the rest are still open.
+and real `SettingsView` content) — issues #36 (toast system), #37 (`ConfirmDialog`), and #38
+(skeleton loaders) are now built, the rest are still open.
 What's built:
 
 - **Backend** (`src/`): 4-project skeleton (Domain → Application → Infrastructure → Api)
@@ -541,6 +541,36 @@ What's built:
     the existing success toast, and — the specific regression this fix targets — opening the
     contract-delete confirm from inside an open `EmployeeDetailModal` and pressing Escape closes
     only the confirm dialog, leaving the employee editor open underneath it.
+  - **Skeleton loaders** (issue #38) — every "Lädt…" plain-text loading state (`EmployeesView.vue`,
+    `StammdatenView.vue`'s two tables, `DashboardView.vue`, `ScheduleView.vue`) is now a
+    pulsing placeholder matching the eventual layout instead of a line of text, via one
+    `components/SkeletonBlock.vue` (a single `animate-pulse bg-white/5 rounded` div, sized per
+    call site with a passed-through `class` — no props/logic needed, Tailwind's `animate-pulse`
+    already does the work). Named `SkeletonBlock` rather than `Skeleton` since `vue-eslint`'s
+    `vue/multi-word-component-names` rule (matching every other component in the app —
+    `ModalShell`, `AppShell`, `ToastContainer`, `ConfirmDialog`) rejects single-word names.
+    `EmployeesView.vue` and both `StammdatenView.vue` tables keep their real `<thead>` always
+    rendered and swap only the `<tbody>` between a handful of skeleton rows and the real ones
+    (two sibling `<tbody v-if="loading">`/`<tbody v-else>` elements — valid HTML, and avoids
+    duplicating the header markup) — this also meant lifting `StammdatenView.vue`'s two
+    `<section v-if="!loading">` wrappers to always render, so the "+ Team"/"+ Schichttyp"
+    buttons and forms show immediately instead of popping in only once loading finishes,
+    matching `EmployeesView.vue`'s existing pattern where the "+ Mitarbeiter" button was never
+    gated on `loading` to begin with. `DashboardView.vue` and `ScheduleView.vue` don't have a
+    single well-defined "real" shape to swap a sub-element against (the KPI/panel counts and
+    the day/employee grid dimensions are only known once data arrives), so those two render a
+    separate skeleton block alongside the existing `v-if="loading"`/`v-else` split instead —
+    6 KPI-card placeholders + 4 panel placeholders for the dashboard, and a generic 6-row ×
+    8-column grid (a few cells randomly left empty via `(row + col) % 3`, so it doesn't read as
+    a suspiciously uniform grid) for the schedule, both approximating the eventual shape rather
+    than pixel-matching it. Verified in a real headless Chromium against the actual dev server:
+    `vue-tsc -b`/`vite build`/`eslint` clean (zero new warnings past the 57 pre-existing ones —
+    catching the `vue/multi-word-component-names` error this way, before it was fixed, is what
+    surfaced the rename), then each of the four views' API calls were mocked with an artificial
+    2s delay to actually catch the loading state mid-flight and screenshot it — confirmed all
+    four render the intended pulsing-placeholder layout (headers/buttons visible immediately on
+    the two table views, the full card/panel skeleton on the dashboard, the grid skeleton on the
+    schedule) rather than just trusting the markup would look right.
   - `components/AppShell.vue` — sidebar nav (Übersicht/Dienstplan/Mitarbeiter/Stammdaten/
     Einstellungen) + user identity + logout, applying CLAUDE.md's "Visual design" tokens (dark
     glass, Inter, blue→indigo accent). `SettingsView` is still a styled-but-minimal placeholder
