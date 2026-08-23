@@ -15,9 +15,10 @@ Stundenberechnung) is also now built, backend + frontend. Phase 3 (Validierung) 
 built, including the two rules needing cross-assignment history (Ruhezeit, max-consecutive-days
 — issues #8/#9, see below). Phase 4 (Usability: week-copy/filters/search/shortcuts) has
 just started — only week-copy exists so far, frontend-only. Phase 5 (Erweiterungen) has also
-just started — hourly wage rates (issue #14) — see below; the rest of the Phase 5 roadmap
-(issues #15–#19: holiday calendar, wage surcharges, absence tracking, overtime ledger, touch
-drag-and-drop) hasn't been started. What's built:
+just started — hourly wage rates (issue #14) and touch/mobile drag-and-drop for the
+Wochenansicht (issue #19) — see below; the rest of the Phase 5 roadmap (issues #15–#18:
+holiday calendar, wage surcharges, absence tracking, overtime ledger) hasn't been started.
+What's built:
 
 - **Backend** (`src/`): 4-project skeleton (Domain → Application → Infrastructure → Api)
   matching readme.md §19/§20. Builds clean (`dotnet build ShiftPlanner.sln`, verified via
@@ -192,11 +193,27 @@ drag-and-drop) hasn't been started. What's built:
     dependency); an empty-state "Diesen Monat anlegen" button (`POST /schedules`, 1st–last of
     month, named e.g. "August 2026") when no Schedule exists yet for the visible month. A
     palette of active ShiftTypes above the grid, and both palette chips and placed assignment
-    chips are native-HTML5-`draggable` (no drag-and-drop library added — none was installed,
-    and this is a simple day×employee matrix); dropping a palette chip on a cell `POST`s a new
+    chips drive drag-and-drop off raw Pointer Events (`pointerdown`/`pointermove`/`pointerup`
+    on `window`, `touch-action: none` on the chips) rather than native HTML5 `draggable` —
+    the native API has no touch support, and Pointer Events give mouse and touch the same code
+    path instead of two parallel implementations ([issue #19](https://github.com/mycaravam-crypto/shifty/issues/19),
+    closing the touch/mobile drag gap readme.md §1 calls out as a goal distinct from a native
+    Mobile App). A small movement threshold (6px) gates when a pointer-down actually becomes a
+    drag, so a plain tap/click still opens the assignment modal instead of misfiring as a
+    zero-distance drag; dragging shows a small floating chip following the pointer and
+    highlights the day cell currently under it (`dragOverKey`, via `elementFromPoint` +
+    `data-employee-id`/`data-date` attributes on each `<td>`, since native `dragover`/`drop`
+    targeting doesn't apply here either). Dropping a palette chip on a cell `POST`s a new
     assignment from the ShiftType's template times, dropping an existing chip on a different
-    cell `PUT`s the same assignment onto the new employee/date (a move). No touch/mobile drag
-    support (accepted gap — desktop-only per readme.md §16's own interaction model). Each
+    cell `PUT`s the same assignment onto the new employee/date (a move) — both funnel through
+    one `performDrop` used by both create and move, same as the old native-DnD code did.
+    `components/ModalShell.vue`'s click-outside-to-close also needed a fix alongside this: a
+    touch tap that opens a modal (e.g. tapping an assignment chip) is followed by the browser's
+    synthetic compatibility `click` event at the same coordinates, which — once the backdrop
+    exists — lands on it and would immediately close what the tap just opened; the backdrop
+    now ignores its own `click.self` for 500ms after mount to absorb that one ghost click
+    without weakening real click-outside-to-close (verified both still work, mouse and touch).
+    Each
     employee row shows a `font-mono` "Xh / Yh ⚠" hour readout + progress bar — sums the
     backend's already-computed `netHours` (never re-derives the subtraction client-side),
     target hours scaled from the active Contract's `WeeklyHours` by the visible month's day
@@ -256,7 +273,20 @@ drag-and-drop) hasn't been started. What's built:
     `vite build` clean, `dotnet build` clean — but not round-tripped against a real Postgres
     (this session's Docker daemon could reach `mcr.microsoft.com` but Docker Hub pulls were
     blocked by the sandbox's egress policy, so no local Postgres was available at all this
-    time, not even via curl) and not clicked through in a browser.
+    time, not even via curl) and not clicked through in a browser. The touch/mobile
+    drag-and-drop rework (issue #19) **is** verified in a real headless Chromium (this session's
+    Docker daemon wasn't reachable at all — not even for a container to build against, so no
+    live backend/Postgres existed to hit): a scratch Playwright script drove the actual dev
+    server with the `/api/*` calls mocked at the network layer, using CDP
+    `Input.dispatchTouchEvent` for genuine touch-sourced Pointer Events (not just JS-dispatched
+    synthetic ones) — palette-chip-to-cell (create), assignment-chip-to-different-cell (move),
+    and a stationary tap (opens the edit modal) all confirmed on a touch-capable context, plus
+    the pre-existing mouse-drag path re-confirmed unbroken on a mouse-only context. That pass
+    caught a real bug, not a test artifact: a touch tap that opens `ShiftAssignmentModal` is
+    followed by the browser's synthetic compatibility `click` at the same coordinates, which
+    landed on the freshly-mounted `ModalShell` backdrop and closed it again immediately via
+    `@click.self` — fixed in `ModalShell.vue` (see above) and re-verified, including that
+    mouse click-to-open and click-outside-to-close still both work.
 - **Docker/deploy**: `docker-compose.yml` (db/api/web) validated with `docker compose config`,
   never actually deployed. No `.env` exists anywhere yet (only `.env.example`).
 - **Versioning**: same scheme as vanspace3d. `frontend/package.json`'s `version` is shown
