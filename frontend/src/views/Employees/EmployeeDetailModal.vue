@@ -32,6 +32,7 @@ interface Contract {
   weeklyHours: number
   workingDaysPerWeek: number
   dailyTargetHours: number
+  hourlyRate: number | null
 }
 
 const props = defineProps<{ employee: Employee; teams: Team[] }>()
@@ -100,6 +101,7 @@ const contractForm = ref({
   weeklyHours: 40,
   workingDaysPerWeek: 5,
   dailyTargetHours: 8,
+  hourlyRate: null as number | null,
 })
 const savingContract = ref(false)
 const contractError = ref('')
@@ -119,6 +121,7 @@ async function onCreateContract() {
       weeklyHours: contractForm.value.weeklyHours,
       workingDaysPerWeek: contractForm.value.workingDaysPerWeek,
       dailyTargetHours: contractForm.value.dailyTargetHours,
+      hourlyRate: contractForm.value.hourlyRate || null,
     })
     contractForm.value = {
       validFrom: '',
@@ -126,6 +129,7 @@ async function onCreateContract() {
       weeklyHours: 40,
       workingDaysPerWeek: 5,
       dailyTargetHours: 8,
+      hourlyRate: null,
     }
     await loadContracts()
   } catch (e) {
@@ -236,6 +240,7 @@ onMounted(() => {
                 <th class="px-3 py-2 font-mono">Std/Wo</th>
                 <th class="px-3 py-2">Tage/Wo</th>
                 <th class="px-3 py-2 font-mono">Std/Tag</th>
+                <th class="px-3 py-2 font-mono">€/Std</th>
                 <th class="px-3 py-2"></th>
               </tr>
             </thead>
@@ -246,6 +251,7 @@ onMounted(() => {
                 <td class="px-3 py-2 font-mono">{{ c.weeklyHours }}</td>
                 <td class="px-3 py-2">{{ c.workingDaysPerWeek }}</td>
                 <td class="px-3 py-2 font-mono">{{ c.dailyTargetHours }}</td>
+                <td class="px-3 py-2 font-mono">{{ c.hourlyRate ?? '—' }}</td>
                 <td class="px-3 py-2 text-right">
                   <button
                     class="text-slate-500 hover:text-rose-400 transition-colors"
@@ -256,7 +262,7 @@ onMounted(() => {
                 </td>
               </tr>
               <tr v-if="!contracts.length">
-                <td colspan="6" class="px-3 py-4 text-center text-slate-500">Keine Verträge.</td>
+                <td colspan="7" class="px-3 py-4 text-center text-slate-500">Keine Verträge.</td>
               </tr>
             </tbody>
           </table>
@@ -299,10 +305,19 @@ onMounted(() => {
             required
             :class="inputClass"
           />
+          <input
+            v-model.number="contractForm.hourlyRate"
+            type="number"
+            step="0.01"
+            min="0"
+            max="1000"
+            placeholder="€/Std (optional)"
+            :class="inputClass"
+          />
           <button
             type="submit"
             :disabled="savingContract"
-            class="rounded-lg bg-white/10 hover:bg-white/15 transition-colors py-2 text-sm font-medium disabled:opacity-50"
+            class="col-span-3 rounded-lg bg-white/10 hover:bg-white/15 transition-colors py-2 text-sm font-medium disabled:opacity-50"
           >
             {{ savingContract ? 'Anlegen…' : 'Anlegen' }}
           </button>

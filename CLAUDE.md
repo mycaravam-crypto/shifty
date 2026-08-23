@@ -14,7 +14,10 @@ basic frontend). "Phase 2: Planung" (Schedule, ShiftAssignment, Wochenansicht, D
 Stundenberechnung) is also now built, backend + frontend. Phase 3 (Validierung) is now fully
 built, including the two rules needing cross-assignment history (Ruhezeit, max-consecutive-days
 — issues #8/#9, see below). Phase 4 (Usability: week-copy/filters/search/shortcuts) has
-just started — only week-copy exists so far, frontend-only. What's built:
+just started — only week-copy exists so far, frontend-only. Phase 5 (Erweiterungen) has also
+just started — hourly wage rates (issue #14) — see below; the rest of the Phase 5 roadmap
+(issues #15–#19: holiday calendar, wage surcharges, absence tracking, overtime ledger, touch
+drag-and-drop) hasn't been started. What's built:
 
 - **Backend** (`src/`): 4-project skeleton (Domain → Application → Infrastructure → Api)
   matching readme.md §19/§20. Builds clean (`dotnet build ShiftPlanner.sln`, verified via
@@ -139,6 +142,21 @@ just started — only week-copy exists so far, frontend-only. What's built:
     (used for the build/script checks above) but Docker Hub pulls (`postgres:16-alpine`) were
     blocked by the sandbox's egress policy, so the actual `SaveChangesAsync` audit-writing
     behavior hasn't been exercised end-to-end yet the way earlier phases were.
+  - `Contract.HourlyRate` (nullable decimal, issue #14) — Phase 5's first cut, scoped as labor
+    *cost estimation*, not payroll processing (readme.md §21 excludes actual Payroll): no
+    tax/social-security calc, no payslips. `Domain/Scheduling/WageCalculator.cs` is the single
+    source of truth for `NetHours × HourlyRate` (`null` when the rate is unset), mirroring how
+    `WorkingTimeCalculator` owns the hours math. `SchedulesController` resolves the *contract
+    active on the assignment's own date* (not the schedule's start — a schedule can span a
+    month, long enough for a mid-month rate change) and returns `LaborCost` per assignment in
+    `ShiftAssignmentDto`; per-employee/schedule-wide totals are summed client-side from that,
+    same pattern as the existing hour totals. `dotnet build` clean, and the migration
+    (`ContractHourlyRate`) was this time generated via a real `dotnet ef migrations add` (Docker
+    was reachable this session) rather than hand-written — `dotnet ef migrations script`
+    confirms the exact expected `ALTER TABLE "Contracts" ADD "HourlyRate" numeric;`. Same
+    live-Postgres caveat as AuditLog above: Docker Hub pulls are blocked in this sandbox, so
+    `SaveChangesAsync`/the API surface hasn't been exercised against a real database — only
+    build + migration-script level.
 - **Frontend** (`frontend/`): Vite + Vue 3 + TS + Tailwind v4 + Pinia + Vue Router + Axios +
   ESLint/Prettier + `@lucide/vue` (the `lucide-vue-next` package readme.md/issue #5 named is
   deprecated upstream in favor of this). `services/api.ts`'s JWT-attach + 401-refresh now
@@ -155,7 +173,8 @@ just started — only week-copy exists so far, frontend-only. What's built:
     `EmployeeDetailModal.vue` (in a reusable `components/ModalShell.vue`, pm-tool2-style):
     edit/team-assignment, eligible-shift-types checkboxes (`GET`/`PUT
     /employees/{id}/eligible-shift-types`), and Contract list/create/delete
-    (`/employees/{id}/contracts`, `/contracts/{id}`).
+    (`/employees/{id}/contracts`, `/contracts/{id}`) — the Contract form/table now also
+    carries the optional `HourlyRate` (issue #14, "€/Std", blank means untracked).
   - `views/Stammdaten/StammdatenView.vue` — Teams (list + create only; the backend has no
     `PUT`/`DELETE` for Teams) and ShiftTypes (list + create + click-to-edit via
     `views/Stammdaten/ShiftTypeDetailModal.vue`, since `ShiftTypesController` does have a
@@ -182,7 +201,10 @@ just started — only week-copy exists so far, frontend-only. What's built:
     backend's already-computed `netHours` (never re-derives the subtraction client-side),
     target hours scaled from the active Contract's `WeeklyHours` by the visible month's day
     count ÷ 7 (a Contract still only defines a weekly figure — no separate monthly-target field
-    was added). Clicking an assignment chip opens `views/Schedule/ShiftAssignmentModal.vue`
+    was added). Below that, a `€`-formatted labor-cost line (issue #14) shown only when at
+    least one of the employee's assignments has a non-null backend-computed `laborCost`; a
+    schedule-wide "Lohnkosten" total sits in the toolbar row, same client-side-sum-of-backend-
+    values pattern as the hour totals. Clicking an assignment chip opens `views/Schedule/ShiftAssignmentModal.vue`
     (`ModalShell`-based, mirrors `EmployeeDetailModal.vue`'s shape) to change ShiftType/times/
     break or delete — content edits only, moving stays drag-only, and it has no create mode.
     A glass panel above the palette lists every issue from `GET
@@ -228,9 +250,13 @@ just started — only week-copy exists so far, frontend-only. What's built:
     31-assignment month that correctly triggers `ContractHoursExceeded` at the scaled monthly
     limit, where the old unscaled check would've false-flagged nearly every month). Playwright's
     browser install is broken in this environment (`TypeError: onExit is not a function`), so
-    none of this has actually been clicked through in a browser yet.
-    interactively exercised in a browser (no local Team data exists yet to click through
-    either).
+    none of this has actually been clicked through in a browser yet. The hourly-wage-rate UI
+    (issue #14 — Contract form's `€/Std` field, the per-employee/schedule-wide "Lohnkosten"
+    readouts) is verified the same indirect way as the week→month switch: `vue-tsc -b`/
+    `vite build` clean, `dotnet build` clean — but not round-tripped against a real Postgres
+    (this session's Docker daemon could reach `mcr.microsoft.com` but Docker Hub pulls were
+    blocked by the sandbox's egress policy, so no local Postgres was available at all this
+    time, not even via curl) and not clicked through in a browser.
 - **Docker/deploy**: `docker-compose.yml` (db/api/web) validated with `docker compose config`,
   never actually deployed. No `.env` exists anywhere yet (only `.env.example`).
 - **Versioning**: same scheme as vanspace3d. `frontend/package.json`'s `version` is shown

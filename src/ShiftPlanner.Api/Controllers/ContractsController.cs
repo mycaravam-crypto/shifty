@@ -7,21 +7,25 @@ using ShiftPlanner.Infrastructure.Persistence;
 
 namespace ShiftPlanner.Api.Controllers;
 
-public record ContractDto(Guid Id, Guid EmployeeId, DateOnly ValidFrom, DateOnly? ValidTo, decimal WeeklyHours, int WorkingDaysPerWeek, decimal DailyTargetHours);
+public record ContractDto(
+    Guid Id, Guid EmployeeId, DateOnly ValidFrom, DateOnly? ValidTo, decimal WeeklyHours,
+    int WorkingDaysPerWeek, decimal DailyTargetHours, decimal? HourlyRate);
 
 public record CreateContractRequest(
     DateOnly ValidFrom,
     DateOnly? ValidTo,
     [Range(0, 168)] decimal WeeklyHours,
     [Range(0, 7)] int WorkingDaysPerWeek,
-    [Range(0, 24)] decimal DailyTargetHours);
+    [Range(0, 24)] decimal DailyTargetHours,
+    [Range(0, 1000)] decimal? HourlyRate);
 
 public record UpdateContractRequest(
     DateOnly ValidFrom,
     DateOnly? ValidTo,
     [Range(0, 168)] decimal WeeklyHours,
     [Range(0, 7)] int WorkingDaysPerWeek,
-    [Range(0, 24)] decimal DailyTargetHours);
+    [Range(0, 24)] decimal DailyTargetHours,
+    [Range(0, 1000)] decimal? HourlyRate);
 
 [ApiController]
 [Route("api")]
@@ -29,7 +33,7 @@ public record UpdateContractRequest(
 public class ContractsController(ApplicationDbContext db) : ControllerBase
 {
     private static readonly Func<Contract, ContractDto> ToDto =
-        c => new ContractDto(c.Id, c.EmployeeId, c.ValidFrom, c.ValidTo, c.WeeklyHours, c.WorkingDaysPerWeek, c.DailyTargetHours);
+        c => new ContractDto(c.Id, c.EmployeeId, c.ValidFrom, c.ValidTo, c.WeeklyHours, c.WorkingDaysPerWeek, c.DailyTargetHours, c.HourlyRate);
 
     [HttpGet("employees/{employeeId:guid}/contracts")]
     public async Task<ActionResult<IEnumerable<ContractDto>>> GetForEmployee(Guid employeeId)
@@ -69,7 +73,8 @@ public class ContractsController(ApplicationDbContext db) : ControllerBase
             ValidTo = request.ValidTo,
             WeeklyHours = request.WeeklyHours,
             WorkingDaysPerWeek = request.WorkingDaysPerWeek,
-            DailyTargetHours = request.DailyTargetHours
+            DailyTargetHours = request.DailyTargetHours,
+            HourlyRate = request.HourlyRate
         };
         db.Contracts.Add(contract);
         await db.SaveChangesAsync();
@@ -93,6 +98,7 @@ public class ContractsController(ApplicationDbContext db) : ControllerBase
         contract.WeeklyHours = request.WeeklyHours;
         contract.WorkingDaysPerWeek = request.WorkingDaysPerWeek;
         contract.DailyTargetHours = request.DailyTargetHours;
+        contract.HourlyRate = request.HourlyRate;
         await db.SaveChangesAsync();
 
         return NoContent();

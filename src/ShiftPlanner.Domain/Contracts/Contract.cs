@@ -11,4 +11,8 @@ public class Contract
     public decimal WeeklyHours { get; set; }
     public int WorkingDaysPerWeek { get; set; }
     public decimal DailyTargetHours { get; set; }
+
+    // Optional — not every deployment tracks wages (issue #14). Null means labor cost isn't
+    // computed for shifts covered by this contract.
+    public decimal? HourlyRate { get; set; }
 }
