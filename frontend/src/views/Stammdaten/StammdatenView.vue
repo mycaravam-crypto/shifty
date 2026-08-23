@@ -2,7 +2,7 @@
 import { onMounted, ref } from 'vue'
 import { Plus } from '@lucide/vue'
 import axios from 'axios'
-import api from '../../services/api'
+import api from '@/services/api'
 import ShiftTypeDetailModal from './ShiftTypeDetailModal.vue'
 
 interface Team {

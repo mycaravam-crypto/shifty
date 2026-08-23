@@ -2,7 +2,7 @@
 import { onMounted, ref } from 'vue'
 import { Plus, Trash2 } from '@lucide/vue'
 import axios from 'axios'
-import api from '../../services/api'
+import api from '@/services/api'
 import EmployeeDetailModal from './EmployeeDetailModal.vue'
 
 interface Employee {

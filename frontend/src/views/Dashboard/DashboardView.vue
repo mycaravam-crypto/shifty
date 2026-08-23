@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import api from '../../services/api'
+import api from '@/services/api'
 
 interface Team {
   id: string

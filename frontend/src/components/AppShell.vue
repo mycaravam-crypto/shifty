@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { LayoutDashboard, CalendarDays, Users, Tags, Settings, LogOut } from '@lucide/vue'
 import { useRouter } from 'vue-router'
-import { useAuthStore } from '../stores/auth'
+import { useAuthStore } from '@/stores/auth'
 
 const auth = useAuthStore()
 const router = useRouter()
