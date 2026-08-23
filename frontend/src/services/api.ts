@@ -2,7 +2,7 @@ import axios from 'axios'
 import { useAuthStore } from '../stores/auth'
 
 const api = axios.create({
-  baseURL: '/api/v1',
+  baseURL: '/api',
   withCredentials: true, // send the httpOnly refresh-token cookie
 })
 
@@ -23,6 +23,10 @@ api.interceptors.response.use(
       original._retried = true
       refreshing ??= axios
         .post('/api/v1/auth/refresh', {}, { withCredentials: true })
+        .catch((err) => {
+          auth.setAccessToken(null)
+          throw err
+        })
         .then((res) => res.data.accessToken)
         .finally(() => {
           refreshing = null

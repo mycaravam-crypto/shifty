@@ -57,8 +57,26 @@ migration + controllers). Frontend UI for it is not. What's built:
     Data model only, no eligibility validator yet — that needs `ShiftAssignment` (Phase 2),
     which doesn't exist ([issue #6](https://github.com/mycaravam-crypto/shifty/issues/6)).
 - **Frontend** (`frontend/`): Vite + Vue 3 + TS + Tailwind v4 + Pinia + Vue Router + Axios +
-  ESLint/Prettier. Three routes (`/`, `/employees`, `/settings`) each render a bare `<h1>` —
-  no real UI yet. `services/api.ts` has JWT-attach + 401-refresh wired, but nothing calls it.
+  ESLint/Prettier + `@lucide/vue` (the `lucide-vue-next` package readme.md/issue #5 named is
+  deprecated upstream in favor of this). `services/api.ts`'s JWT-attach + 401-refresh now
+  actually gets used — fixed its `baseURL` (`/api/v1` didn't match any controller route; only
+  `AuthController` lives under `v1`, everything else is `/api/{controller}`). `stores/auth.ts`
+  decodes the JWT's role/email claims for display and does a silent refresh on boot (via the
+  httpOnly cookie) so a page reload doesn't force a re-login. `router/index.ts` gates every
+  route but `/login` behind having an access token.
+  - `views/Login/LoginView.vue` — email/password against `POST /v1/auth/login`; didn't exist
+    before, nothing else works without it.
+  - `views/Employees/EmployeesView.vue` — list (`GET /employees`, `GET /teams` for the team
+    column) + create form + delete, wired to the real API
+    ([issue #2](https://github.com/mycaravam-crypto/shifty/issues/2)). No edit/team-assignment
+    UI yet, no eligible-shift-types UI (Contract UI also not started).
+  - `components/AppShell.vue` — sidebar nav (Dienstplan/Mitarbeiter/Einstellungen) + user
+    identity + logout, applying CLAUDE.md's "Visual design" tokens (dark glass, Inter,
+    blue→indigo accent). `ScheduleView`/`SettingsView` are styled but still minimal placeholders
+    — this is a functional cut of [issue #5](https://github.com/mycaravam-crypto/shifty/issues/5),
+    not the full pm-tool2/vanspace3d component-level parity pass.
+  - Verified end-to-end in a real (headless) browser against the local stack below: login
+    success/failure, employee list load, create, 409-conflict surfaced in the UI, logout.
 - **Docker/deploy**: `docker-compose.yml` (db/api/web) validated with `docker compose config`,
   never actually deployed. No `.env` exists anywhere yet (only `.env.example`).
 - **Versioning**: same scheme as vanspace3d. `frontend/package.json`'s `version` is shown
@@ -68,18 +86,30 @@ migration + controllers). Frontend UI for it is not. What's built:
 
 ## Run it locally
 
-Frontend only (this is what there is to look at right now):
+Full stack — db + api via Docker (no local SDK needed), frontend via Vite:
+
 ```bash
+cp .env.example .env   # fill in a real POSTGRES_PASSWORD / JWT_SIGNING_KEY for local use
+docker compose up -d db
+docker compose run --rm api dotnet ShiftPlanner.Api.dll --migrate
+docker compose run --rm -e SeedUser__Email=admin@shifty.local \
+  -e SeedUser__Password=DevAdmin123! -e SeedUser__Role=Admin \
+  api dotnet ShiftPlanner.Api.dll --seed-user
+docker compose up -d api
+
 cd frontend && npm install && npm run dev   # http://localhost:5173
 ```
 
-Backend build/test (no local SDK — use the container):
+The `api` service in `docker-compose.yml` has no host port mapping (only the prod `web`
+container talks to it internally) — add an untracked `docker-compose.override.yml` (see
+`.gitignore`) exposing `api`'s 8080 to a free host port, and point `frontend/vite.config.ts`'s
+proxy at that same port. Both currently assume **8081** on this machine (8080 was already
+taken by an unrelated container) — adjust if that's not your situation.
+
+Backend build/test only:
 ```bash
 docker run --rm -v "$PWD":/src -w /src mcr.microsoft.com/dotnet/sdk:10.0 dotnet build ShiftPlanner.sln
 ```
-
-Full stack: `docker compose up` needs a `.env` first (copy `.env.example`, fill in real
-values — see docker-compose.yml for which vars).
 
 ## Deploy target
 
@@ -110,8 +140,8 @@ re-deriving patterns from scratch. Tokens pulled from both:
 - **Typography**: Inter (body/UI), JetBrains Mono for numeric readouts — vanspace3d uses it
   for dimensions, this app's natural fit is hour totals/shift times (`08:00–16:30`, `32h/36h`).
   Section eyebrows are `text-[10px] uppercase tracking-wider font-bold text-slate-500`.
-- **Icons**: `lucide-vue-next` (pm-tool2's choice) — reuse it rather than adding a second
-  icon set.
+- **Icons**: `@lucide/vue` (pm-tool2 used `lucide-vue-next`, now deprecated upstream in favor
+  of this) — reuse it rather than adding a second icon set.
 - **Chrome**: thin custom scrollbars (`rgba(255,255,255,.14)` thumb), `focus-visible` rings in
   the accent color on every interactive element, `transition-colors` on hover states, modals as
   a fixed `bg-black/60 backdrop-blur` overlay + centered panel (see pm-tool2's `ModalShell.vue`).
@@ -119,5 +149,9 @@ re-deriving patterns from scratch. Tokens pulled from both:
   area — maps well onto this app's Mitarbeiter-list-as-sidebar + Wochenplanung-as-main-content
   shape from readme.md §15.
 
-Not yet applied to the scaffold — the three placeholder views (`ScheduleView.vue` etc.) are
-still unstyled `<h1>`s ([issue #5](https://github.com/mycaravam-crypto/shifty/issues/5)).
+Applied at the shell level (`components/AppShell.vue`, `views/Login/LoginView.vue`,
+`views/Employees/EmployeesView.vue`) — sidebar, glass panels, gradient buttons, Inter.
+`ScheduleView`/`SettingsView` pick up the theme via the shell but have no real content to
+style yet; JetBrains Mono is loaded but unused until shift-time data exists. Component-level
+parity with pm-tool2/vanspace3d (modals, richer tables) is still open on
+[issue #5](https://github.com/mycaravam-crypto/shifty/issues/5).
