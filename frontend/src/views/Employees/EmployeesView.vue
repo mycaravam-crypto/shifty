@@ -3,6 +3,7 @@ import { onMounted, ref } from 'vue'
 import { Plus, Trash2 } from '@lucide/vue'
 import axios from 'axios'
 import api from '../../services/api'
+import EmployeeDetailModal from './EmployeeDetailModal.vue'
 
 interface Employee {
   id: string
@@ -27,6 +28,7 @@ const showForm = ref(false)
 const saving = ref(false)
 
 const form = ref({ personnelNumber: '', firstName: '', lastName: '', email: '', teamId: '' })
+const selectedEmployee = ref<Employee | null>(null)
 
 function teamName(teamId: string | null) {
   return teams.value.find((t) => t.id === teamId)?.name ?? '—'
@@ -73,6 +75,11 @@ async function onCreate() {
 async function onDelete(id: string) {
   if (!confirm('Mitarbeiter wirklich löschen?')) return
   await api.delete(`/employees/${id}`)
+  await load()
+}
+
+async function onEmployeeUpdated() {
+  selectedEmployee.value = null
   await load()
 }
 
@@ -156,7 +163,8 @@ onMounted(load)
           <tr
             v-for="e in employees"
             :key="e.id"
-            class="border-b border-white/5 last:border-0 hover:bg-white/3"
+            class="border-b border-white/5 last:border-0 hover:bg-white/3 cursor-pointer"
+            @click="selectedEmployee = e"
           >
             <td class="px-4 py-3">{{ e.lastName }}, {{ e.firstName }}</td>
             <td class="px-4 py-3 font-mono text-slate-400">{{ e.personnelNumber }}</td>
@@ -174,7 +182,7 @@ onMounted(load)
             <td class="px-4 py-3 text-right">
               <button
                 class="text-slate-500 hover:text-rose-400 transition-colors"
-                @click="onDelete(e.id)"
+                @click.stop="onDelete(e.id)"
               >
                 <Trash2 :size="16" />
               </button>
@@ -186,5 +194,13 @@ onMounted(load)
         </tbody>
       </table>
     </div>
+
+    <EmployeeDetailModal
+      v-if="selectedEmployee"
+      :employee="selectedEmployee"
+      :teams="teams"
+      @close="selectedEmployee = null"
+      @updated="onEmployeeUpdated"
+    />
   </div>
 </template>
