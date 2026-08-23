@@ -62,8 +62,8 @@ async function onSave() {
   <ModalShell title="Schichttyp bearbeiten" @close="emit('close')">
     <form class="grid grid-cols-2 gap-3" @submit.prevent="onSave">
       <input v-model="form.name" placeholder="Name" required class="col-span-2" :class="inputClass" />
-      <input v-model="form.startTime" type="time" required :class="inputClass" />
-      <input v-model="form.endTime" type="time" required :class="inputClass" />
+      <input v-model="form.startTime" type="time" lang="de-DE" required :class="inputClass" />
+      <input v-model="form.endTime" type="time" lang="de-DE" required :class="inputClass" />
       <input
         v-model.number="form.breakMinutes"
         type="number"

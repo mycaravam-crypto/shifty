@@ -193,8 +193,8 @@ onMounted(load)
         @submit.prevent="onCreateShiftType"
       >
         <input v-model="shiftTypeForm.name" placeholder="Name" required class="col-span-2" :class="inputClass" />
-        <input v-model="shiftTypeForm.startTime" type="time" required :class="inputClass" />
-        <input v-model="shiftTypeForm.endTime" type="time" required :class="inputClass" />
+        <input v-model="shiftTypeForm.startTime" type="time" lang="de-DE" required :class="inputClass" />
+        <input v-model="shiftTypeForm.endTime" type="time" lang="de-DE" required :class="inputClass" />
         <input
           v-model.number="shiftTypeForm.breakMinutes"
           type="number"
