@@ -330,6 +330,7 @@ onMounted(() => {
         </div>
         <form class="grid grid-cols-3 gap-2" @submit.prevent="onCreateContract">
           <label class="text-xs text-slate-500 col-span-3 -mb-1">Neuer Vertrag</label>
+          <!-- lang="de-DE" is a no-op in Chromium (picker format is OS-locale-driven, not page-lang) -->
           <input v-model="contractForm.validFrom" type="date" lang="de-DE" required :class="inputClass" />
           <input
             v-model="contractForm.validTo"

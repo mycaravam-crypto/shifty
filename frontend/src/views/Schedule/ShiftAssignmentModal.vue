@@ -84,6 +84,7 @@ async function onDelete() {
       >
         <option v-for="s in shiftTypes" :key="s.id" :value="s.id">{{ s.name }}</option>
       </select>
+      <!-- lang="de-DE" is a no-op in Chromium (picker format is OS-locale-driven, not page-lang) -->
       <input v-model="form.startTime" type="time" lang="de-DE" required :class="inputClass" />
       <input v-model="form.endTime" type="time" lang="de-DE" required :class="inputClass" />
       <input

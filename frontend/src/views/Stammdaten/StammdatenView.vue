@@ -193,6 +193,7 @@ onMounted(load)
         @submit.prevent="onCreateShiftType"
       >
         <input v-model="shiftTypeForm.name" placeholder="Name" required class="col-span-2" :class="inputClass" />
+        <!-- lang="de-DE" is a no-op in Chromium (picker format is OS-locale-driven, not page-lang) -->
         <input v-model="shiftTypeForm.startTime" type="time" lang="de-DE" required :class="inputClass" />
         <input v-model="shiftTypeForm.endTime" type="time" lang="de-DE" required :class="inputClass" />
         <input
