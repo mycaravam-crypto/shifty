@@ -25,12 +25,12 @@ the frontend view (issue #30), and its Action Required feed (issue #31) are all 
 issue #27 is fully closed out. A UX/UI audit turned up 8 more issues (#36–#43: a global toast
 system, replacing native `confirm()` dialogs, skeleton loaders, a clickable validation panel,
 responsive Employees/Stammdaten tables, filter persistence, keyboard-shortcut discoverability,
-and real `SettingsView` content) — issues #36 (toast system), #37 (`ConfirmDialog`), #38
-(skeleton loaders), #39 (clickable validation panel), #40 (responsive Employees/Stammdaten),
-#41 (filter persistence), and #42 (keyboard-shortcut discoverability) are now built, the rest
-are still open. Building #40 surfaced a further gap outside its own scope — `AppShell.vue`'s
-sidebar isn't responsive at all and dominates a real phone's viewport regardless of how
-responsive the page content underneath it is — filed as issue #44, not started.
+and real `SettingsView` content) — all 8 are now built (#36 toast system, #37 `ConfirmDialog`,
+#38 skeleton loaders, #39 clickable validation panel, #40 responsive Employees/Stammdaten, #41
+filter persistence, #42 keyboard-shortcut discoverability, #43 `SettingsView` content). Building
+#40 surfaced a further gap outside its own scope — `AppShell.vue`'s sidebar isn't responsive at
+all and dominates a real phone's viewport regardless of how responsive the page content
+underneath it is — filed as issue #44, not started.
 What's built:
 
 - **Backend** (`src/`): 4-project skeleton (Domain → Application → Infrastructure → Api)
@@ -641,11 +641,29 @@ What's built:
     Chromium: the button opens it, `Escape` closes it (via `ModalShell`'s existing handling,
     unaffected by issue #37's Escape-suppression fix since there's no nested-modal case here),
     and pressing `?` unfocused opens it directly.
+  - **Real `SettingsView` content** (issue #43) — previously just a read-only display of the
+    logged-in user's own email/role, with nothing configurable. Per the issue's own scoping
+    (notification preferences had nothing real to configure since toasts are inherently
+    transient and there's no email/push infra; a light/dark toggle is explicitly out of scope
+    per this file's own "Visual design" section, dark-only by design), the one concrete
+    candidate was a default team filter for the Dienstplan — pairs directly with issue #41's
+    filter-persistence work. New `utils/settings.ts` (`getDefaultTeamFilter`/
+    `setDefaultTeamFilter`, `try/catch`-wrapped `localStorage` same as issue #41) holds the one
+    shared key rather than duplicating the string between the two files that touch it.
+    `ScheduleView.vue`'s `loadPersistedFilter()` (issue #41) now falls back to this default only
+    when nothing's been persisted yet for that user's browser — once they've touched the filter
+    themselves, their own choice wins from then on, matching the setting's own on-page
+    description ("solange dort noch kein eigener Filter gesetzt wurde"). Verified end-to-end in
+    a real headless Chromium: set a default team in Einstellungen (confirmed the success toast
+    and the `localStorage` write), cleared just the schedule-filter key to simulate a genuinely
+    first-ever visit to the Dienstplan, then confirmed a fresh load of that route actually
+    pre-selected the configured team — not just that the setting saves, but that the other view
+    actually reads it back.
   - `components/AppShell.vue` — sidebar nav (Übersicht/Dienstplan/Mitarbeiter/Stammdaten/
     Einstellungen) + user identity + logout, applying CLAUDE.md's "Visual design" tokens (dark
-    glass, Inter, blue→indigo accent). `SettingsView` is still a styled-but-minimal placeholder
-    — this is a functional cut of [issue #5](https://github.com/mycaravam-crypto/shifty/issues/5),
-    not the full pm-tool2/vanspace3d component-level parity pass.
+    glass, Inter, blue→indigo accent). This is a functional cut of
+    [issue #5](https://github.com/mycaravam-crypto/shifty/issues/5), not the full
+    pm-tool2/vanspace3d component-level parity pass.
   - Verified end-to-end in a real headless browser against the local stack below: login
     success/failure, employee list load, create, 409-conflict surfaced in the UI, logout,
     Dienstplan empty-state schedule creation, drag-to-place, drag-to-move, hour-bar update,
@@ -782,6 +800,6 @@ panels, gradient buttons, Inter. The `components/ModalShell.vue` pattern (fixed 
 backdrop-blur` overlay, centered glass panel) is reused by both
 `views/Employees/EmployeeDetailModal.vue` and `views/Schedule/ShiftAssignmentModal.vue`.
 JetBrains Mono (`font-mono`) is now in real use for shift times and the Wochenansicht's hour
-totals. `SettingsView` still picks up the theme via the shell but has no real content to style
-yet. Issue #5 is closed; any further component-level parity work (e.g. Teams/ShiftTypes UI)
-would be a new issue.
+totals. `SettingsView` now has real content too (issue #43, see above), styled the same way.
+Issue #5 is closed; any further component-level parity work (e.g. Teams/ShiftTypes UI) would be
+a new issue.

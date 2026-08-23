@@ -7,6 +7,7 @@ import ShiftAssignmentModal from './ShiftAssignmentModal.vue'
 import ModalShell from '../../components/ModalShell.vue'
 import SkeletonBlock from '../../components/SkeletonBlock.vue'
 import { useToastStore } from '../../stores/toast'
+import { getDefaultTeamFilter } from '../../utils/settings'
 
 interface Employee {
   id: string
@@ -132,14 +133,20 @@ const copyingMonth = ref(false)
 const FILTER_STORAGE_KEY = 'schichtplaner.scheduleFilter'
 function loadPersistedFilter(): { search: string; team: string } {
   try {
-    const parsed = JSON.parse(localStorage.getItem(FILTER_STORAGE_KEY) ?? '{}')
-    return {
-      search: typeof parsed.search === 'string' ? parsed.search : '',
-      team: typeof parsed.team === 'string' ? parsed.team : '',
+    const raw = localStorage.getItem(FILTER_STORAGE_KEY)
+    if (raw) {
+      const parsed = JSON.parse(raw)
+      return {
+        search: typeof parsed.search === 'string' ? parsed.search : '',
+        team: typeof parsed.team === 'string' ? parsed.team : '',
+      }
     }
   } catch {
-    return { search: '', team: '' }
+    // fall through to the default below
   }
+  // Nothing persisted yet (first visit, or storage cleared) — fall back to the default team
+  // configured in Einstellungen (issue #43), if any.
+  return { search: '', team: getDefaultTeamFilter() }
 }
 const persistedFilter = loadPersistedFilter()
 const search = ref(persistedFilter.search)
