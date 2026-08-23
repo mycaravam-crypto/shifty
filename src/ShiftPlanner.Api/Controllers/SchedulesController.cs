@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using ShiftPlanner.Application.Validation;
+using ShiftPlanner.Domain.Contracts;
 using ShiftPlanner.Domain.Scheduling;
 using ShiftPlanner.Infrastructure.Persistence;
 
@@ -13,7 +14,7 @@ public record ScheduleDto(Guid Id, string Name, DateOnly StartDate, DateOnly End
 public record ShiftAssignmentDto(
     Guid Id, Guid ScheduleId, Guid EmployeeId, Guid ShiftTypeId,
     DateOnly Date, TimeOnly StartTime, TimeOnly EndTime, int BreakMinutes,
-    decimal NetHours);
+    decimal NetHours, decimal? LaborCost);
 
 public record ScheduleDetailDto(
     Guid Id, string Name, DateOnly StartDate, DateOnly EndDate, ScheduleStatus Status,
@@ -40,9 +41,19 @@ public class SchedulesController(ApplicationDbContext db) : ControllerBase
     private static readonly Func<Schedule, ScheduleDto> ToDto =
         s => new ScheduleDto(s.Id, s.Name, s.StartDate, s.EndDate, s.Status);
 
-    private static ShiftAssignmentDto ToAssignmentDto(ShiftAssignment a) =>
-        new(a.Id, a.ScheduleId, a.EmployeeId, a.ShiftTypeId, a.Date, a.StartTime, a.EndTime, a.BreakMinutes,
-            WorkingTimeCalculator.NetHours(a.StartTime, a.EndTime, a.BreakMinutes));
+    private static ShiftAssignmentDto ToAssignmentDto(ShiftAssignment a, decimal? hourlyRate)
+    {
+        var netHours = WorkingTimeCalculator.NetHours(a.StartTime, a.EndTime, a.BreakMinutes);
+        return new(a.Id, a.ScheduleId, a.EmployeeId, a.ShiftTypeId, a.Date, a.StartTime, a.EndTime, a.BreakMinutes,
+            netHours, WageCalculator.LaborCost(netHours, hourlyRate));
+    }
+
+    // issue #14: the contract valid on the assignment's own date, not the schedule's start —
+    // a schedule can span a month, long enough for a mid-month contract/rate change.
+    private static decimal? HourlyRateOn(IReadOnlyList<Contract> contracts, Guid employeeId, DateOnly date) =>
+        contracts
+            .Where(c => c.EmployeeId == employeeId && c.ValidFrom <= date && (c.ValidTo is null || c.ValidTo >= date))
+            .MaxBy(c => c.ValidFrom)?.HourlyRate;
 
     [HttpGet("schedules")]
     public async Task<ActionResult<IEnumerable<ScheduleDto>>> GetAll()
@@ -63,8 +74,12 @@ public class SchedulesController(ApplicationDbContext db) : ControllerBase
             .OrderBy(a => a.Date).ThenBy(a => a.StartTime)
             .ToListAsync();
 
+        var employeeIds = assignments.Select(a => a.EmployeeId).Distinct().ToList();
+        var contracts = await db.Contracts.Where(c => employeeIds.Contains(c.EmployeeId)).ToListAsync();
+
         return Ok(new ScheduleDetailDto(schedule.Id, schedule.Name, schedule.StartDate, schedule.EndDate,
-            schedule.Status, assignments.Select(ToAssignmentDto).ToList()));
+            schedule.Status,
+            assignments.Select(a => ToAssignmentDto(a, HourlyRateOn(contracts, a.EmployeeId, a.Date))).ToList()));
     }
 
     [HttpPost("schedules")]
@@ -156,7 +171,13 @@ public class SchedulesController(ApplicationDbContext db) : ControllerBase
         db.ShiftAssignments.Add(assignment);
         await db.SaveChangesAsync();
 
-        return CreatedAtAction(nameof(GetById), new { id }, ToAssignmentDto(assignment));
+        var contract = await db.Contracts
+            .Where(c => c.EmployeeId == assignment.EmployeeId && c.ValidFrom <= assignment.Date
+                && (c.ValidTo == null || c.ValidTo >= assignment.Date))
+            .OrderByDescending(c => c.ValidFrom)
+            .FirstOrDefaultAsync();
+
+        return CreatedAtAction(nameof(GetById), new { id }, ToAssignmentDto(assignment, contract?.HourlyRate));
     }
 
     [HttpPut("assignments/{id:guid}")]

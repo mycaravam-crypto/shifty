@@ -41,6 +41,7 @@ interface Assignment {
   endTime: string
   breakMinutes: number
   netHours: number
+  laborCost: number | null
 }
 interface Contract {
   employeeId: string
@@ -162,6 +163,15 @@ function barWidth(employeeId: string) {
   if (!target) return 0
   return Math.min(100, (netHoursFor(employeeId) / target) * 100)
 }
+const currencyFmt = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' })
+function sumLaborCost(list: Assignment[]): number | null {
+  if (!list.some((a) => a.laborCost !== null)) return null
+  return list.reduce((sum, a) => sum + (a.laborCost ?? 0), 0)
+}
+function laborCostFor(employeeId: string): number | null {
+  return sumLaborCost(assignments.value.filter((a) => a.employeeId === employeeId))
+}
+const totalLaborCost = computed(() => sumLaborCost(assignments.value))
 
 async function loadDetail() {
   if (!currentSchedule.value) {
@@ -386,6 +396,9 @@ async function onAssignmentUpdated() {
           <p v-if="!activeShiftTypes.length" class="text-sm text-slate-500">
             Keine Schichtarten angelegt.
           </p>
+          <div v-if="totalLaborCost !== null" class="ml-auto font-mono text-sm text-emerald-400">
+            Lohnkosten: {{ currencyFmt.format(totalLaborCost) }}
+          </div>
         </div>
 
         <div class="flex flex-wrap items-center gap-2 mb-4">
@@ -446,6 +459,9 @@ async function onAssignmentUpdated() {
                       ></div>
                     </div>
                   </template>
+                  <div v-if="laborCostFor(e.id) !== null" class="font-mono text-xs text-emerald-400 mt-1">
+                    {{ currencyFmt.format(laborCostFor(e.id)!) }}
+                  </div>
                 </td>
                 <td
                   v-for="d in days"
