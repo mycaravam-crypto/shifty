@@ -16,9 +16,9 @@ built, including the two rules needing cross-assignment history (Ruhezeit, max-c
 — issues #8/#9, see below). Phase 4 (Usability: week-copy/filters/search/shortcuts) has
 just started — only week-copy exists so far, frontend-only. Phase 5 (Erweiterungen) has also
 just started — hourly wage rates (issue #14), touch/mobile drag-and-drop for the
-Wochenansicht (issue #19), and absence tracking (issue #17) — see below; issues #15/#16
-(holiday calendar, wage surcharges) and #18 (overtime ledger, depends on #17) haven't been
-started.
+Wochenansicht (issue #19), absence tracking (issue #17), and the overtime ledger built on top
+of it (issue #18) — see below; the rest of the Phase 5 roadmap (issues #15/#16: holiday
+calendar, wage surcharges) hasn't been started.
 What's built:
 
 - **Backend** (`src/`): 4-project skeleton (Domain → Application → Infrastructure → Api)
@@ -269,7 +269,27 @@ What's built:
     `€`-formatted labor-cost line (issue #14) shown only when at
     least one of the employee's assignments has a non-null backend-computed `laborCost`; a
     schedule-wide "Lohnkosten" total sits in the toolbar row, same client-side-sum-of-backend-
-    values pattern as the hour totals. Clicking an assignment chip opens `views/Schedule/ShiftAssignmentModal.vue`
+    values pattern as the hour totals. A first cut of the overtime ledger (issue #18,
+    "Übertrag: +Xh"/"-Xh" beneath the Xh/Yh line, green/rose, hidden when zero) landed
+    alongside this: `GET /api/employees/{id}/hours-balance?before=` (new, `EmployeesController`)
+    returns a cumulative over/under-hours balance — every `Schedule` that's fully elapsed before
+    the given date (`EndDate < before`), same expected-vs-actual math `ContractValidator` already
+    does per-schedule, just summed across all of them instead of checked against one. Backend
+    is `Domain/Scheduling/HoursBalanceCalculator.cs`, a stateless static method next to
+    `WorkingTimeCalculator` — derived at read time from existing `Schedule`/`ShiftAssignment`/
+    `Contract`/`Absence` rows, no stored running-total column, matching the "no persisted
+    derived state" design note the issue itself called for. `Absence` days (issue #17, which
+    landed after this was first cut) are excluded from each elapsed Schedule's expected hours
+    the same way `ContractValidator` already does per-schedule, so an approved absence doesn't
+    show as under-hours. The frontend fetches it per visible employee with `before` = the
+    visible month's start (so the figure shown is the balance carried *into* this month, not
+    double-counting the in-progress month the Xh/Yh bar already covers) — on initial load and
+    again on month nav. Verified against a real local Postgres (`dotnet build` clean, `vue-tsc
+    -b` clean): balance is 0 for a not-yet-elapsed schedule, correctly sums to the expected
+    over/under figure once a schedule's `EndDate` is in the past, excludes Absence-overlapping
+    days from that figure, and 404s for an unknown employee id — not yet clicked through in an
+    actual browser (same Playwright-install gap as the rest of the Wochenansicht work). Clicking
+    an assignment chip opens `views/Schedule/ShiftAssignmentModal.vue`
     (`ModalShell`-based, mirrors `EmployeeDetailModal.vue`'s shape) to change ShiftType/times/
     break or delete — content edits only, moving stays drag-only, and it has no create mode.
     A glass panel above the palette lists every issue from `GET

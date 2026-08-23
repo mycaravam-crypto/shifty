@@ -49,6 +49,25 @@ public class EmployeesController(ApplicationDbContext db) : ControllerBase
         return employee is null ? NotFound() : Ok(ToDto(employee));
     }
 
+    // issue #18: cumulative over/under-hours balance carried into `before` (defaults to today)
+    // from every fully-elapsed Schedule — see HoursBalanceCalculator.
+    [HttpGet("{id:guid}/hours-balance")]
+    public async Task<ActionResult<decimal>> HoursBalance(Guid id, DateOnly? before)
+    {
+        if (!await db.Employees.AnyAsync(e => e.Id == id))
+            return NotFound();
+
+        var cutoff = before ?? DateOnly.FromDateTime(DateTime.UtcNow);
+        var schedules = await db.Schedules.Where(s => s.EndDate < cutoff).ToListAsync();
+        var scheduleIds = schedules.Select(s => s.Id).ToList();
+        var assignments = await db.ShiftAssignments
+            .Where(a => a.EmployeeId == id && scheduleIds.Contains(a.ScheduleId)).ToListAsync();
+        var contracts = await db.Contracts.Where(c => c.EmployeeId == id).ToListAsync();
+        var absences = await db.Absences.Where(a => a.EmployeeId == id).ToListAsync();
+
+        return Ok(HoursBalanceCalculator.CumulativeBalance(id, cutoff, schedules, assignments, contracts, absences));
+    }
+
     [HttpPost]
     [Authorize(Policy = "ManagerWrite")]
     public async Task<ActionResult<EmployeeDto>> Create(CreateEmployeeRequest request)
