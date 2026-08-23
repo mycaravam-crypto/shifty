@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
-import { ChevronLeft, ChevronRight, Copy } from '@lucide/vue'
+import { ChevronLeft, ChevronRight, Copy, Search } from '@lucide/vue'
 import api from '../../services/api'
 import ShiftAssignmentModal from './ShiftAssignmentModal.vue'
 
@@ -9,6 +9,11 @@ interface Employee {
   firstName: string
   lastName: string
   active: boolean
+  teamId: string | null
+}
+interface Team {
+  id: string
+  name: string
 }
 interface ShiftType {
   id: string
@@ -90,6 +95,7 @@ const weekdayFmt = new Intl.DateTimeFormat('de-DE', {
 })
 
 const employees = ref<Employee[]>([])
+const teams = ref<Team[]>([])
 const shiftTypes = ref<ShiftType[]>([])
 const schedules = ref<Schedule[]>([])
 const contractsByEmployee = ref<Map<string, Contract[]>>(new Map())
@@ -101,6 +107,8 @@ const loading = ref(true)
 const error = ref('')
 const creatingSchedule = ref(false)
 const copyingWeek = ref(false)
+const search = ref('')
+const teamFilter = ref('')
 
 const weekStart = computed(() => mondayOf(anchorDate.value))
 const weekEnd = computed(() => addDays(weekStart.value, 6))
@@ -109,6 +117,14 @@ const weekEndIso = computed(() => toIso(weekEnd.value))
 
 const activeEmployees = computed(() => employees.value.filter((e) => e.active))
 const activeShiftTypes = computed(() => shiftTypes.value.filter((s) => s.active))
+const visibleEmployees = computed(() => {
+  const term = search.value.trim().toLowerCase()
+  return activeEmployees.value.filter((e) => {
+    if (teamFilter.value && e.teamId !== teamFilter.value) return false
+    if (term && !`${e.firstName} ${e.lastName}`.toLowerCase().includes(term)) return false
+    return true
+  })
+})
 
 const currentSchedule = computed(() =>
   schedules.value.find((s) => s.startDate === weekStartIso.value),
@@ -167,14 +183,16 @@ async function load() {
   loading.value = true
   error.value = ''
   try {
-    const [schedulesRes, employeesRes, shiftTypesRes] = await Promise.all([
+    const [schedulesRes, employeesRes, shiftTypesRes, teamsRes] = await Promise.all([
       api.get('/schedules'),
       api.get('/employees'),
       api.get('/shift-types'),
+      api.get('/teams'),
     ])
     schedules.value = schedulesRes.data
     employees.value = employeesRes.data
     shiftTypes.value = shiftTypesRes.data
+    teams.value = teamsRes.data
 
     const contractsResults = await Promise.all(
       employees.value.map((e) => api.get(`/employees/${e.id}/contracts`)),
@@ -368,6 +386,25 @@ async function onAssignmentUpdated() {
           </p>
         </div>
 
+        <div class="flex flex-wrap items-center gap-2 mb-4">
+          <div class="relative">
+            <Search :size="14" class="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500" />
+            <input
+              v-model="search"
+              type="text"
+              placeholder="Mitarbeiter suchen…"
+              class="rounded-lg bg-white/5 border border-white/10 pl-8 pr-3 py-1.5 text-sm placeholder:text-slate-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+            />
+          </div>
+          <select
+            v-model="teamFilter"
+            class="rounded-lg bg-white/5 border border-white/10 px-3 py-1.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+          >
+            <option value="">Alle Teams</option>
+            <option v-for="t in teams" :key="t.id" :value="t.id">{{ t.name }}</option>
+          </select>
+        </div>
+
         <div class="glass rounded-xl overflow-x-auto">
           <table class="w-full text-sm">
             <thead>
@@ -382,7 +419,7 @@ async function onAssignmentUpdated() {
             </thead>
             <tbody>
               <tr
-                v-for="e in activeEmployees"
+                v-for="e in visibleEmployees"
                 :key="e.id"
                 class="border-b border-white/5 last:border-0"
               >
@@ -436,9 +473,9 @@ async function onAssignmentUpdated() {
                   </div>
                 </td>
               </tr>
-              <tr v-if="!activeEmployees.length">
+              <tr v-if="!visibleEmployees.length">
                 <td :colspan="days.length + 1" class="px-4 py-8 text-center text-slate-500">
-                  Keine Mitarbeiter.
+                  {{ activeEmployees.length ? 'Keine Treffer.' : 'Keine Mitarbeiter.' }}
                 </td>
               </tr>
             </tbody>

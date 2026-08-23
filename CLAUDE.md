@@ -159,8 +159,12 @@ just started — only week-copy exists so far, frontend-only. What's built:
     creating that week's `Schedule` first if it doesn't exist yet — pure client-side
     orchestration of the existing `/schedules`/`assignments` endpoints, no backend change.
     Guards against clobbering: aborts with an inline error if the target week's `Schedule`
-    already has assignments. Filters/search/shortcuts/optimized drag-and-drop (the rest of
-    Phase 4) aren't started.
+    already has assignments. A search box + team `<select>` (reusing `Employee.TeamId` and
+    `GET /teams`, same as `EmployeesView.vue`'s existing pattern) filters the employee rows
+    client-side — covers both "Filter" and "Suche" from readme.md's Phase 4 list in one
+    toolbar since they're the same filter-the-row-set operation here; a dedicated
+    shift-type/date filter wasn't added since the palette + week nav already cover that.
+    Shortcuts/optimized drag-and-drop (the rest of Phase 4) aren't started.
   - `components/AppShell.vue` — sidebar nav (Dienstplan/Mitarbeiter/Einstellungen) + user
     identity + logout, applying CLAUDE.md's "Visual design" tokens (dark glass, Inter,
     blue→indigo accent). `SettingsView` is still a styled-but-minimal placeholder — this is a
@@ -173,7 +177,11 @@ just started — only week-copy exists so far, frontend-only. What's built:
     violating `BreakMinutesValidator` renders the ❌ banner live in the browser. "Woche
     kopieren" is only verified against the real API directly (curl, mirroring the exact
     request sequence the button makes) — no browser tooling was available in that session, so
-    it hasn't been clicked in an actual browser yet.
+    it hasn't been clicked in an actual browser yet. Same for the search/team-filter toolbar:
+    confirmed `GET /teams` returns 200 and `Employee` already carries `teamId` matching the
+    new frontend types, and the dev server boots with no console/runtime errors, but not
+    interactively exercised in a browser (no local Team data exists yet to click through
+    either).
 - **Docker/deploy**: `docker-compose.yml` (db/api/web) validated with `docker compose config`,
   never actually deployed. No `.env` exists anywhere yet (only `.env.example`).
 - **Versioning**: same scheme as vanspace3d. `frontend/package.json`'s `version` is shown
