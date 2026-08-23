@@ -139,6 +139,9 @@ public class SchedulesController(ApplicationDbContext db) : ControllerBase
         if (!await db.ShiftTypes.AnyAsync(s => s.Id == request.ShiftTypeId))
             return BadRequest($"Shift type '{request.ShiftTypeId}' does not exist.");
 
+        if (request.EndTime <= request.StartTime)
+            return BadRequest("Cross-midnight shift assignments are not supported (issue #11); EndTime must be after StartTime.");
+
         var assignment = new ShiftAssignment
         {
             Id = Guid.NewGuid(),
@@ -169,6 +172,9 @@ public class SchedulesController(ApplicationDbContext db) : ControllerBase
 
         if (!await db.ShiftTypes.AnyAsync(s => s.Id == request.ShiftTypeId))
             return BadRequest($"Shift type '{request.ShiftTypeId}' does not exist.");
+
+        if (request.EndTime <= request.StartTime)
+            return BadRequest("Cross-midnight shift assignments are not supported (issue #11); EndTime must be after StartTime.");
 
         assignment.EmployeeId = request.EmployeeId;
         assignment.ShiftTypeId = request.ShiftTypeId;

@@ -101,8 +101,12 @@ started. What's built:
     within ±6 days of the one being validated, not just this Schedule's own) and passes it
     into `ScheduleValidator` alongside the normal schedule-scoped `assignments` — the other
     five rules still only see the latter. Cross-midnight shifts (`EndTime < StartTime`) are
-    skipped everywhere per the still-open
-    [issue #11](https://github.com/mycaravam-crypto/shifty/issues/11). `SchedulesController`
+    rejected outright — not modeled/supported in v1, closing
+    [issue #11](https://github.com/mycaravam-crypto/shifty/issues/11): `ShiftTypesController`
+    and `SchedulesController`'s `Create`/`UpdateAssignment` return 400 when `EndTime <=
+    StartTime`, so the validators (`RestTimeValidator`'s own `EndTime > StartTime` filter is
+    now just defense-in-depth for any pre-existing rows) never see negative-duration data.
+    `SchedulesController`
     loads the needed data (assignments, employees with `EligibleShiftTypes` included, shift
     types, contracts) and calls the static validator — still no DI/service layer, matching
     every other controller. Verified end-to-end against a real local Postgres: each rule
