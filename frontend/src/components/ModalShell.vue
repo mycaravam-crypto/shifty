@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { onMounted, onUnmounted } from 'vue'
 import { X } from '@lucide/vue'
 
 defineProps<{ title: string; wide?: boolean }>()
@@ -15,6 +16,12 @@ function onBackdropClick() {
   if (Date.now() - openedAt < 500) return
   emit('close')
 }
+
+function onKeydown(e: KeyboardEvent) {
+  if (e.key === 'Escape') emit('close')
+}
+onMounted(() => window.addEventListener('keydown', onKeydown))
+onUnmounted(() => window.removeEventListener('keydown', onKeydown))
 </script>
 
 <template>

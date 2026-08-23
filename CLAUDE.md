@@ -13,8 +13,8 @@ readme.md §22 "Phase 1: Foundation" is done (Employee, Team, Contract, ShiftTyp
 basic frontend). "Phase 2: Planung" (Schedule, ShiftAssignment, Wochenansicht, Drag & Drop,
 Stundenberechnung) is also now built, backend + frontend. Phase 3 (Validierung) is now fully
 built, including the two rules needing cross-assignment history (Ruhezeit, max-consecutive-days
-— issues #8/#9, see below). Phase 4 (Usability: week-copy/filters/search/shortcuts) has
-just started — only week-copy exists so far, frontend-only. Phase 5 (Erweiterungen) has also
+— issues #8/#9, see below). Phase 4 (Usability: month-copy/filters/search/shortcuts/optimized
+drag-and-drop) is now fully built too, frontend-only. Phase 5 (Erweiterungen) has also
 just started — hourly wage rates (issue #14), touch/mobile drag-and-drop for the
 Wochenansicht (issue #19), absence tracking (issue #17), the overtime ledger built on top of
 it (issue #18), a public holiday calendar (issue #15), and shift-type wage surcharges
@@ -350,8 +350,27 @@ What's built:
     `EmployeesView.vue`'s existing pattern) filters the employee rows client-side — covers both
     "Filter" and "Suche" from readme.md's Phase 4 list in one toolbar since they're the same
     filter-the-row-set operation here; a dedicated shift-type/date filter wasn't added since
-    the palette + month nav already cover that. Shortcuts/optimized drag-and-drop (the rest of
-    Phase 4) aren't started.
+    the palette + month nav already cover that. **Shortcuts and optimized drag-and-drop**
+    (the rest of Phase 4) are now also built: `components/ModalShell.vue` closes on `Escape`
+    (one fix, so it covers every modal built on it — `EmployeeDetailModal`,
+    `ShiftTypeDetailModal`, `ShiftAssignmentModal` — not a per-modal change). In
+    `ScheduleView.vue`, `ArrowLeft`/`ArrowRight` move a month (mirroring the existing
+    chevron buttons) and `/` focuses the search box — both are no-ops while an input/select
+    is focused (so typing itself, and arrow-key cursor movement inside the search box, isn't
+    hijacked) or while the assignment modal is open. The drag-and-drop "optimization" is edge
+    auto-scroll for the table's own `overflow-x-auto` wrapper: a month can have 28–31 day
+    columns, wider than the viewport, and previously a drag had no way to reach an off-screen
+    day except releasing and re-dragging after scrolling manually. Scrolling runs off a
+    `setInterval` (16ms) reading the drag's last-known pointer position rather than off
+    `pointermove` directly — a pointer parked at the edge stops firing move events, but the
+    scroll needs to keep going while it's held there. Verified in a real headless Chromium
+    against the live local stack (Docker `api`/`db`, `npm run dev`): logged in, confirmed `/`
+    focuses search, `ArrowRight`/`ArrowLeft` navigate months and are correctly inert while
+    typing in the search box, dragged a palette chip to the table's right edge and confirmed
+    the wrapper's `scrollLeft` kept advancing while held there (not just on movement), dropped
+    it on a day that had been off-screen before the auto-scroll (assignment created via a real
+    `POST`, confirmed via the API and then deleted again to leave the dev DB clean), and
+    confirmed `Escape` closes the resulting `ShiftAssignmentModal`.
   - `components/AppShell.vue` — sidebar nav (Dienstplan/Mitarbeiter/Stammdaten/Einstellungen) +
     user identity + logout, applying CLAUDE.md's "Visual design" tokens (dark glass, Inter,
     blue→indigo accent). `SettingsView` is still a styled-but-minimal placeholder — this is a
