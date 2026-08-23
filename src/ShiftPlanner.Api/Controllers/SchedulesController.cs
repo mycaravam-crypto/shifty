@@ -115,7 +115,15 @@ public class SchedulesController(ApplicationDbContext db) : ControllerBase
         var shiftTypes = await db.ShiftTypes.ToListAsync();
         var contracts = await db.Contracts.Where(c => employeeIds.Contains(c.EmployeeId)).ToListAsync();
 
-        return Ok(ScheduleValidator.Validate(schedule, assignments, employees, shiftTypes, contracts));
+        // issues #8/#9: rest-time and consecutive-day rules need shifts outside this
+        // Schedule's own date range too (an adjacent week already planned).
+        var historyStart = schedule.StartDate.AddDays(-6);
+        var historyEnd = schedule.EndDate.AddDays(6);
+        var historyAssignments = await db.ShiftAssignments
+            .Where(a => employeeIds.Contains(a.EmployeeId) && a.Date >= historyStart && a.Date <= historyEnd)
+            .ToListAsync();
+
+        return Ok(ScheduleValidator.Validate(schedule, assignments, employees, shiftTypes, contracts, historyAssignments));
     }
 
     [HttpPost("schedules/{id:guid}/assignments")]

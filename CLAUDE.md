@@ -11,10 +11,10 @@ snapshot of what exists right now.
 
 readme.md §22 "Phase 1: Foundation" is done (Employee, Team, Contract, ShiftType, backend +
 basic frontend). "Phase 2: Planung" (Schedule, ShiftAssignment, Wochenansicht, Drag & Drop,
-Stundenberechnung) is also now built, backend + frontend. Phase 3 (Validierung) has its
-core validation framework and rules built (see below) — legal/staffing rules needing
-cross-assignment history (Ruhezeit, max-consecutive-days) are not (issues #8/#9). Phase 4
-(Usability: week-copy/filters/search/shortcuts) is not started. What's built:
+Stundenberechnung) is also now built, backend + frontend. Phase 3 (Validierung) is now fully
+built, including the two rules needing cross-assignment history (Ruhezeit, max-consecutive-days
+— issues #8/#9, see below). Phase 4 (Usability: week-copy/filters/search/shortcuts) is not
+started. What's built:
 
 - **Backend** (`src/`): 4-project skeleton (Domain → Application → Infrastructure → Api)
   matching readme.md §19/§20. Builds clean (`dotnet build ShiftPlanner.sln`, verified via
@@ -78,11 +78,11 @@ cross-assignment history (Ruhezeit, max-consecutive-days) are not (issues #8/#9)
     Verified end-to-end against a real local Postgres: create schedule → add assignment →
     `netHours` computed correctly, move via `PUT`, dangling-FK `BadRequest`s, 404s,
     unauthenticated 401.
-  - **Phase 3 "Validierung" core** (readme.md §12/§13): a new `ShiftPlanner.Application`
+  - **Phase 3 "Validierung"** (readme.md §12/§13): a new `ShiftPlanner.Application`
     layer — `PlanningDomain`'s actual first tenant, no controller talks to the DB for this.
     `Application/Validation/ValidationResult.cs` mirrors the readme's exact shape
     (`IsValid`/`Errors[]`/`Warnings[]`, not a bool). `ScheduleValidator.Validate(...)` runs
-    five rules (each its own static class, matching the readme's `PlanningDomain` diagram
+    seven rules (each its own static class, matching the readme's `PlanningDomain` diagram
     naming where it named one): `ShiftOverlapValidator` (Warning), `ContractValidator`
     (planned hours vs. the Contract active at the schedule's start, Error — the only two
     outcomes the readme's own JSON example spells out), `EligibilityValidator` (issue #6,
@@ -92,15 +92,24 @@ cross-assignment history (Ruhezeit, max-consecutive-days) are not (issues #8/#9)
     #7, needs the new nullable `ShiftType.MinStaffing`/`MaxStaffing` fields + migration
     `ShiftTypeStaffing`; only checks (ShiftType, Date) pairs that actually have an
     assignment — a day nobody scheduled a shift for isn't flagged; both directions are
-    Warnings, it's a target, not a legal minimum). Cross-midnight shifts (`EndTime <
-    StartTime`) are skipped everywhere per the still-open
+    Warnings, it's a target, not a legal minimum), `RestTimeValidator` (issue #8, ArbZG §5 —
+    11h min rest between an employee's shifts, Error), `ConsecutiveDaysValidator` (issue #9,
+    ArbZG — max 6 consecutive workdays before a rest day is required, Error). The last two
+    need history beyond the Schedule being validated (an employee's shift the evening before
+    the visible week starts, say), so `SchedulesController`'s `validate` endpoint fetches a
+    second, wider `historyAssignments` list (the employees' assignments across every Schedule
+    within ±6 days of the one being validated, not just this Schedule's own) and passes it
+    into `ScheduleValidator` alongside the normal schedule-scoped `assignments` — the other
+    five rules still only see the latter. Cross-midnight shifts (`EndTime < StartTime`) are
+    skipped everywhere per the still-open
     [issue #11](https://github.com/mycaravam-crypto/shifty/issues/11). `SchedulesController`
     loads the needed data (assignments, employees with `EligibleShiftTypes` included, shift
     types, contracts) and calls the static validator — still no DI/service layer, matching
     every other controller. Verified end-to-end against a real local Postgres: each rule
     triggered individually via the API (staffing, eligibility, break minutes, overlap,
-    contract hours) and confirmed in the `ValidationResult` JSON; 401/404 on the new
-    endpoint. Closes issues #6/#7/#10.
+    contract hours, rest time, consecutive days — the last two via two adjacent Schedules for
+    the same employee) and confirmed in the `ValidationResult` JSON; 401/404 on the new
+    endpoint. Closes issues #6/#7/#8/#9/#10.
 - **Frontend** (`frontend/`): Vite + Vue 3 + TS + Tailwind v4 + Pinia + Vue Router + Axios +
   ESLint/Prettier + `@lucide/vue` (the `lucide-vue-next` package readme.md/issue #5 named is
   deprecated upstream in favor of this). `services/api.ts`'s JWT-attach + 401-refresh now

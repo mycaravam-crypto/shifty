@@ -13,7 +13,8 @@ public static class ScheduleValidator
         IReadOnlyList<ShiftAssignment> assignments,
         IReadOnlyList<Employee> employees,
         IReadOnlyList<ShiftType> shiftTypes,
-        IReadOnlyList<Contract> contracts)
+        IReadOnlyList<Contract> contracts,
+        IReadOnlyList<ShiftAssignment>? historyAssignments = null)
     {
         var result = new ValidationResult();
         var employeesById = employees.ToDictionary(e => e.Id);
@@ -24,6 +25,11 @@ public static class ScheduleValidator
         BreakMinutesValidator.Validate(assignments, result);
         StaffingValidator.Validate(assignments, shiftTypesById, result);
         ContractValidator.Validate(schedule, assignments, contracts, result);
+
+        // issues #8/#9: rest time and consecutive-day streaks can span schedule boundaries,
+        // so these two run over a wider window when the caller supplies one.
+        RestTimeValidator.Validate(historyAssignments ?? assignments, result);
+        ConsecutiveDaysValidator.Validate(historyAssignments ?? assignments, result);
 
         return result;
     }
