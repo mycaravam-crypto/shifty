@@ -50,7 +50,7 @@ public class EmployeesController(ApplicationDbContext db) : ControllerBase
     }
 
     [HttpPost]
-    [Authorize(Policy = "ApiWrite")]
+    [Authorize(Policy = "ManagerWrite")]
     public async Task<ActionResult<EmployeeDto>> Create(CreateEmployeeRequest request)
     {
         if (request.TeamId is { } teamId && !await db.Teams.AnyAsync(t => t.Id == teamId))
@@ -75,7 +75,7 @@ public class EmployeesController(ApplicationDbContext db) : ControllerBase
     }
 
     [HttpPut("{id:guid}")]
-    [Authorize(Policy = "ApiWrite")]
+    [Authorize(Policy = "ManagerWrite")]
     public async Task<IActionResult> Update(Guid id, UpdateEmployeeRequest request)
     {
         var employee = await db.Employees.FindAsync(id);
@@ -100,7 +100,7 @@ public class EmployeesController(ApplicationDbContext db) : ControllerBase
     }
 
     [HttpDelete("{id:guid}")]
-    [Authorize(Policy = "ApiWrite")]
+    [Authorize(Policy = "ManagerWrite")]
     public async Task<IActionResult> Delete(Guid id)
     {
         var employee = await db.Employees.FindAsync(id);
@@ -127,7 +127,7 @@ public class EmployeesController(ApplicationDbContext db) : ControllerBase
     }
 
     [HttpPut("{id:guid}/eligible-shift-types")]
-    [Authorize(Policy = "ApiWrite")]
+    [Authorize(Policy = "ManagerWrite")]
     public async Task<IActionResult> SetEligibleShiftTypes(Guid id, List<Guid> shiftTypeIds)
     {
         var employee = await db.Employees.Include(e => e.EligibleShiftTypes).FirstOrDefaultAsync(e => e.Id == id);

@@ -60,10 +60,18 @@ builder.Services.AddAuthorization(options =>
         .AddAuthenticationSchemes(JwtBearerDefaults.AuthenticationScheme, ApiKeyAuthenticationHandler.SchemeName)
         .RequireAuthenticatedUser());
 
-    options.AddPolicy("ApiWrite", policy => policy
+    // readme.md §23: Admin covers Stammdaten (Team/ShiftType) + Benutzer/API-Keys; Manager
+    // covers Planung/Mitarbeiter (Employee/Contract) — and, since roles aren't hierarchical
+    // data but Admin is still "manages everything", Admin can do Manager's writes too.
+    options.AddPolicy("AdminWrite", policy => policy
         .AddAuthenticationSchemes(JwtBearerDefaults.AuthenticationScheme, ApiKeyAuthenticationHandler.SchemeName)
         .RequireAuthenticatedUser()
-        .AddRequirements(new ApiWriteRequirement()));
+        .AddRequirements(new ApiWriteRequirement("Admin")));
+
+    options.AddPolicy("ManagerWrite", policy => policy
+        .AddAuthenticationSchemes(JwtBearerDefaults.AuthenticationScheme, ApiKeyAuthenticationHandler.SchemeName)
+        .RequireAuthenticatedUser()
+        .AddRequirements(new ApiWriteRequirement("Admin", "Manager")));
 });
 builder.Services.AddSingleton<IAuthorizationHandler, ApiWriteRequirementHandler>();
 
@@ -96,6 +104,40 @@ if (args.Contains("--migrate"))
 {
     using var scope = app.Services.CreateScope();
     scope.ServiceProvider.GetRequiredService<ApplicationDbContext>().Database.Migrate();
+
+    // Three fixed roles, readme.md §23 — seeded here since this is already the
+    // "prepare the database" step every deploy runs.
+    var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
+    foreach (var role in new[] { "Admin", "Manager", "Employee" })
+    {
+        if (!await roleManager.RoleExistsAsync(role))
+            await roleManager.CreateAsync(new IdentityRole(role));
+    }
+    return;
+}
+
+if (args.Contains("--seed-user"))
+{
+    // Bootstraps a Staff account (Admin or Manager) from env vars — there's no Benutzer
+    // management endpoint yet (readme.md §23 gives that job to Admin, but the very first
+    // account has no Admin to be created by, and nothing else creates a Manager either).
+    using var scope = app.Services.CreateScope();
+    var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+    var email = builder.Configuration["SeedUser:Email"]
+        ?? throw new InvalidOperationException("Missing SeedUser:Email (set via env var).");
+    var password = builder.Configuration["SeedUser:Password"]
+        ?? throw new InvalidOperationException("Missing SeedUser:Password (set via env var).");
+    var role = builder.Configuration["SeedUser:Role"]
+        ?? throw new InvalidOperationException("Missing SeedUser:Role (Admin or Manager, set via env var).");
+
+    if (await userManager.FindByEmailAsync(email) is null)
+    {
+        var user = new ApplicationUser { UserName = email, Email = email, EmailConfirmed = true };
+        var result = await userManager.CreateAsync(user, password);
+        if (!result.Succeeded)
+            throw new InvalidOperationException(string.Join("; ", result.Errors.Select(e => e.Description)));
+        await userManager.AddToRoleAsync(user, role);
+    }
     return;
 }
 

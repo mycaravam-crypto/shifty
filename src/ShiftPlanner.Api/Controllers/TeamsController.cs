@@ -27,7 +27,7 @@ public class TeamsController(ApplicationDbContext db) : ControllerBase
     }
 
     [HttpPost]
-    [Authorize(Policy = "ApiWrite")]
+    [Authorize(Policy = "AdminWrite")]
     public async Task<ActionResult<TeamDto>> Create(CreateTeamRequest request)
     {
         if (await db.Teams.AnyAsync(t => t.Name == request.Name))

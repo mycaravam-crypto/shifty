@@ -35,10 +35,23 @@ migration + controllers). Frontend UI for it is not. What's built:
     is a named Phase 1 entity so it needs *some* API surface). Plain CRUD, no
     Application-layer services yet — there's no business logic to put there until Phase 3
     validation exists, so controllers talk to `ApplicationDbContext` directly.
-  - `Api/Authorization/ApiWriteRequirement.cs` + two new policies in Program.cs (`ApiRead`,
-    `ApiWrite`): both JWT and `X-Api-Key` can hit these endpoints per readme.md §24, but an
-    API key needs `Scope: ReadWrite` to pass `ApiWrite` — previously the `ApiKeyScope` enum
-    existed but nothing enforced it.
+  - `Api/Authorization/ApiWriteRequirement.cs` + policies in Program.cs (`ApiRead`,
+    `AdminWrite`, `ManagerWrite`): both JWT and `X-Api-Key` can hit these endpoints per
+    readme.md §24 — an API key just needs `Scope: ReadWrite`; a JWT/Staff user additionally
+    needs the right role per §23's split (`AdminWrite` on `TeamsController`/
+    `ShiftTypesController` — Stammdaten; `ManagerWrite` on `EmployeesController`/
+    `ContractsController` — Mitarbeiter; Admin can do both, roles aren't hierarchical data
+    but Admin is still "manages everything"). `Api/Controllers/AuthController.cs` +
+    `Api/Authentication/JwtTokenFactory.cs` add the login/refresh JWT flow itself — didn't
+    exist before, so `AdminWrite`/`ManagerWrite` would've been untestable dead code
+    otherwise. Three roles (Admin/Manager/Employee) are seeded by `--migrate`; since there's
+    no Benutzer-management endpoint yet, `--seed-user` (env vars `SeedUser:Email/Password/Role`)
+    bootstraps the first Staff accounts. Refresh tokens are self-contained JWTs (`token_use`
+    claim distinguishes them from access tokens), not DB-backed — no server-side revocation
+    yet (issue #3's original ask; login/refresh + seeding were an unplanned but necessary
+    add-on — [issue #3](https://github.com/mycaravam-crypto/shifty/issues/3)). Verified
+    end-to-end (login, role-gated writes, refresh, tampered/wrong-purpose-token rejection)
+    against a real local Postgres.
   - `Employee.EligibleShiftTypes` (EF many-to-many, join table `EmployeeShiftType`) models
     "mögliche Schichten" (readme.md §3) — GET/PUT `/api/employees/{id}/eligible-shift-types`.
     Data model only, no eligibility validator yet — that needs `ShiftAssignment` (Phase 2),

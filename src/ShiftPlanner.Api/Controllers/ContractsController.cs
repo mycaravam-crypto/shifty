@@ -52,7 +52,7 @@ public class ContractsController(ApplicationDbContext db) : ControllerBase
     }
 
     [HttpPost("employees/{employeeId:guid}/contracts")]
-    [Authorize(Policy = "ApiWrite")]
+    [Authorize(Policy = "ManagerWrite")]
     public async Task<ActionResult<ContractDto>> Create(Guid employeeId, CreateContractRequest request)
     {
         if (!await db.Employees.AnyAsync(e => e.Id == employeeId))
@@ -78,7 +78,7 @@ public class ContractsController(ApplicationDbContext db) : ControllerBase
     }
 
     [HttpPut("contracts/{id:guid}")]
-    [Authorize(Policy = "ApiWrite")]
+    [Authorize(Policy = "ManagerWrite")]
     public async Task<IActionResult> Update(Guid id, UpdateContractRequest request)
     {
         var contract = await db.Contracts.FindAsync(id);
@@ -99,7 +99,7 @@ public class ContractsController(ApplicationDbContext db) : ControllerBase
     }
 
     [HttpDelete("contracts/{id:guid}")]
-    [Authorize(Policy = "ApiWrite")]
+    [Authorize(Policy = "ManagerWrite")]
     public async Task<IActionResult> Delete(Guid id)
     {
         var contract = await db.Contracts.FindAsync(id);

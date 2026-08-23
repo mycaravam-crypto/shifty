@@ -40,7 +40,7 @@ public class ShiftTypesController(ApplicationDbContext db) : ControllerBase
     }
 
     [HttpPost]
-    [Authorize(Policy = "ApiWrite")]
+    [Authorize(Policy = "AdminWrite")]
     public async Task<ActionResult<ShiftTypeDto>> Create(CreateShiftTypeRequest request)
     {
         if (await db.ShiftTypes.AnyAsync(s => s.Name == request.Name))
@@ -63,7 +63,7 @@ public class ShiftTypesController(ApplicationDbContext db) : ControllerBase
     }
 
     [HttpPut("{id:guid}")]
-    [Authorize(Policy = "ApiWrite")]
+    [Authorize(Policy = "AdminWrite")]
     public async Task<IActionResult> Update(Guid id, UpdateShiftTypeRequest request)
     {
         var shiftType = await db.ShiftTypes.FindAsync(id);
