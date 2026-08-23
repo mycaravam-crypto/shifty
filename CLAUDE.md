@@ -41,6 +41,10 @@ migration + controllers). Frontend UI for it is not. What's built:
   no real UI yet. `services/api.ts` has JWT-attach + 401-refresh wired, but nothing calls it.
 - **Docker/deploy**: `docker-compose.yml` (db/api/web) validated with `docker compose config`,
   never actually deployed. No `.env` exists anywhere yet (only `.env.example`).
+- **Versioning**: same scheme as vanspace3d. `frontend/package.json`'s `version` is shown
+  subtly in the app UI (`App.vue`, bottom-right corner) and gets bumped (patch) + committed
+  by [deploy/deploy.sh](deploy/deploy.sh) on every deploy — not yet exercised since the
+  pipeline hasn't run (issue #4).
 
 ## Run it locally
 
