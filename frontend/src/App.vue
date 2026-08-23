@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useRoute } from 'vue-router'
+// eslint-disable-next-line no-restricted-imports -- package.json lives outside src/, so the '@' alias can't reach it
 import { version } from '../package.json'
 import AppShell from './components/AppShell.vue'
 
