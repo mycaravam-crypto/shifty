@@ -68,8 +68,12 @@ migration + controllers). Frontend UI for it is not. What's built:
     before, nothing else works without it.
   - `views/Employees/EmployeesView.vue` — list (`GET /employees`, `GET /teams` for the team
     column) + create form + delete, wired to the real API
-    ([issue #2](https://github.com/mycaravam-crypto/shifty/issues/2)). No edit/team-assignment
-    UI yet, no eligible-shift-types UI (Contract UI also not started).
+    ([issue #2](https://github.com/mycaravam-crypto/shifty/issues/2)). Clicking a row opens
+    `EmployeeDetailModal.vue` (in a reusable `components/ModalShell.vue`, pm-tool2-style):
+    edit/team-assignment, eligible-shift-types checkboxes (`GET`/`PUT
+    /employees/{id}/eligible-shift-types`), and Contract list/create/delete
+    (`/employees/{id}/contracts`, `/contracts/{id}`). Teams/ShiftTypes management still has
+    no frontend at all — only reachable today via Swagger/API key.
   - `components/AppShell.vue` — sidebar nav (Dienstplan/Mitarbeiter/Einstellungen) + user
     identity + logout, applying CLAUDE.md's "Visual design" tokens (dark glass, Inter,
     blue→indigo accent). `ScheduleView`/`SettingsView` are styled but still minimal placeholders
@@ -150,8 +154,9 @@ re-deriving patterns from scratch. Tokens pulled from both:
   shape from readme.md §15.
 
 Applied at the shell level (`components/AppShell.vue`, `views/Login/LoginView.vue`,
-`views/Employees/EmployeesView.vue`) — sidebar, glass panels, gradient buttons, Inter.
-`ScheduleView`/`SettingsView` pick up the theme via the shell but have no real content to
-style yet; JetBrains Mono is loaded but unused until shift-time data exists. Component-level
-parity with pm-tool2/vanspace3d (modals, richer tables) is still open on
-[issue #5](https://github.com/mycaravam-crypto/shifty/issues/5).
+`views/Employees/EmployeesView.vue`) — sidebar, glass panels, gradient buttons, Inter. The
+`components/ModalShell.vue` + `views/Employees/EmployeeDetailModal.vue` pair brings the
+pm-tool2 modal pattern (fixed `bg-black/60 backdrop-blur` overlay, centered glass panel) in
+too. `ScheduleView`/`SettingsView` pick up the theme via the shell but have no real content to
+style yet; JetBrains Mono is loaded but unused until shift-time data exists. Issue #5 is closed;
+any further component-level parity work (e.g. Teams/ShiftTypes UI) would be a new issue.
