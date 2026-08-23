@@ -103,6 +103,7 @@ const shiftTypes = ref<ShiftType[]>([])
 const schedules = ref<Schedule[]>([])
 const contractsByEmployee = ref<Map<string, Contract[]>>(new Map())
 const absencesByEmployee = ref<Map<string, Absence[]>>(new Map())
+const balanceByEmployee = ref<Map<string, number>>(new Map())
 const assignments = ref<Assignment[]>([])
 const validation = ref<ValidationResult | null>(null)
 const selectedAssignment = ref<Assignment | null>(null)
@@ -182,6 +183,18 @@ function barWidth(employeeId: string) {
   if (!target) return 0
   return Math.min(100, (netHoursFor(employeeId) / target) * 100)
 }
+function carriedOverFor(employeeId: string): number {
+  return Math.round((balanceByEmployee.value.get(employeeId) ?? 0) * 10) / 10
+}
+async function loadBalances() {
+  if (!activeEmployees.value.length) return
+  const results = await Promise.all(
+    activeEmployees.value.map((e) =>
+      api.get(`/employees/${e.id}/hours-balance`, { params: { before: monthStartIso.value } }),
+    ),
+  )
+  balanceByEmployee.value = new Map(activeEmployees.value.map((e, i) => [e.id, results[i].data]))
+}
 const currencyFmt = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' })
 function sumLaborCost(list: Assignment[]): number | null {
   if (!list.some((a) => a.laborCost !== null)) return null
@@ -232,6 +245,7 @@ async function load() {
     absencesByEmployee.value = new Map(
       employees.value.map((e, i) => [e.id, absencesResults[i].data]),
     )
+    await loadBalances()
   } catch {
     error.value = 'Dienstplan konnte nicht geladen werden.'
   } finally {
@@ -240,6 +254,9 @@ async function load() {
 }
 onMounted(load)
 onUnmounted(cleanupDrag)
+watch(monthStartIso, () => {
+  if (!loading.value) loadBalances()
+})
 
 function prevMonth() {
   anchorDate.value = addMonths(anchorDate.value, -1)
@@ -582,6 +599,13 @@ async function onAssignmentUpdated() {
                     >
                       {{ netHoursFor(e.id) }}h / {{ targetHoursFor(e.id) }}h
                       <span v-if="netHoursFor(e.id) !== targetHoursFor(e.id)">⚠</span>
+                    </div>
+                    <div
+                      v-if="carriedOverFor(e.id) !== 0"
+                      class="font-mono text-[11px] mt-0.5"
+                      :class="carriedOverFor(e.id) > 0 ? 'text-emerald-400' : 'text-rose-400'"
+                    >
+                      Übertrag: {{ carriedOverFor(e.id) > 0 ? '+' : '' }}{{ carriedOverFor(e.id) }}h
                     </div>
                     <div class="w-24 h-1 rounded-full bg-white/10 mt-1 overflow-hidden">
                       <div
