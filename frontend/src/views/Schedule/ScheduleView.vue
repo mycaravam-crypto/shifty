@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { ChevronLeft, ChevronRight, Copy, Search } from '@lucide/vue'
 import api from '../../services/api'
 import ShiftAssignmentModal from './ShiftAssignmentModal.vue'
@@ -120,6 +121,8 @@ const copyingMonth = ref(false)
 const search = ref('')
 const teamFilter = ref('')
 const searchInputRef = ref<HTMLInputElement | null>(null)
+const route = useRoute()
+const router = useRouter()
 const tableWrapRef = ref<HTMLElement | null>(null)
 
 const monthStart = computed(() => firstOfMonth(anchorDate.value))
@@ -250,6 +253,15 @@ async function load() {
     employees.value = employeesRes.data
     shiftTypes.value = shiftTypesRes.data
     teams.value = teamsRes.data
+
+    // Deep link from the dashboard's pain-point/planning-status links (issue #30/#31):
+    // jump to the month of the linked schedule instead of always showing today's month.
+    const linkedId = route.query.scheduleId
+    if (typeof linkedId === 'string') {
+      const linked = schedules.value.find((s) => s.id === linkedId)
+      if (linked) anchorDate.value = parseIso(linked.startDate)
+      router.replace({ query: {} })
+    }
 
     const [contractsResults, absencesResults] = await Promise.all([
       Promise.all(employees.value.map((e) => api.get(`/employees/${e.id}/contracts`))),
