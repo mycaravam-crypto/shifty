@@ -17,6 +17,8 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<Employee> Employees => Set<Employee>();
     public DbSet<Contract> Contracts => Set<Contract>();
     public DbSet<ShiftType> ShiftTypes => Set<ShiftType>();
+    public DbSet<Schedule> Schedules => Set<Schedule>();
+    public DbSet<ShiftAssignment> ShiftAssignments => Set<ShiftAssignment>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -46,5 +48,21 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
 
         builder.Entity<ShiftType>()
             .HasIndex(s => s.Name).IsUnique();
+
+        builder.Entity<ShiftAssignment>(a =>
+        {
+            a.HasOne<Schedule>()
+                .WithMany()
+                .HasForeignKey(x => x.ScheduleId)
+                .OnDelete(DeleteBehavior.Cascade);
+            a.HasOne<Employee>()
+                .WithMany()
+                .HasForeignKey(x => x.EmployeeId)
+                .OnDelete(DeleteBehavior.Restrict);
+            a.HasOne<ShiftType>()
+                .WithMany()
+                .HasForeignKey(x => x.ShiftTypeId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
     }
 }

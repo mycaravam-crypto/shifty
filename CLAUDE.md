@@ -9,8 +9,10 @@ snapshot of what exists right now.
 
 ## Current state
 
-readme.md §22 "Phase 1: Foundation" backend is done (Employee, Team, Contract, ShiftType +
-migration + controllers). Frontend UI for it is not. What's built:
+readme.md §22 "Phase 1: Foundation" is done (Employee, Team, Contract, ShiftType, backend +
+basic frontend). "Phase 2: Planung" (Schedule, ShiftAssignment, Wochenansicht, Drag & Drop,
+Stundenberechnung) is also now built, backend + frontend. Phase 3 (Validierung) and Phase 4
+(Usability: week-copy/filters/search/shortcuts) are not started. What's built:
 
 - **Backend** (`src/`): 4-project skeleton (Domain → Application → Infrastructure → Api)
   matching readme.md §19/§20. Builds clean (`dotnet build ShiftPlanner.sln`, verified via
@@ -54,8 +56,25 @@ migration + controllers). Frontend UI for it is not. What's built:
     against a real local Postgres.
   - `Employee.EligibleShiftTypes` (EF many-to-many, join table `EmployeeShiftType`) models
     "mögliche Schichten" (readme.md §3) — GET/PUT `/api/employees/{id}/eligible-shift-types`.
-    Data model only, no eligibility validator yet — that needs `ShiftAssignment` (Phase 2),
-    which doesn't exist ([issue #6](https://github.com/mycaravam-crypto/shifty/issues/6)).
+    Data model only, no eligibility validator yet — that's Phase 3 Validierung, not wired to
+    anything today ([issue #6](https://github.com/mycaravam-crypto/shifty/issues/6)).
+  - `Domain/Scheduling/Schedule.cs` + `ShiftAssignment.cs` + `WorkingTimeCalculator.cs` (Phase
+    2, readme.md §6/§7/§14) — a `Schedule` (Name/StartDate/EndDate/Status: Draft/Published/
+    Archived) owns `ShiftAssignment`s (EmployeeId/ShiftTypeId/Date/StartTime/EndTime/
+    BreakMinutes; no `Status` field — readme.md never defines what values it'd take, and
+    nothing needs one yet). `WorkingTimeCalculator.NetHours` is a static Domain method (no
+    Application-layer services exist yet, same as everywhere else) — single source of truth
+    for `End − Start − BreakMinutes`, called from the controller so the frontend never
+    re-derives the arithmetic. `SchedulesController`: `GET/POST /api/schedules`,
+    `GET/PUT /api/schedules/{id}` (nests assignments with `netHours` precomputed; `PUT` is
+    also how `Status` transitions — no dedicated `/publish` action),
+    `POST /api/schedules/{id}/assignments`, `PUT/DELETE /api/assignments/{id}`. No
+    `/validate` endpoint (Phase 3, no validators exist to gate on) and no unique/overlap
+    constraint on assignments (`ShiftOverlapValidator` is Phase 3, not a DB constraint).
+    `ManagerWrite` on writes, matching Program.cs's existing "Manager covers
+    Planung/Mitarbeiter" comment. Verified end-to-end against a real local Postgres: create
+    schedule → add assignment → `netHours` computed correctly, move via `PUT`, dangling-FK
+    `BadRequest`s, 404s, unauthenticated 401.
 - **Frontend** (`frontend/`): Vite + Vue 3 + TS + Tailwind v4 + Pinia + Vue Router + Axios +
   ESLint/Prettier + `@lucide/vue` (the `lucide-vue-next` package readme.md/issue #5 named is
   deprecated upstream in favor of this). `services/api.ts`'s JWT-attach + 401-refresh now
@@ -74,13 +93,32 @@ migration + controllers). Frontend UI for it is not. What's built:
     /employees/{id}/eligible-shift-types`), and Contract list/create/delete
     (`/employees/{id}/contracts`, `/contracts/{id}`). Teams/ShiftTypes management still has
     no frontend at all — only reachable today via Swagger/API key.
+  - `views/Schedule/ScheduleView.vue` — the Wochenansicht (readme.md §15/§16), no longer a
+    placeholder. Employees (rows) × the current Schedule's days (columns, generated from its
+    actual `StartDate..EndDate`, not hardcoded Mon–Fri); prev/next week nav computed client-side
+    (plain `Date` math, no dependency); an empty-state "Diese Woche anlegen" button
+    (`POST /schedules`, Mon–Sun) when no Schedule exists yet for the visible week. A palette of
+    active ShiftTypes above the grid, and both palette chips and placed assignment chips are
+    native-HTML5-`draggable` (no drag-and-drop library added — none was installed, and this is
+    a simple day×employee matrix); dropping a palette chip on a cell `POST`s a new assignment
+    from the ShiftType's template times, dropping an existing chip on a different cell `PUT`s
+    the same assignment onto the new employee/date (a move). No touch/mobile drag support
+    (accepted gap — desktop-only per readme.md §16's own interaction model). Each employee row
+    shows a `font-mono` "Xh / Yh ⚠" hour readout + progress bar — sums the backend's
+    already-computed `netHours` (never re-derives the subtraction client-side), target hours
+    from whichever of the employee's Contracts is active on the visible week's Monday.
+    Clicking an assignment chip opens `views/Schedule/ShiftAssignmentModal.vue`
+    (`ModalShell`-based, mirrors `EmployeeDetailModal.vue`'s shape) to change ShiftType/times/
+    break or delete — content edits only, moving stays drag-only, and it has no create mode.
   - `components/AppShell.vue` — sidebar nav (Dienstplan/Mitarbeiter/Einstellungen) + user
     identity + logout, applying CLAUDE.md's "Visual design" tokens (dark glass, Inter,
-    blue→indigo accent). `ScheduleView`/`SettingsView` are styled but still minimal placeholders
-    — this is a functional cut of [issue #5](https://github.com/mycaravam-crypto/shifty/issues/5),
-    not the full pm-tool2/vanspace3d component-level parity pass.
-  - Verified end-to-end in a real (headless) browser against the local stack below: login
-    success/failure, employee list load, create, 409-conflict surfaced in the UI, logout.
+    blue→indigo accent). `SettingsView` is still a styled-but-minimal placeholder — this is a
+    functional cut of [issue #5](https://github.com/mycaravam-crypto/shifty/issues/5), not the
+    full pm-tool2/vanspace3d component-level parity pass.
+  - Verified end-to-end in a real headless browser against the local stack below: login
+    success/failure, employee list load, create, 409-conflict surfaced in the UI, logout,
+    Dienstplan empty-state schedule creation, drag-to-place, drag-to-move, hour-bar update,
+    modal edit, and delete.
 - **Docker/deploy**: `docker-compose.yml` (db/api/web) validated with `docker compose config`,
   never actually deployed. No `.env` exists anywhere yet (only `.env.example`).
 - **Versioning**: same scheme as vanspace3d. `frontend/package.json`'s `version` is shown
@@ -154,9 +192,11 @@ re-deriving patterns from scratch. Tokens pulled from both:
   shape from readme.md §15.
 
 Applied at the shell level (`components/AppShell.vue`, `views/Login/LoginView.vue`,
-`views/Employees/EmployeesView.vue`) — sidebar, glass panels, gradient buttons, Inter. The
-`components/ModalShell.vue` + `views/Employees/EmployeeDetailModal.vue` pair brings the
-pm-tool2 modal pattern (fixed `bg-black/60 backdrop-blur` overlay, centered glass panel) in
-too. `ScheduleView`/`SettingsView` pick up the theme via the shell but have no real content to
-style yet; JetBrains Mono is loaded but unused until shift-time data exists. Issue #5 is closed;
-any further component-level parity work (e.g. Teams/ShiftTypes UI) would be a new issue.
+`views/Employees/EmployeesView.vue`) and now `views/Schedule/ScheduleView.vue` — sidebar, glass
+panels, gradient buttons, Inter. The `components/ModalShell.vue` pattern (fixed `bg-black/60
+backdrop-blur` overlay, centered glass panel) is reused by both
+`views/Employees/EmployeeDetailModal.vue` and `views/Schedule/ShiftAssignmentModal.vue`.
+JetBrains Mono (`font-mono`) is now in real use for shift times and the Wochenansicht's hour
+totals. `SettingsView` still picks up the theme via the shell but has no real content to style
+yet. Issue #5 is closed; any further component-level parity work (e.g. Teams/ShiftTypes UI)
+would be a new issue.
