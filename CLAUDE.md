@@ -49,6 +49,39 @@ needed). Deploy pipeline is [.github/workflows/deploy.yml](.github/workflows/dep
 - The one-time host Caddy block from `deploy/Caddyfile`'s header comment
 - DNS: `shifty.vi0lins.de` → the server
 
+## Visual design
+
+Frontend should look and feel like the other two apps in this account —
+[pm-tool2](https://github.com/mycaravam-crypto/pm-tool2) ("ChronosPM", Vue) and
+[vanspace3d](https://github.com/mycaravam-crypto/vanspace3d) (vanilla+Tailwind). Both share
+one dark, glassy design system; pull up their source directly for real component code
+(`client/src/components/*.vue` in pm-tool2, `prototype/index.html` in vanspace3d) rather than
+re-deriving patterns from scratch. Tokens pulled from both:
+
+- **Theme**: dark-only, near-black base (pm-tool2 `#080a0f`, vanspace3d `#0f172a`), body
+  background is a subtle radial gradient toward the accent color, not a flat fill.
+- **Panels**: `bg-[#11141c]`/`#121620`-ish solids or a `.glass` gradient-+-blur variant,
+  `border border-white/8` (10% on inputs), `rounded-lg`/`rounded-xl`/`rounded-2xl` by size
+  (button → panel → modal).
+- **Accent**: blue→indigo/violet gradient for primary actions (pm-tool2 leans violet,
+  vanspace3d leans blue — either reads as "this family," pick one and stay consistent).
+  Semantic colors on top: emerald = success/positive, amber = warning, red/rose = destructive.
+- **Typography**: Inter (body/UI), JetBrains Mono for numeric readouts — vanspace3d uses it
+  for dimensions, this app's natural fit is hour totals/shift times (`08:00–16:30`, `32h/36h`).
+  Section eyebrows are `text-[10px] uppercase tracking-wider font-bold text-slate-500`.
+- **Icons**: `lucide-vue-next` (pm-tool2's choice) — reuse it rather than adding a second
+  icon set.
+- **Chrome**: thin custom scrollbars (`rgba(255,255,255,.14)` thumb), `focus-visible` rings in
+  the accent color on every interactive element, `transition-colors` on hover states, modals as
+  a fixed `bg-black/60 backdrop-blur` overlay + centered panel (see pm-tool2's `ModalShell.vue`).
+- **App shell**: fixed-width sidebar (pm-tool2: `w-72`, dark, own border) + flex-1 content
+  area — maps well onto this app's Mitarbeiter-list-as-sidebar + Wochenplanung-as-main-content
+  shape from readme.md §15.
+
+Not yet applied to the scaffold — the three placeholder views (`ScheduleView.vue` etc.) are
+still unstyled `<h1>`s. Bring in `lucide-vue-next` and the Inter/JetBrains Mono font links
+(see vanspace3d's `index.html` head) when building the real UI, not before.
+
 ## Next step
 
 readme.md §22 Phase 1: Employee, Team, Contract, ShiftType domain entities + EF Core
