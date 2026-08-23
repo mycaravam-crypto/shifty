@@ -129,12 +129,16 @@ just started — only week-copy exists so far, frontend-only. What's built:
     is a full property snapshot for Delete, `NewValues` likewise for Create; for Update both
     are diffs of only the actually-changed properties. Requires `IHttpContextAccessor` in
     Infrastructure (not an `Sdk.Web` project, so added via an explicit `FrameworkReference` to
-    `Microsoft.AspNetCore.App`) to resolve the current actor. **Not build- or
-    runtime-verified** — this session had neither a working Docker daemon (`dockerd` can't
-    start in this sandbox) nor a local dotnet SDK (install blocked by egress policy), so the
-    migration files were hand-written to mirror the existing ones' exact structure/conventions
-    rather than generated via `dotnet ef migrations add`; double-check with a real build
-    before relying on this in prod.
+    `Microsoft.AspNetCore.App`) to resolve the current actor. The migration file was
+    hand-written (not generated via `dotnet ef migrations add`) since no dotnet SDK is
+    installed on this machine — `dotnet build ShiftPlanner.sln` (via the Docker SDK container)
+    now passes clean, `dotnet ef migrations list` recognizes it in the right order, and
+    `dotnet ef migrations script` (no live DB needed) generates exactly the expected
+    `ALTER TABLE "AuditLogs" ADD "NewValues"/"OldValues" text;`. **Not runtime-verified against
+    a live Postgres** — this session's Docker daemon could pull `mcr.microsoft.com` images
+    (used for the build/script checks above) but Docker Hub pulls (`postgres:16-alpine`) were
+    blocked by the sandbox's egress policy, so the actual `SaveChangesAsync` audit-writing
+    behavior hasn't been exercised end-to-end yet the way earlier phases were.
 - **Frontend** (`frontend/`): Vite + Vue 3 + TS + Tailwind v4 + Pinia + Vue Router + Axios +
   ESLint/Prettier + `@lucide/vue` (the `lucide-vue-next` package readme.md/issue #5 named is
   deprecated upstream in favor of this). `services/api.ts`'s JWT-attach + 401-refresh now
