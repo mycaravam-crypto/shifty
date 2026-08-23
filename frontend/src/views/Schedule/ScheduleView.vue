@@ -2,7 +2,7 @@
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ChevronLeft, ChevronRight, Copy, Search, Printer } from '@lucide/vue'
-import api from '../../services/api'
+import api from '@/services/api'
 import ShiftAssignmentModal from './ShiftAssignmentModal.vue'
 
 interface Employee {
@@ -416,7 +416,9 @@ function assignmentDragPayload(a: Assignment): DragPayload {
 }
 
 function onChipPointerDown(e: PointerEvent, payload: DragPayload) {
-  if (e.button !== 0) return
+  if (e.button !== 0) {
+    return
+  }
   ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
   drag.value = {
     payload,

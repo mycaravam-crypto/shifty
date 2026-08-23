@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import axios from 'axios'
-import api from '../../services/api'
-import ModalShell from '../../components/ModalShell.vue'
+import api from '@/services/api'
+import ModalShell from '@/components/ModalShell.vue'
 
 interface ShiftType {
   id: string

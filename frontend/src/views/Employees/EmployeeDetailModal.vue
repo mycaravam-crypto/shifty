@@ -2,9 +2,9 @@
 import { onMounted, ref } from 'vue'
 import { Trash2 } from '@lucide/vue'
 import axios from 'axios'
-import api from '../../services/api'
-import ModalShell from '../../components/ModalShell.vue'
-import { formatDate } from '../../utils/date'
+import api from '@/services/api'
+import ModalShell from '@/components/ModalShell.vue'
+import { formatDate } from '@/utils/date'
 
 interface Employee {
   id: string

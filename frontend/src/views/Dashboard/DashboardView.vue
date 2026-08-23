@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import api from '../../services/api'
+import api from '@/services/api'
 
 interface Team {
   id: string
@@ -117,15 +117,28 @@ watch([fromDate, toDate, teamFilter, shiftTypeFilter], () => {
   if (ready.value) load()
 })
 
+const statusColors: Record<string, string> = {
+  Green: 'text-emerald-400',
+  Yellow: 'text-amber-400',
+  Red: 'text-rose-400',
+}
 function statusColor(status: string) {
-  return status === 'Green' ? 'text-emerald-400' : status === 'Yellow' ? 'text-amber-400' : 'text-rose-400'
+  return statusColors[status] ?? statusColors.Red
+}
+const statusBars: Record<string, string> = {
+  Green: 'bg-emerald-500',
+  Yellow: 'bg-amber-500',
+  Red: 'bg-rose-500',
 }
 function statusBar(status: string) {
-  return status === 'Green' ? 'bg-emerald-500' : status === 'Yellow' ? 'bg-amber-500' : 'bg-rose-500'
+  return statusBars[status] ?? statusBars.Red
 }
 function delta(pct: number | null): string {
   if (pct === null) return ''
-  return (pct > 0 ? '▲ +' : pct < 0 ? '▼ ' : '') + pct + '%'
+  let arrow = ''
+  if (pct > 0) arrow = '▲ +'
+  else if (pct < 0) arrow = '▼ '
+  return arrow + pct + '%'
 }
 function deltaColor(pct: number | null, positiveIsGood: boolean): string {
   if (pct === null || pct === 0) return 'text-slate-500'
