@@ -22,7 +22,13 @@ it (issue #18), a public holiday calendar (issue #15), and shift-type wage surch
 last one open. An operational dashboard (issue #27) is now also underway, scoped into three
 sub-issues per the parent issue's own suggestion: the backend read-model endpoint (issue #29),
 the frontend view (issue #30), and its Action Required feed (issue #31) are all now built —
-issue #27 is fully closed out.
+issue #27 is fully closed out. Two structural gaps were then closed: there was no automated
+test coverage anywhere (readme.md §19 named a `ShiftPlanner.Tests` project that never got
+built) and no CI gate before `deploy.yml`'s push-to-`main` (issues #50/#51, see below). A
+backlog of eight frontend UX-polish issues (#36–#43) had also accumulated with no toast/
+confirm-dialog system, loading skeletons, filter persistence, a keyboard-shortcuts hint, or
+mobile-responsive tables on the two main list views — all except #43 (a real `SettingsView`)
+are now closed too (see below).
 What's built:
 
 - **Backend** (`src/`): 4-project skeleton (Domain → Application → Infrastructure → Api)
@@ -273,6 +279,18 @@ What's built:
     (Understaffed) in place, and unauthenticated requests 401. Test data was deleted again
     afterward to leave the dev DB clean. Not yet clicked through in a browser — there's no
     frontend for this endpoint yet (issue #30).
+  - **`src/ShiftPlanner.Tests`** (issue #50) — an xUnit project that didn't exist before despite
+    readme.md §19 naming one; every phase up to now was only verified by hand (curl against a
+    real Postgres, or build/`vue-tsc` cleanliness). Covers every Domain calculator
+    (`WorkingTimeCalculator`, `WageCalculator`, `GermanPublicHolidays`, `HoursBalanceCalculator`)
+    and every Application validator including `ScheduleValidator` integration cases — 74 tests,
+    all pure logic over plain POCOs, no EF Core/Postgres dependency, so no test-container/DB
+    setup was needed. `.github/workflows/build.yml` (issue #51) now runs `dotnet build`+
+    `dotnet test` and the frontend's `lint`/`build` scripts on every push and PR — `deploy.yml`
+    was untouched, so push-to-`main` still deploys the same way, just with a build/test gate
+    that didn't exist before it. Verified via the `mcr.microsoft.com/dotnet/sdk:10.0` Docker
+    image in both Debug and the Release configuration CI actually uses: solution builds clean,
+    all 74 tests pass.
 - **Frontend** (`frontend/`): Vite + Vue 3 + TS + Tailwind v4 + Pinia + Vue Router + Axios +
   ESLint/Prettier + `@lucide/vue` (the `lucide-vue-next` package readme.md/issue #5 named is
   deprecated upstream in favor of this). `services/api.ts`'s JWT-attach + 401-refresh now
@@ -500,6 +518,30 @@ What's built:
     landed on the freshly-mounted `ModalShell` backdrop and closed it again immediately via
     `@click.self` — fixed in `ModalShell.vue` (see above) and re-verified, including that
     mouse click-to-open and click-outside-to-close still both work.
+  - **UX-polish batch** (issues #36/#37/#38/#39/#40/#41/#42) — a backlog filed but not yet
+    built: `stores/toast.ts` + `components/ToastContainer.vue` (mounted once in `App.vue`) is a
+    small global success/error toast system, wired into every create/update/delete flow across
+    Employees, Stammdaten, Contract/Absence CRUD, and Schedule assignment CRUD (drag-drop
+    create/move, the assignment modal, month-copy) — closes #36. `components/ConfirmDialog.vue`,
+    built on the existing `ModalShell` pattern, replaces all four native `confirm()` dialogs
+    (employee/contract/absence/shift-assignment delete) — closes #37. `ScheduleView.vue`,
+    `EmployeesView.vue`, `StammdatenView.vue`, and `DashboardView.vue`'s loading states swap the
+    old plain "Lädt…" text for `animate-pulse` skeleton blocks shaped like the eventual content
+    — closes #38. `ScheduleView.vue`'s search/team filter now round-trips through the route
+    query string (`?q=&team=`), surviving navigation away and back, coexisting with the existing
+    `?scheduleId=` dashboard deep link — closes #41. A "?" toolbar button (and `?` keyboard
+    shortcut) opens a small `ModalShell` listing the Dienstplan's keyboard shortcuts, which
+    previously had no in-UI hint beyond the search box's placeholder text — closes #42.
+    Validation panel issues are now clickable when they carry an `employeeId`/
+    `shiftAssignmentId`: clicking scrolls to and briefly highlights the relevant employee row or
+    day cell, reusing the existing drag-over highlight style — closes #39. `EmployeesView.vue`
+    and `StammdatenView.vue`'s tables get a stacked-card layout below the `md` breakpoint
+    (matching `ScheduleView.vue`'s existing mobile-first treatment) instead of an unscrollable
+    overflowing table, plus responsive form grids (the Contract form's tightest 3-column grid
+    also collapses to 2 columns on narrow viewports) — closes #40. Verified via `npm run lint`
+    (0 errors) and `npm run build` (`vue-tsc -b` + `vite build`, clean) — not clicked through in
+    an actual browser (same Playwright-install gap noted elsewhere in this file). Issue #43 (a
+    real `SettingsView`) is the one issue from this batch left open.
 - **Docker/deploy**: `docker-compose.yml` (db/api/web) validated with `docker compose config`,
   never actually deployed. No `.env` exists anywhere yet (only `.env.example`).
 - **Versioning**: same scheme as vanspace3d. `frontend/package.json`'s `version` is shown
