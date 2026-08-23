@@ -1,0 +1,7 @@
+{
+  "threshold": 1.5,
+  "reporters": ["console"],
+  "ignore": ["**/bin/**", "**/obj/**", "**/Persistence/Migrations/**"],
+  "absolute": true,
+  "gitignore": true
+}
