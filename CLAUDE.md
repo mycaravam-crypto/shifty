@@ -26,7 +26,11 @@ issue #27 is fully closed out. A UX/UI audit turned up 8 more issues (#36–#43:
 system, replacing native `confirm()` dialogs, skeleton loaders, a clickable validation panel,
 responsive Employees/Stammdaten tables, filter persistence, keyboard-shortcut discoverability,
 and real `SettingsView` content) — issues #36 (toast system), #37 (`ConfirmDialog`), #38
-(skeleton loaders), and #39 (clickable validation panel) are now built, the rest are still open.
+(skeleton loaders), #39 (clickable validation panel), and #40 (responsive Employees/Stammdaten)
+are now built, the rest are still open. Building #40 surfaced a further gap outside its own
+scope — `AppShell.vue`'s sidebar isn't responsive at all and dominates a real phone's viewport
+regardless of how responsive the page content underneath it is — filed as issue #44, not
+started.
 What's built:
 
 - **Backend** (`src/`): 4-project skeleton (Domain → Application → Infrastructure → Api)
@@ -588,6 +592,28 @@ What's built:
     the click, and that clicking the issue scrolled it into view and applied both the row-level
     and cell-level highlight classes — not just that the code runs, but that the specific
     off-screen row actually became visible.
+  - **Responsive Employees/Stammdaten tables** (issue #40) — `EmployeesView.vue` and both of
+    `StammdatenView.vue`'s tables (Teams, Schichttypen) had zero responsive treatment; below
+    `md` they now switch to a stacked card list instead (`hidden md:block` on the table,
+    `md:hidden` on the card list, same data/handlers, same skeleton-loading treatment issue #38
+    added) rather than just wrapping the table in `overflow-x-auto` — a genuinely better small-
+    screen read than horizontal scroll for a plain list this shape. Also lifted the two
+    modals these views open (`EmployeeDetailModal.vue`, `ShiftTypeDetailModal.vue`, per the
+    issue's own "sanity-check the modals too" scope) — their forms were fixed
+    2-3-column grids that got uncomfortably cramped in a `max-w-md`/`max-w-2xl` `ModalShell` on
+    a narrow phone; now `grid-cols-1 sm:grid-cols-2`/`sm:grid-cols-3`, and the Contract/Absence
+    tables inside `EmployeeDetailModal.vue` got `overflow-x-auto` (they're 6-7 columns, too
+    dense for a card treatment to make sense). Verified in a real headless Chromium at both
+    375px and 700px viewport widths: confirmed zero horizontal document overflow at either
+    width (`scrollWidth > clientWidth`), and visually confirmed the card layout renders
+    correctly (name, personnel number, team, status badge, delete button all present and
+    readable) while a 1280px screenshot confirmed the desktop table is unchanged.
+    Testing this also surfaced a problem outside this issue's own scope: `AppShell.vue`'s
+    sidebar is a fixed, non-responsive `w-72` that dominates a real phone's viewport (67-77% of
+    a 375-430px screen) regardless of how responsive the content beside it is — filed as a new
+    issue (#44) rather than silently folded into this one, since it's an app-wide problem
+    (every route behind `AppShell`, not just these two views) that deserves its own scoping
+    rather than an ad-hoc fix bundled into an unrelated issue.
   - `components/AppShell.vue` — sidebar nav (Übersicht/Dienstplan/Mitarbeiter/Stammdaten/
     Einstellungen) + user identity + logout, applying CLAUDE.md's "Visual design" tokens (dark
     glass, Inter, blue→indigo accent). `SettingsView` is still a styled-but-minimal placeholder

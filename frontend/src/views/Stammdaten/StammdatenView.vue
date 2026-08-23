@@ -54,7 +54,10 @@ async function load() {
   loading.value = true
   error.value = ''
   try {
-    const [teamsRes, shiftTypesRes] = await Promise.all([api.get('/teams'), api.get('/shift-types')])
+    const [teamsRes, shiftTypesRes] = await Promise.all([
+      api.get('/teams'),
+      api.get('/shift-types'),
+    ])
     teams.value = teamsRes.data
     shiftTypes.value = shiftTypesRes.data
   } catch {
@@ -74,7 +77,10 @@ async function onCreateTeam() {
     toast.success('Team angelegt.')
     await load()
   } catch (e) {
-    error.value = axios.isAxiosError(e) && e.response?.data ? e.response.data : 'Team konnte nicht angelegt werden.'
+    error.value =
+      axios.isAxiosError(e) && e.response?.data
+        ? e.response.data
+        : 'Team konnte nicht angelegt werden.'
   } finally {
     savingTeam.value = false
   }
@@ -107,7 +113,9 @@ async function onCreateShiftType() {
     await load()
   } catch (e) {
     error.value =
-      axios.isAxiosError(e) && e.response?.data ? e.response.data : 'Schichttyp konnte nicht angelegt werden.'
+      axios.isAxiosError(e) && e.response?.data
+        ? e.response.data
+        : 'Schichttyp konnte nicht angelegt werden.'
   } finally {
     savingShiftType.value = false
   }
@@ -141,8 +149,18 @@ onMounted(load)
         </button>
       </div>
 
-      <form v-if="showTeamForm" class="glass rounded-xl p-5 mb-4 flex gap-3" @submit.prevent="onCreateTeam">
-        <input v-model="teamForm.name" placeholder="Teamname" required class="flex-1" :class="inputClass" />
+      <form
+        v-if="showTeamForm"
+        class="glass rounded-xl p-5 mb-4 flex gap-3"
+        @submit.prevent="onCreateTeam"
+      >
+        <input
+          v-model="teamForm.name"
+          placeholder="Teamname"
+          required
+          class="flex-1"
+          :class="inputClass"
+        />
         <button
           type="submit"
           :disabled="savingTeam"
@@ -152,10 +170,12 @@ onMounted(load)
         </button>
       </form>
 
-      <div class="glass rounded-xl overflow-hidden">
+      <div class="hidden md:block glass rounded-xl overflow-hidden">
         <table class="w-full text-sm">
           <thead>
-            <tr class="text-left text-[10px] uppercase tracking-wider font-bold text-slate-500 border-b border-white/8">
+            <tr
+              class="text-left text-[10px] uppercase tracking-wider font-bold text-slate-500 border-b border-white/8"
+            >
               <th class="px-4 py-3">Name</th>
               <th class="px-4 py-3">Status</th>
             </tr>
@@ -172,7 +192,11 @@ onMounted(load)
               <td class="px-4 py-3">
                 <span
                   class="rounded-full px-2 py-0.5 text-xs"
-                  :class="t.active ? 'bg-emerald-500/15 text-emerald-400' : 'bg-slate-500/15 text-slate-400'"
+                  :class="
+                    t.active
+                      ? 'bg-emerald-500/15 text-emerald-400'
+                      : 'bg-slate-500/15 text-slate-400'
+                  "
                 >
                   {{ t.active ? 'Aktiv' : 'Inaktiv' }}
                 </span>
@@ -183,6 +207,32 @@ onMounted(load)
             </tr>
           </tbody>
         </table>
+      </div>
+
+      <div class="md:hidden space-y-2">
+        <template v-if="loading">
+          <div v-for="i in 3" :key="i" class="glass rounded-xl p-4">
+            <SkeletonBlock class="h-4 w-32" />
+          </div>
+        </template>
+        <template v-else>
+          <div
+            v-for="t in teams"
+            :key="t.id"
+            class="glass rounded-xl p-4 flex items-center justify-between gap-2"
+          >
+            <span>{{ t.name }}</span>
+            <span
+              class="shrink-0 rounded-full px-2 py-0.5 text-xs"
+              :class="
+                t.active ? 'bg-emerald-500/15 text-emerald-400' : 'bg-slate-500/15 text-slate-400'
+              "
+            >
+              {{ t.active ? 'Aktiv' : 'Inaktiv' }}
+            </span>
+          </div>
+          <p v-if="!teams.length" class="text-center text-sm text-slate-500 py-8">Keine Teams.</p>
+        </template>
       </div>
     </section>
 
@@ -199,10 +249,16 @@ onMounted(load)
 
       <form
         v-if="showShiftTypeForm"
-        class="glass rounded-xl p-5 mb-4 grid grid-cols-2 gap-3"
+        class="glass rounded-xl p-5 mb-4 grid grid-cols-1 sm:grid-cols-2 gap-3"
         @submit.prevent="onCreateShiftType"
       >
-        <input v-model="shiftTypeForm.name" placeholder="Name" required class="col-span-2" :class="inputClass" />
+        <input
+          v-model="shiftTypeForm.name"
+          placeholder="Name"
+          required
+          class="col-span-2"
+          :class="inputClass"
+        />
         <input v-model="shiftTypeForm.startTime" type="time" required :class="inputClass" />
         <input v-model="shiftTypeForm.endTime" type="time" required :class="inputClass" />
         <input
@@ -213,7 +269,11 @@ onMounted(load)
           placeholder="Pause (Minuten)"
           :class="inputClass"
         />
-        <input v-model="shiftTypeForm.color" type="color" class="h-10 w-full rounded-lg bg-white/5 border border-white/10" />
+        <input
+          v-model="shiftTypeForm.color"
+          type="color"
+          class="h-10 w-full rounded-lg bg-white/5 border border-white/10"
+        />
         <input
           v-model="shiftTypeForm.minStaffing"
           type="number"
@@ -237,10 +297,12 @@ onMounted(load)
         </button>
       </form>
 
-      <div class="glass rounded-xl overflow-hidden">
+      <div class="hidden md:block glass rounded-xl overflow-hidden">
         <table class="w-full text-sm">
           <thead>
-            <tr class="text-left text-[10px] uppercase tracking-wider font-bold text-slate-500 border-b border-white/8">
+            <tr
+              class="text-left text-[10px] uppercase tracking-wider font-bold text-slate-500 border-b border-white/8"
+            >
               <th class="px-4 py-3">Name</th>
               <th class="px-4 py-3">Zeit</th>
               <th class="px-4 py-3">Pause</th>
@@ -265,10 +327,15 @@ onMounted(load)
               @click="selectedShiftType = s"
             >
               <td class="px-4 py-3">
-                <span class="inline-block w-2.5 h-2.5 rounded-full mr-2 align-middle" :style="{ background: s.color }" />
+                <span
+                  class="inline-block w-2.5 h-2.5 rounded-full mr-2 align-middle"
+                  :style="{ background: s.color }"
+                />
                 {{ s.name }}
               </td>
-              <td class="px-4 py-3 font-mono text-slate-400">{{ s.startTime.slice(0, 5) }}–{{ s.endTime.slice(0, 5) }}</td>
+              <td class="px-4 py-3 font-mono text-slate-400">
+                {{ s.startTime.slice(0, 5) }}–{{ s.endTime.slice(0, 5) }}
+              </td>
               <td class="px-4 py-3 font-mono text-slate-400">{{ s.breakMinutes }}m</td>
               <td class="px-4 py-3 text-slate-400">
                 {{ s.minStaffing ?? '–' }} / {{ s.maxStaffing ?? '–' }}
@@ -276,7 +343,11 @@ onMounted(load)
               <td class="px-4 py-3">
                 <span
                   class="rounded-full px-2 py-0.5 text-xs"
-                  :class="s.active ? 'bg-emerald-500/15 text-emerald-400' : 'bg-slate-500/15 text-slate-400'"
+                  :class="
+                    s.active
+                      ? 'bg-emerald-500/15 text-emerald-400'
+                      : 'bg-slate-500/15 text-slate-400'
+                  "
                 >
                   {{ s.active ? 'Aktiv' : 'Inaktiv' }}
                 </span>
@@ -287,6 +358,45 @@ onMounted(load)
             </tr>
           </tbody>
         </table>
+      </div>
+
+      <div class="md:hidden space-y-2">
+        <template v-if="loading">
+          <div v-for="i in 3" :key="i" class="glass rounded-xl p-4">
+            <SkeletonBlock class="h-4 w-32 mb-2" />
+            <SkeletonBlock class="h-3 w-24" />
+          </div>
+        </template>
+        <template v-else>
+          <div
+            v-for="s in shiftTypes"
+            :key="s.id"
+            class="glass rounded-xl p-4 cursor-pointer hover:bg-white/5 transition-colors"
+            @click="selectedShiftType = s"
+          >
+            <div class="flex items-center justify-between gap-2">
+              <span class="flex items-center gap-2">
+                <span class="w-2.5 h-2.5 rounded-full shrink-0" :style="{ background: s.color }" />
+                {{ s.name }}
+              </span>
+              <span
+                class="shrink-0 rounded-full px-2 py-0.5 text-xs"
+                :class="
+                  s.active ? 'bg-emerald-500/15 text-emerald-400' : 'bg-slate-500/15 text-slate-400'
+                "
+              >
+                {{ s.active ? 'Aktiv' : 'Inaktiv' }}
+              </span>
+            </div>
+            <div class="font-mono text-xs text-slate-400 mt-2">
+              {{ s.startTime.slice(0, 5) }}–{{ s.endTime.slice(0, 5) }} · {{ s.breakMinutes }}m
+              Pause · Besetzung {{ s.minStaffing ?? '–' }}/{{ s.maxStaffing ?? '–' }}
+            </div>
+          </div>
+          <p v-if="!shiftTypes.length" class="text-center text-sm text-slate-500 py-8">
+            Keine Schichttypen.
+          </p>
+        </template>
       </div>
     </section>
 

@@ -54,7 +54,8 @@ async function onSave() {
     toast.success('Schichttyp aktualisiert.')
     emit('updated')
   } catch (e) {
-    error.value = axios.isAxiosError(e) && e.response?.data ? e.response.data : 'Speichern fehlgeschlagen.'
+    error.value =
+      axios.isAxiosError(e) && e.response?.data ? e.response.data : 'Speichern fehlgeschlagen.'
   } finally {
     saving.value = false
   }
@@ -63,8 +64,14 @@ async function onSave() {
 
 <template>
   <ModalShell title="Schichttyp bearbeiten" @close="emit('close')">
-    <form class="grid grid-cols-2 gap-3" @submit.prevent="onSave">
-      <input v-model="form.name" placeholder="Name" required class="col-span-2" :class="inputClass" />
+    <form class="grid grid-cols-1 sm:grid-cols-2 gap-3" @submit.prevent="onSave">
+      <input
+        v-model="form.name"
+        placeholder="Name"
+        required
+        class="col-span-2"
+        :class="inputClass"
+      />
       <input v-model="form.startTime" type="time" required :class="inputClass" />
       <input v-model="form.endTime" type="time" required :class="inputClass" />
       <input
@@ -75,9 +82,25 @@ async function onSave() {
         placeholder="Pause (Minuten)"
         :class="inputClass"
       />
-      <input v-model="form.color" type="color" class="h-10 w-full rounded-lg bg-white/5 border border-white/10" />
-      <input v-model="form.minStaffing" type="number" min="1" placeholder="Min. Besetzung" :class="inputClass" />
-      <input v-model="form.maxStaffing" type="number" min="1" placeholder="Max. Besetzung" :class="inputClass" />
+      <input
+        v-model="form.color"
+        type="color"
+        class="h-10 w-full rounded-lg bg-white/5 border border-white/10"
+      />
+      <input
+        v-model="form.minStaffing"
+        type="number"
+        min="1"
+        placeholder="Min. Besetzung"
+        :class="inputClass"
+      />
+      <input
+        v-model="form.maxStaffing"
+        type="number"
+        min="1"
+        placeholder="Max. Besetzung"
+        :class="inputClass"
+      />
       <label class="col-span-2 flex items-center gap-2 text-sm text-slate-400">
         <input v-model="form.active" type="checkbox" class="rounded border-white/10" />
         Aktiv

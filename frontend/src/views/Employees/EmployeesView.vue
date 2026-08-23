@@ -116,7 +116,7 @@ onMounted(load)
 
     <form
       v-if="showForm"
-      class="glass rounded-xl p-5 mb-6 grid grid-cols-2 gap-4"
+      class="glass rounded-xl p-5 mb-6 grid grid-cols-1 sm:grid-cols-2 gap-4"
       @submit.prevent="onCreate"
     >
       <input
@@ -159,7 +159,8 @@ onMounted(load)
       </button>
     </form>
 
-    <div class="glass rounded-xl overflow-hidden">
+    <!-- md and up: table -->
+    <div class="hidden md:block glass rounded-xl overflow-hidden">
       <table class="w-full text-sm">
         <thead>
           <tr
@@ -215,6 +216,50 @@ onMounted(load)
           </tr>
         </tbody>
       </table>
+    </div>
+
+    <!-- below md: card list -->
+    <div class="md:hidden space-y-3">
+      <template v-if="loading">
+        <div v-for="i in 5" :key="i" class="glass rounded-xl p-4">
+          <SkeletonBlock class="h-4 w-32 mb-2" />
+          <SkeletonBlock class="h-3 w-24" />
+        </div>
+      </template>
+      <template v-else>
+        <div
+          v-for="e in employees"
+          :key="e.id"
+          class="glass rounded-xl p-4 cursor-pointer hover:bg-white/5 transition-colors"
+          @click="selectedEmployee = e"
+        >
+          <div class="flex items-center justify-between gap-2">
+            <span class="font-medium">{{ e.lastName }}, {{ e.firstName }}</span>
+            <button
+              class="text-slate-500 hover:text-rose-400 transition-colors shrink-0"
+              @click.stop="onDelete(e)"
+            >
+              <Trash2 :size="16" />
+            </button>
+          </div>
+          <div class="flex items-center gap-2 mt-2 text-xs text-slate-400">
+            <span class="font-mono">{{ e.personnelNumber }}</span>
+            <span>·</span>
+            <span class="truncate">{{ teamName(e.teamId) }}</span>
+            <span
+              class="ml-auto shrink-0 rounded-full px-2 py-0.5"
+              :class="
+                e.active ? 'bg-emerald-500/15 text-emerald-400' : 'bg-slate-500/15 text-slate-400'
+              "
+            >
+              {{ e.active ? 'Aktiv' : 'Inaktiv' }}
+            </span>
+          </div>
+        </div>
+        <p v-if="!employees.length" class="text-center text-sm text-slate-500 py-8">
+          Keine Mitarbeiter.
+        </p>
+      </template>
     </div>
 
     <EmployeeDetailModal

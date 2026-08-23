@@ -248,7 +248,7 @@ onMounted(() => {
         <h3 class="text-[10px] uppercase tracking-wider font-bold text-slate-500 mb-3">
           Stammdaten
         </h3>
-        <form class="grid grid-cols-2 gap-3" @submit.prevent="onSaveEmployee">
+        <form class="grid grid-cols-1 sm:grid-cols-2 gap-3" @submit.prevent="onSaveEmployee">
           <input
             v-model="form.personnelNumber"
             placeholder="Personalnummer"
@@ -316,7 +316,7 @@ onMounted(() => {
 
       <section>
         <h3 class="text-[10px] uppercase tracking-wider font-bold text-slate-500 mb-3">Verträge</h3>
-        <div class="rounded-xl border border-white/8 overflow-hidden mb-3">
+        <div class="rounded-xl border border-white/8 overflow-x-auto mb-3">
           <table class="w-full text-sm">
             <thead>
               <tr
@@ -354,8 +354,8 @@ onMounted(() => {
             </tbody>
           </table>
         </div>
-        <form class="grid grid-cols-3 gap-2" @submit.prevent="onCreateContract">
-          <label class="text-xs text-slate-500 col-span-3 -mb-1">Neuer Vertrag</label>
+        <form class="grid grid-cols-1 sm:grid-cols-3 gap-2" @submit.prevent="onCreateContract">
+          <label class="text-xs text-slate-500 col-span-full -mb-1">Neuer Vertrag</label>
           <input v-model="contractForm.validFrom" type="date" required :class="inputClass" />
           <input
             v-model="contractForm.validTo"
@@ -404,11 +404,13 @@ onMounted(() => {
           <button
             type="submit"
             :disabled="savingContract"
-            class="col-span-3 rounded-lg bg-white/10 hover:bg-white/15 transition-colors py-2 text-sm font-medium disabled:opacity-50"
+            class="col-span-full rounded-lg bg-white/10 hover:bg-white/15 transition-colors py-2 text-sm font-medium disabled:opacity-50"
           >
             {{ savingContract ? 'Anlegen…' : 'Anlegen' }}
           </button>
-          <p v-if="contractError" class="col-span-3 text-sm text-rose-400">{{ contractError }}</p>
+          <p v-if="contractError" class="col-span-full text-sm text-rose-400">
+            {{ contractError }}
+          </p>
         </form>
       </section>
 
@@ -416,7 +418,7 @@ onMounted(() => {
         <h3 class="text-[10px] uppercase tracking-wider font-bold text-slate-500 mb-3">
           Abwesenheiten
         </h3>
-        <div class="rounded-xl border border-white/8 overflow-hidden mb-3">
+        <div class="rounded-xl border border-white/8 overflow-x-auto mb-3">
           <table class="w-full text-sm">
             <thead>
               <tr
@@ -452,8 +454,8 @@ onMounted(() => {
             </tbody>
           </table>
         </div>
-        <form class="grid grid-cols-2 gap-2" @submit.prevent="onCreateAbsence">
-          <label class="text-xs text-slate-500 col-span-2 -mb-1">Neue Abwesenheit</label>
+        <form class="grid grid-cols-1 sm:grid-cols-2 gap-2" @submit.prevent="onCreateAbsence">
+          <label class="text-xs text-slate-500 col-span-full -mb-1">Neue Abwesenheit</label>
           <input v-model="absenceForm.from" type="date" required :class="inputClass" />
           <input v-model="absenceForm.to" type="date" required :class="inputClass" />
           <select v-model.number="absenceForm.type" :class="inputClass">
@@ -473,11 +475,11 @@ onMounted(() => {
           <button
             type="submit"
             :disabled="savingAbsence"
-            class="col-span-2 rounded-lg bg-white/10 hover:bg-white/15 transition-colors py-2 text-sm font-medium disabled:opacity-50"
+            class="col-span-full rounded-lg bg-white/10 hover:bg-white/15 transition-colors py-2 text-sm font-medium disabled:opacity-50"
           >
             {{ savingAbsence ? 'Anlegen…' : 'Anlegen' }}
           </button>
-          <p v-if="absenceError" class="col-span-2 text-sm text-rose-400">{{ absenceError }}</p>
+          <p v-if="absenceError" class="col-span-full text-sm text-rose-400">{{ absenceError }}</p>
         </form>
       </section>
     </div>
