@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ChevronLeft, ChevronRight, Copy, Search } from '@lucide/vue'
+import { ChevronLeft, ChevronRight, Copy, Search, Printer } from '@lucide/vue'
 import api from '../../services/api'
 import ShiftAssignmentModal from './ShiftAssignmentModal.vue'
 
@@ -534,6 +534,24 @@ async function onAssignmentUpdated() {
   selectedAssignment.value = null
   await loadDetail()
 }
+
+// PDF export = the browser's own print-to-PDF, scoped via CSS rather than a
+// PDF-generation library. `printEmployeeId` narrows the printed table to one
+// row; "all" export is just printing with it unset.
+const printEmployeeId = ref<string | null>(null)
+async function exportAllPdf() {
+  printEmployeeId.value = null
+  await nextTick()
+  window.print()
+}
+async function exportEmployeePdf(employeeId: string) {
+  printEmployeeId.value = employeeId
+  await nextTick()
+  window.print()
+}
+window.addEventListener('afterprint', () => {
+  printEmployeeId.value = null
+})
 </script>
 
 <template>
@@ -550,12 +568,20 @@ async function onAssignmentUpdated() {
     <div class="flex items-center justify-between mb-6">
       <h1 class="text-2xl font-semibold">Dienstplan</h1>
       <div class="flex items-center gap-3">
-        <button class="text-slate-400 hover:text-slate-200 transition-colors" @click="prevMonth">
+        <button class="text-slate-400 hover:text-slate-200 transition-colors print:hidden" @click="prevMonth">
           <ChevronLeft :size="18" />
         </button>
         <span class="font-mono text-sm text-slate-400 capitalize">{{ monthLabel }}</span>
-        <button class="text-slate-400 hover:text-slate-200 transition-colors" @click="nextMonth">
+        <button class="text-slate-400 hover:text-slate-200 transition-colors print:hidden" @click="nextMonth">
           <ChevronRight :size="18" />
+        </button>
+        <button
+          v-if="currentSchedule"
+          class="flex items-center gap-1.5 rounded-lg bg-white/5 border border-white/10 px-3 py-1.5 text-sm hover:bg-white/10 transition-colors print:hidden"
+          @click="exportAllPdf"
+        >
+          <Printer :size="14" />
+          PDF exportieren
         </button>
       </div>
     </div>
@@ -578,7 +604,7 @@ async function onAssignmentUpdated() {
       <template v-else>
         <div
           v-if="validation && (validation.errors.length || validation.warnings.length)"
-          class="glass rounded-xl p-4 mb-4 text-sm space-y-1"
+          class="glass rounded-xl p-4 mb-4 text-sm space-y-1 print:hidden"
         >
           <p v-for="(issue, i) in validation.errors" :key="'e' + i" class="text-rose-400">
             ❌ {{ issue.message }}
@@ -588,7 +614,7 @@ async function onAssignmentUpdated() {
           </p>
         </div>
 
-        <div class="flex flex-wrap items-center gap-2 mb-4">
+        <div class="flex flex-wrap items-center gap-2 mb-4 print:hidden">
           <button
             v-if="assignments.length"
             :disabled="copyingMonth"
@@ -621,7 +647,7 @@ async function onAssignmentUpdated() {
           </div>
         </div>
 
-        <div class="flex flex-wrap items-center gap-2 mb-4">
+        <div class="flex flex-wrap items-center gap-2 mb-4 print:hidden">
           <div class="relative">
             <Search :size="14" class="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500" />
             <input
@@ -641,7 +667,7 @@ async function onAssignmentUpdated() {
           </select>
         </div>
 
-        <div ref="tableWrapRef" class="glass rounded-xl overflow-x-auto">
+        <div ref="tableWrapRef" class="glass rounded-xl overflow-x-auto print:overflow-visible">
           <table class="w-full text-sm">
             <thead>
               <tr
@@ -670,9 +696,19 @@ async function onAssignmentUpdated() {
                 v-for="e in visibleEmployees"
                 :key="e.id"
                 class="border-b border-white/5 last:border-0"
+                :class="{ 'print:hidden': printEmployeeId && printEmployeeId !== e.id }"
               >
                 <td class="px-4 py-3 align-top">
-                  <div>{{ e.lastName }}, {{ e.firstName }}</div>
+                  <div class="flex items-center gap-1.5">
+                    {{ e.lastName }}, {{ e.firstName }}
+                    <button
+                      class="text-slate-500 hover:text-slate-200 transition-colors print:hidden"
+                      title="Nur diesen Mitarbeiter als PDF exportieren"
+                      @click="exportEmployeePdf(e.id)"
+                    >
+                      <Printer :size="12" />
+                    </button>
+                  </div>
                   <template v-if="targetHoursFor(e.id) !== null">
                     <div
                       class="font-mono text-xs mt-1"
@@ -757,3 +793,11 @@ async function onAssignmentUpdated() {
     />
   </div>
 </template>
+
+<style scoped>
+@media print {
+  @page {
+    size: landscape;
+  }
+}
+</style>

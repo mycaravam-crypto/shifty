@@ -22,7 +22,7 @@ const nav = [
 
 <template>
   <div class="flex min-h-screen">
-    <aside class="w-72 shrink-0 border-r border-white/8 bg-[#0d0f16] flex flex-col">
+    <aside class="w-72 shrink-0 border-r border-white/8 bg-[#0d0f16] flex flex-col print:hidden">
       <div class="px-6 py-5 text-lg font-semibold tracking-tight">Schichtplaner</div>
       <nav class="flex-1 px-3 space-y-1">
         <router-link

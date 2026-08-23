@@ -420,6 +420,18 @@ What's built:
     it on a day that had been off-screen before the auto-scroll (assignment created via a real
     `POST`, confirmed via the API and then deleted again to leave the dev DB clean), and
     confirmed `Escape` closes the resulting `ShiftAssignmentModal`.
+  - **PDF export** (new Phase 5 feature, no issue filed) — "PDF exportieren" in
+    `ScheduleView.vue`'s header (all employees) and a small printer icon per employee row (that
+    employee only) both just call the browser's native `window.print()`, scoped with a
+    `print:hidden`/`print:` Tailwind media-print stylesheet rather than a PDF-generation
+    dependency — no library added. `printEmployeeId` (unset for "all", set for a single row)
+    hides non-matching `<tr>`s via `print:hidden`; the toolbar, palette, search/filter row,
+    validation panel, and sidebar (`components/AppShell.vue`) are all `print:hidden` too, and a
+    scoped `@page { size: landscape }` block fits a month's ~30 day columns on the page. Users
+    save the resulting print dialog as PDF themselves (every major browser's print dialog offers
+    "Save as PDF" natively) — there's no server-side PDF generation. Verified via
+    `vue-tsc -b`/`vite build` clean; not clicked through in an actual browser print preview (same
+    Playwright-install gap as the rest of this app's frontend work).
   - `views/Dashboard/DashboardView.vue` (issues #30/#31, frontend-only — the backend read model
     from issue #29 needed no changes) — new `/dashboard` route, reachable via a new "Übersicht"
     nav entry (placed first, as the landing overview). One `GET /dashboard` fetch per
