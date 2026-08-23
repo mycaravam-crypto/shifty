@@ -1,6 +1,7 @@
 import pluginVue from 'eslint-plugin-vue'
 import { defineConfigWithVueTs, vueTsConfigs } from '@vue/eslint-config-typescript'
 import vuePrettierConfig from '@vue/eslint-config-prettier'
+import pluginSonarjs from 'eslint-plugin-sonarjs'
 
 export default defineConfigWithVueTs(
   {
@@ -13,5 +14,6 @@ export default defineConfigWithVueTs(
   },
   pluginVue.configs['flat/recommended'],
   vueTsConfigs.recommended,
+  pluginSonarjs.configs.recommended,
   vuePrettierConfig,
 )

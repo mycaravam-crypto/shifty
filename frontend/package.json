@@ -26,6 +26,7 @@
     "@vue/eslint-config-typescript": "^14.9.0",
     "@vue/tsconfig": "^0.9.1",
     "eslint": "^9.39.5",
+    "eslint-plugin-sonarjs": "^4.2.0",
     "eslint-plugin-vue": "^10.10.0",
     "prettier": "^3.9.6",
     "tailwindcss": "^4.3.3",

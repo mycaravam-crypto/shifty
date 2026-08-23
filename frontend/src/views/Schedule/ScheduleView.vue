@@ -416,7 +416,9 @@ function assignmentDragPayload(a: Assignment): DragPayload {
 }
 
 function onChipPointerDown(e: PointerEvent, payload: DragPayload) {
-  if (e.button !== 0) return
+  if (e.button !== 0) {
+    return
+  }
   ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
   drag.value = {
     payload,
