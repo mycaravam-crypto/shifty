@@ -17,6 +17,11 @@ const router = createRouter({
       component: () => import('../views/Employees/EmployeesView.vue'),
     },
     {
+      path: '/stammdaten',
+      name: 'stammdaten',
+      component: () => import('../views/Stammdaten/StammdatenView.vue'),
+    },
+    {
       path: '/settings',
       name: 'settings',
       component: () => import('../views/Settings/SettingsView.vue'),

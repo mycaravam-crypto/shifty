@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { CalendarDays, Users, Settings, LogOut } from '@lucide/vue'
+import { CalendarDays, Users, Tags, Settings, LogOut } from '@lucide/vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 
@@ -14,6 +14,7 @@ async function onLogout() {
 const nav = [
   { to: '/', label: 'Dienstplan', icon: CalendarDays },
   { to: '/employees', label: 'Mitarbeiter', icon: Users },
+  { to: '/stammdaten', label: 'Stammdaten', icon: Tags },
   { to: '/settings', label: 'Einstellungen', icon: Settings },
 ]
 </script>
