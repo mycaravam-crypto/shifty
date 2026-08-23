@@ -4,6 +4,47 @@ namespace ShiftPlanner.Domain.Scheduling;
 // HourlyRate is optional (Contract.HourlyRate, issue #14), so cost is null when unset.
 public static class WageCalculator
 {
+    // issue #16: global percentages, not per-ShiftType or configurable — German surcharge
+    // rates are driven by *when* a shift falls, not what kind of shift it is, and nothing
+    // yet needs these tunable without a deploy. Typical Tarifvertrag baseline figures.
+    // ponytail: hardcoded, move to appsettings if a deployment needs different rates.
+    private const decimal NightSurchargeRate = 0.25m;
+    private const decimal SundaySurchargeRate = 0.50m;
+    private const decimal HolidaySurchargeRate = 1.25m;
+    private const int NightStartMinute = 20 * 60; // 20:00
+    private const int NightEndMinute = 6 * 60; // 06:00
+
     public static decimal? LaborCost(decimal netHours, decimal? hourlyRate) =>
         hourlyRate is null ? null : netHours * hourlyRate.Value;
+
+    // Adds night/Sunday/holiday surcharges on top of the base rate. Sunday and holiday don't
+    // stack (holiday wins when a holiday falls on a Sunday) but night stacks with either, matching
+    // common German practice. Night hours are the raw StartTime–EndTime overlap with 20:00–06:00,
+    // not break-adjusted (BreakMinutes has no specific time slot to subtract from) —
+    // ponytail: approximation, revisit if a shift's break is large relative to its night overlap.
+    public static decimal? LaborCost(TimeOnly startTime, TimeOnly endTime, DayOfWeek dayOfWeek,
+        bool isHoliday, decimal netHours, decimal? hourlyRate)
+    {
+        if (hourlyRate is null)
+            return null;
+
+        var wholeShiftRate = isHoliday ? HolidaySurchargeRate
+            : dayOfWeek == DayOfWeek.Sunday ? SundaySurchargeRate
+            : 0m;
+        var nightHours = NightOverlapHours(startTime, endTime);
+
+        return netHours * hourlyRate.Value * (1 + wholeShiftRate) + nightHours * hourlyRate.Value * NightSurchargeRate;
+    }
+
+    private static decimal NightOverlapHours(TimeOnly start, TimeOnly end)
+    {
+        var startMinute = start.Hour * 60 + start.Minute;
+        var endMinute = end.Hour * 60 + end.Minute;
+        var minutes = OverlapMinutes(startMinute, endMinute, NightStartMinute, 24 * 60)
+            + OverlapMinutes(startMinute, endMinute, 0, NightEndMinute);
+        return minutes / 60m;
+    }
+
+    private static int OverlapMinutes(int aStart, int aEnd, int bStart, int bEnd) =>
+        Math.Max(0, Math.Min(aEnd, bEnd) - Math.Max(aStart, bStart));
 }

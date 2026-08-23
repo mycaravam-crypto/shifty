@@ -41,11 +41,12 @@ public class SchedulesController(ApplicationDbContext db) : ControllerBase
     private static readonly Func<Schedule, ScheduleDto> ToDto =
         s => new ScheduleDto(s.Id, s.Name, s.StartDate, s.EndDate, s.Status);
 
-    private static ShiftAssignmentDto ToAssignmentDto(ShiftAssignment a, decimal? hourlyRate)
+    private static ShiftAssignmentDto ToAssignmentDto(ShiftAssignment a, decimal? hourlyRate, bool isHoliday)
     {
         var netHours = WorkingTimeCalculator.NetHours(a.StartTime, a.EndTime, a.BreakMinutes);
+        var laborCost = WageCalculator.LaborCost(a.StartTime, a.EndTime, a.Date.DayOfWeek, isHoliday, netHours, hourlyRate);
         return new(a.Id, a.ScheduleId, a.EmployeeId, a.ShiftTypeId, a.Date, a.StartTime, a.EndTime, a.BreakMinutes,
-            netHours, WageCalculator.LaborCost(netHours, hourlyRate));
+            netHours, laborCost);
     }
 
     // issue #14: the contract valid on the assignment's own date, not the schedule's start —
@@ -76,10 +77,12 @@ public class SchedulesController(ApplicationDbContext db) : ControllerBase
 
         var employeeIds = assignments.Select(a => a.EmployeeId).Distinct().ToList();
         var contracts = await db.Contracts.Where(c => employeeIds.Contains(c.EmployeeId)).ToListAsync();
+        var holidays = GermanPublicHolidays.InRange(schedule.StartDate, schedule.EndDate)
+            .Select(h => h.Date).ToHashSet();
 
         return Ok(new ScheduleDetailDto(schedule.Id, schedule.Name, schedule.StartDate, schedule.EndDate,
             schedule.Status,
-            assignments.Select(a => ToAssignmentDto(a, HourlyRateOn(contracts, a.EmployeeId, a.Date))).ToList()));
+            assignments.Select(a => ToAssignmentDto(a, HourlyRateOn(contracts, a.EmployeeId, a.Date), holidays.Contains(a.Date))).ToList()));
     }
 
     [HttpPost("schedules")]
@@ -183,7 +186,8 @@ public class SchedulesController(ApplicationDbContext db) : ControllerBase
             .OrderByDescending(c => c.ValidFrom)
             .FirstOrDefaultAsync();
 
-        return CreatedAtAction(nameof(GetById), new { id }, ToAssignmentDto(assignment, contract?.HourlyRate));
+        var isHoliday = GermanPublicHolidays.InRange(assignment.Date, assignment.Date).Count > 0;
+        return CreatedAtAction(nameof(GetById), new { id }, ToAssignmentDto(assignment, contract?.HourlyRate, isHoliday));
     }
 
     [HttpPut("assignments/{id:guid}")]

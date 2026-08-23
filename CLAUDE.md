@@ -17,8 +17,9 @@ built, including the two rules needing cross-assignment history (Ruhezeit, max-c
 just started — only week-copy exists so far, frontend-only. Phase 5 (Erweiterungen) has also
 just started — hourly wage rates (issue #14), touch/mobile drag-and-drop for the
 Wochenansicht (issue #19), absence tracking (issue #17), the overtime ledger built on top of
-it (issue #18), and a public holiday calendar (issue #15) — see below; issue #16 (wage
-surcharges, depends on #15) hasn't been started.
+it (issue #18), a public holiday calendar (issue #15), and shift-type wage surcharges
+(issue #16) — see below. All Phase 5 issues filed so far are now built; issue #16 was the
+last one open.
 What's built:
 
 - **Backend** (`src/`): 4-project skeleton (Domain → Application → Infrastructure → Api)
@@ -159,6 +160,29 @@ What's built:
     live-Postgres caveat as AuditLog above: Docker Hub pulls are blocked in this sandbox, so
     `SaveChangesAsync`/the API surface hasn't been exercised against a real database — only
     build + migration-script level.
+  - **Wage surcharges** (issue #16) — night/Sunday/holiday premiums on top of `HourlyRate ×
+    NetHours`. Per the issue's own framing, rates are driven by *when* a shift falls, not
+    *what kind* of shift it is, so this is a second `WageCalculator.LaborCost` overload taking
+    the raw `StartTime`/`EndTime`/`DayOfWeek`/`isHoliday` rather than a new `ShiftType` field
+    or a settings entity — three global percentage constants (night 25%, Sunday 50%, holiday
+    125%, common German Tarifvertrag baseline figures — not legally mandated beyond the
+    tax-free-allowance thresholds, so these are a starting point, not a compliance claim),
+    night window 20:00–06:00. Night stacks additively with Sunday or holiday (works a
+    different axis — time-of-day vs. day-type); Sunday and holiday don't stack with each
+    other, holiday wins when a holiday lands on a Sunday. Night hours are the raw shift-time
+    overlap with the night window, not break-adjusted — `BreakMinutes` has no specific time
+    slot to subtract from, so a large break inside a shift's night-window overlap will
+    over-count slightly (`ponytail:` comment in the code names this). `isHoliday` comes from
+    the existing `GermanPublicHolidays` (issue #15) — `SchedulesController` builds one
+    `HashSet<DateOnly>` per schedule load and reuses it across all assignments; `CreateAssignment`
+    checks the single date directly. No frontend change needed — the Wochenansicht's existing
+    "Lohnkosten" readouts already sum whatever `laborCost` the backend sends. Verified against
+    a real local Postgres (this machine's existing `docker compose` stack, rebuilt with
+    `docker compose build api`): `dotnet build` clean, then all four cases round-tripped via
+    curl on both the create-assignment and schedule-detail endpoints — a plain Tuesday shift
+    (no surcharge), an 18:00–22:00 shift (2h night overlap → correct partial surcharge), a
+    Sunday shift (+50%), and 1. Weihnachtstag (+125%) — each matched hand-computed expected
+    `laborCost` exactly.
   - **Absence tracking** (issue #17, readme.md §8) — the `Absence` entity readme.md always
     defined but nothing had ever built: `Domain/Employees/Absence.cs` (EmployeeId/From/To/
     `AbsenceType` enum Vacation/Sick/Training/Other/Comment), same "doesn't live on Employee
@@ -307,7 +331,7 @@ What's built:
     Dec-2026→Jan-2027 range correctly crosses the year boundary and returns Christmas + New
     Year's, `end < start` 400s, unauthenticated 401s) — not yet clicked through in an actual
     browser (same Playwright-install gap as the rest of the Wochenansicht work). Issue #16
-    (wage surcharges) builds on this next but hasn't started.
+    (wage surcharges, backend-only, see above) builds on this and is now done.
     A glass panel above the palette lists every issue from `GET
     /schedules/{id}/validate` (❌ red for Errors, ⚠ amber for Warnings), refetched alongside
     the assignments on every load/move/create — the existing per-employee "Xh / Yh ⚠" bar is
