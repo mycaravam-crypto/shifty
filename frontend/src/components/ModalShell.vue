@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted } from 'vue'
 import { X } from '@lucide/vue'
+import { useConfirmStore } from '../stores/confirm'
 
 defineProps<{ title: string; wide?: boolean }>()
 const emit = defineEmits<{ close: [] }>()
+const confirmStore = useConfirmStore()
 
 // A tap that opens this modal (e.g. an assignment chip on a touch device)
 // is followed by the browser's synthetic "click" compatibility event at the
@@ -18,7 +20,10 @@ function onBackdropClick() {
 }
 
 function onKeydown(e: KeyboardEvent) {
-  if (e.key === 'Escape') emit('close')
+  // A ConfirmDialog can be open on top of this modal (e.g. deleting a contract
+  // from EmployeeDetailModal) — it has its own dedicated Escape handling, so
+  // this modal must not also react, or one Escape press would close both.
+  if (e.key === 'Escape' && !confirmStore.request) emit('close')
 }
 onMounted(() => window.addEventListener('keydown', onKeydown))
 onUnmounted(() => window.removeEventListener('keydown', onKeydown))

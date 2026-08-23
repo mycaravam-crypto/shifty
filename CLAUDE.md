@@ -25,8 +25,8 @@ the frontend view (issue #30), and its Action Required feed (issue #31) are all 
 issue #27 is fully closed out. A UX/UI audit turned up 8 more issues (#36–#43: a global toast
 system, replacing native `confirm()` dialogs, skeleton loaders, a clickable validation panel,
 responsive Employees/Stammdaten tables, filter persistence, keyboard-shortcut discoverability,
-and real `SettingsView` content) — issue #36 (toast system) is now built, the rest are still
-open.
+and real `SettingsView` content) — issues #36 (toast system) and #37 (`ConfirmDialog`) are now
+built, the rest are still open.
 What's built:
 
 - **Backend** (`src/`): 4-project skeleton (Domain → Application → Infrastructure → Api)
@@ -512,6 +512,35 @@ What's built:
     through the real dev server — the "Team angelegt." toast renders with the check icon, is
     dismissible, and correctly coexists with a separate inline "Team existiert bereits."
     validation error triggered right after it.
+  - **Styled `ConfirmDialog`** (issue #37) — the four destructive actions that used the browser's
+    native `confirm()` (employee delete in `EmployeesView.vue`; contract/absence delete in
+    `EmployeeDetailModal.vue`; assignment delete in `ShiftAssignmentModal.vue`) now use a
+    `ModalShell`-based dialog instead, matching the rest of the app's dark-glass styling. Built
+    the same async/await shape as the native one it replaces: `stores/confirm.ts` (a Pinia
+    store) exposes `ask(message, options): Promise<boolean>`, resolved when the user picks
+    Abbrechen/Löschen (or Escape/backdrop-click/the X, all treated as cancel); call sites just
+    changed `if (!confirm(...))` to `if (!(await confirmStore.ask(...)))`. Per the issue's ask,
+    each message names what's being deleted rather than a generic "really delete?" — the
+    employee's full name, the contract's `validFrom` date, the absence's date range, and the
+    assignment's shift-type name + date (all via the existing `formatDate` helper from issue
+    #26) — which meant three of the four delete handlers changed from taking just an `id` to
+    taking the full row object, so the message has something to read.
+    A real bug surfaced building this: `ConfirmDialog` renders on top of an already-open
+    `ModalShell` in two of its four call sites (contract/absence delete from inside
+    `EmployeeDetailModal`, assignment delete from inside `ShiftAssignmentModal`) — and
+    `ModalShell`'s Escape handler is a plain `window` listener, so both the confirm dialog and
+    the modal underneath it were independently listening for the same keydown and would both
+    close on one Escape press, silently discarding whatever the user had open in the parent
+    modal. Fixed by having `ModalShell` suppress its own Escape handling whenever
+    `confirmStore.request` is set (so an underlying modal goes inert while a confirmation is
+    stacked on top of it), and giving `ConfirmDialog` its own independent Escape listener rather
+    than relying on `ModalShell`'s (now-suppressed-elsewhere) one. Verified in a real headless
+    Chromium against the actual dev server (API mocked, same technique as the toast
+    verification): confirmed the dialog names the right thing for both the employee-delete and
+    contract-delete cases, Abbrechen aborts with zero API calls made, Löschen deletes and shows
+    the existing success toast, and — the specific regression this fix targets — opening the
+    contract-delete confirm from inside an open `EmployeeDetailModal` and pressing Escape closes
+    only the confirm dialog, leaving the employee editor open underneath it.
   - `components/AppShell.vue` — sidebar nav (Übersicht/Dienstplan/Mitarbeiter/Stammdaten/
     Einstellungen) + user identity + logout, applying CLAUDE.md's "Visual design" tokens (dark
     glass, Inter, blue→indigo accent). `SettingsView` is still a styled-but-minimal placeholder

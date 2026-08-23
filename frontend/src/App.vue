@@ -3,6 +3,7 @@ import { useRoute } from 'vue-router'
 import { version } from '../package.json'
 import AppShell from './components/AppShell.vue'
 import ToastContainer from './components/ToastContainer.vue'
+import ConfirmDialog from './components/ConfirmDialog.vue'
 
 const route = useRoute()
 </script>
@@ -16,4 +17,5 @@ const route = useRoute()
   </AppShell>
   <span class="fixed bottom-2 right-3 text-[11px] text-slate-600 select-none">v{{ version }}</span>
   <ToastContainer />
+  <ConfirmDialog />
 </template>

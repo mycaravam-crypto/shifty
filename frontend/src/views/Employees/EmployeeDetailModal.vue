@@ -6,6 +6,7 @@ import api from '../../services/api'
 import ModalShell from '../../components/ModalShell.vue'
 import { formatDate } from '../../utils/date'
 import { useToastStore } from '../../stores/toast'
+import { useConfirmStore } from '../../stores/confirm'
 
 interface Employee {
   id: string
@@ -60,6 +61,7 @@ const inputClass =
   'rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-indigo-500'
 
 const toast = useToastStore()
+const confirmStore = useConfirmStore()
 const form = ref({ ...props.employee })
 const savingEmployee = ref(false)
 const employeeError = ref('')
@@ -166,10 +168,13 @@ async function onCreateContract() {
   }
 }
 
-async function onDeleteContract(id: string) {
-  if (!confirm('Vertrag wirklich löschen?')) return
+async function onDeleteContract(contract: Contract) {
+  const ok = await confirmStore.ask(
+    `Vertrag ab ${formatDate(contract.validFrom)} wirklich löschen?`,
+  )
+  if (!ok) return
   try {
-    await api.delete(`/contracts/${id}`)
+    await api.delete(`/contracts/${contract.id}`)
     toast.success('Vertrag gelöscht.')
     await loadContracts()
   } catch {
@@ -215,10 +220,13 @@ async function onCreateAbsence() {
   }
 }
 
-async function onDeleteAbsence(id: string) {
-  if (!confirm('Abwesenheit wirklich löschen?')) return
+async function onDeleteAbsence(absence: Absence) {
+  const ok = await confirmStore.ask(
+    `Abwesenheit vom ${formatDate(absence.from)} bis ${formatDate(absence.to)} wirklich löschen?`,
+  )
+  if (!ok) return
   try {
-    await api.delete(`/absences/${id}`)
+    await api.delete(`/absences/${absence.id}`)
     toast.success('Abwesenheit gelöscht.')
     await loadAbsences()
   } catch {
@@ -334,7 +342,7 @@ onMounted(() => {
                 <td class="px-3 py-2 text-right">
                   <button
                     class="text-slate-500 hover:text-rose-400 transition-colors"
-                    @click="onDeleteContract(c.id)"
+                    @click="onDeleteContract(c)"
                   >
                     <Trash2 :size="14" />
                   </button>
@@ -430,7 +438,7 @@ onMounted(() => {
                 <td class="px-3 py-2 text-right">
                   <button
                     class="text-slate-500 hover:text-rose-400 transition-colors"
-                    @click="onDeleteAbsence(a.id)"
+                    @click="onDeleteAbsence(a)"
                   >
                     <Trash2 :size="14" />
                   </button>

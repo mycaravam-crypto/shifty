@@ -4,6 +4,8 @@ import { Trash2 } from '@lucide/vue'
 import api from '../../services/api'
 import ModalShell from '../../components/ModalShell.vue'
 import { useToastStore } from '../../stores/toast'
+import { useConfirmStore } from '../../stores/confirm'
+import { formatDate } from '../../utils/date'
 
 interface ShiftType {
   id: string
@@ -39,6 +41,7 @@ const form = ref({
 const saving = ref(false)
 const error = ref('')
 const toast = useToastStore()
+const confirmStore = useConfirmStore()
 
 function onShiftTypeChange() {
   const shiftType = props.shiftTypes.find((s) => s.id === form.value.shiftTypeId)
@@ -70,7 +73,11 @@ async function onSave() {
 }
 
 async function onDelete() {
-  if (!confirm('Schicht wirklich löschen?')) return
+  const shiftTypeName = props.shiftTypes.find((s) => s.id === props.assignment.shiftTypeId)?.name
+  const ok = await confirmStore.ask(
+    `Schicht${shiftTypeName ? ` „${shiftTypeName}“` : ''} am ${formatDate(props.assignment.date)} wirklich löschen?`,
+  )
+  if (!ok) return
   try {
     await api.delete(`/assignments/${props.assignment.id}`)
     toast.success('Schicht gelöscht.')

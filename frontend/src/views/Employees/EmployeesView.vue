@@ -5,6 +5,7 @@ import axios from 'axios'
 import api from '../../services/api'
 import EmployeeDetailModal from './EmployeeDetailModal.vue'
 import { useToastStore } from '../../stores/toast'
+import { useConfirmStore } from '../../stores/confirm'
 
 interface Employee {
   id: string
@@ -22,6 +23,7 @@ interface Team {
 }
 
 const toast = useToastStore()
+const confirmStore = useConfirmStore()
 const employees = ref<Employee[]>([])
 const teams = ref<Team[]>([])
 const loading = ref(true)
@@ -75,10 +77,13 @@ async function onCreate() {
   }
 }
 
-async function onDelete(id: string) {
-  if (!confirm('Mitarbeiter wirklich löschen?')) return
+async function onDelete(employee: Employee) {
+  const ok = await confirmStore.ask(
+    `Mitarbeiter „${employee.lastName}, ${employee.firstName}“ wirklich löschen?`,
+  )
+  if (!ok) return
   try {
-    await api.delete(`/employees/${id}`)
+    await api.delete(`/employees/${employee.id}`)
     toast.success('Mitarbeiter gelöscht.')
     await load()
   } catch {
@@ -190,7 +195,7 @@ onMounted(load)
             <td class="px-4 py-3 text-right">
               <button
                 class="text-slate-500 hover:text-rose-400 transition-colors"
-                @click.stop="onDelete(e.id)"
+                @click.stop="onDelete(e)"
               >
                 <Trash2 :size="16" />
               </button>
