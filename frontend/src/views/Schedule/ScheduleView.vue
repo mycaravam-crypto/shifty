@@ -539,18 +539,58 @@ async function onAssignmentUpdated() {
 // PDF-generation library. `printEmployeeId` narrows the printed table to one
 // row; "all" export is just printing with it unset.
 const printEmployeeId = ref<string | null>(null)
+// A month can have 28-31 day columns and any number of employee rows — at the
+// table's normal on-screen size that reliably overflows a single landscape
+// page both across and down, so the old export spilled the plan across many
+// pages. `zoom` (unlike `transform: scale`, which Chrome's print pagination
+// ignores) actually shrinks the layout box, so it can be sized down until the
+// whole table's natural (unscaled) footprint fits the printable area.
+const PRINT_PAGE_WIDTH_PX = 1046 // A4 landscape, ~10mm margins, 96dpi
+const PRINT_PAGE_HEIGHT_PX = 718
+// Measurement happens under normal screen styles, before the `print:` compact
+// classes (smaller padding/font, hidden progress bar) kick in — so it slightly
+// overestimates the table's real printed footprint. That's the safe direction
+// to be wrong in: the actual print render ends up a little smaller than this
+// computes for, never bigger, so the one-page fit is never violated by it.
+// No floor on the zoom itself — a very dense month legitimately needs to
+// shrink further than a "readable" minimum to still land on one page, which
+// is the whole point of this export.
+const printZoom = ref(1)
+function computePrintZoom() {
+  const table = tableWrapRef.value?.firstElementChild as HTMLElement | null
+  if (!table) return
+  let height = table.scrollHeight
+  // Single-employee export only prints one <tbody> row (via print:hidden on
+  // the rest), but that row's still in the DOM and counted by scrollHeight —
+  // measure just the header + that one row instead, or zoom would over-shrink.
+  if (printEmployeeId.value) {
+    const thead = table.querySelector('thead') as HTMLElement | null
+    const row = table.querySelector(
+      `tbody tr[data-employee-row="${printEmployeeId.value}"]`,
+    ) as HTMLElement | null
+    if (thead && row) height = thead.offsetHeight + row.offsetHeight
+  }
+  const widthZoom = PRINT_PAGE_WIDTH_PX / table.scrollWidth
+  const heightZoom = PRINT_PAGE_HEIGHT_PX / height
+  printZoom.value = Math.min(1, widthZoom, heightZoom)
+}
 async function exportAllPdf() {
   printEmployeeId.value = null
+  await nextTick()
+  computePrintZoom()
   await nextTick()
   window.print()
 }
 async function exportEmployeePdf(employeeId: string) {
   printEmployeeId.value = employeeId
   await nextTick()
+  computePrintZoom()
+  await nextTick()
   window.print()
 }
 window.addEventListener('afterprint', () => {
   printEmployeeId.value = null
+  printZoom.value = 1
 })
 </script>
 
@@ -667,17 +707,21 @@ window.addEventListener('afterprint', () => {
           </select>
         </div>
 
-        <div ref="tableWrapRef" class="glass rounded-xl overflow-x-auto print:overflow-visible">
+        <div
+          ref="tableWrapRef"
+          class="glass rounded-xl overflow-x-auto print:overflow-visible"
+          :style="{ zoom: printZoom }"
+        >
           <table class="w-full text-sm">
             <thead>
               <tr
-                class="text-left text-[10px] uppercase tracking-wider font-bold text-slate-500 border-b border-white/8"
+                class="text-left text-[10px] uppercase tracking-wider font-bold text-slate-500 border-b border-white/8 print:text-[7px]"
               >
-                <th class="px-4 py-3">Mitarbeiter</th>
+                <th class="px-4 py-3 print:px-1 print:py-1">Mitarbeiter</th>
                 <th
                   v-for="d in days"
                   :key="toIso(d)"
-                  class="px-3 py-3 min-w-[130px]"
+                  class="px-3 py-3 min-w-[130px] print:px-0.5 print:py-1 print:min-w-0"
                   :class="{ 'text-amber-400': holidayFor(toIso(d)) }"
                   :title="holidayFor(toIso(d))?.name"
                 >
@@ -697,9 +741,10 @@ window.addEventListener('afterprint', () => {
                 :key="e.id"
                 class="border-b border-white/5 last:border-0"
                 :class="{ 'print:hidden': printEmployeeId && printEmployeeId !== e.id }"
+                :data-employee-row="e.id"
               >
-                <td class="px-4 py-3 align-top">
-                  <div class="flex items-center gap-1.5">
+                <td class="px-4 py-3 align-top print:px-1 print:py-1">
+                  <div class="flex items-center gap-1.5 print:text-[8px]">
                     {{ e.lastName }}, {{ e.firstName }}
                     <button
                       class="text-slate-500 hover:text-slate-200 transition-colors print:hidden"
@@ -711,7 +756,7 @@ window.addEventListener('afterprint', () => {
                   </div>
                   <template v-if="targetHoursFor(e.id) !== null">
                     <div
-                      class="font-mono text-xs mt-1"
+                      class="font-mono text-xs mt-1 print:text-[7px] print:mt-0.5"
                       :class="
                         netHoursFor(e.id) !== targetHoursFor(e.id)
                           ? 'text-amber-400'
@@ -723,26 +768,29 @@ window.addEventListener('afterprint', () => {
                     </div>
                     <div
                       v-if="carriedOverFor(e.id) !== 0"
-                      class="font-mono text-[11px] mt-0.5"
+                      class="font-mono text-[11px] mt-0.5 print:text-[7px] print:mt-0"
                       :class="carriedOverFor(e.id) > 0 ? 'text-emerald-400' : 'text-rose-400'"
                     >
                       Übertrag: {{ carriedOverFor(e.id) > 0 ? '+' : '' }}{{ carriedOverFor(e.id) }}h
                     </div>
-                    <div class="w-24 h-1 rounded-full bg-white/10 mt-1 overflow-hidden">
+                    <div class="w-24 h-1 rounded-full bg-white/10 mt-1 overflow-hidden print:hidden">
                       <div
                         class="h-full bg-linear-to-r from-blue-600 to-indigo-600"
                         :style="{ width: barWidth(e.id) + '%' }"
                       ></div>
                     </div>
                   </template>
-                  <div v-if="laborCostFor(e.id) !== null" class="font-mono text-xs text-emerald-400 mt-1">
+                  <div
+                    v-if="laborCostFor(e.id) !== null"
+                    class="font-mono text-xs text-emerald-400 mt-1 print:text-[7px] print:mt-0"
+                  >
                     {{ currencyFmt.format(laborCostFor(e.id)!) }}
                   </div>
                 </td>
                 <td
                   v-for="d in days"
                   :key="toIso(d)"
-                  class="px-2 py-2 align-top transition-colors"
+                  class="px-2 py-2 align-top transition-colors print:px-0.5 print:py-0.5"
                   :class="{
                     'bg-blue-500/10 ring-1 ring-inset ring-blue-500/50':
                       dragOverKey === `${e.id}|${toIso(d)}`,
@@ -753,21 +801,21 @@ window.addEventListener('afterprint', () => {
                   <div
                     v-for="a in assignmentsFor(e.id, toIso(d))"
                     :key="a.id"
-                    class="rounded-lg bg-white/5 border border-white/10 px-2 py-1 mb-1 cursor-pointer hover:bg-white/10 transition-colors touch-none select-none"
+                    class="rounded-lg bg-white/5 border border-white/10 px-2 py-1 mb-1 cursor-pointer hover:bg-white/10 transition-colors touch-none select-none print:rounded-none print:bg-transparent print:border-0 print:border-b print:border-white/10 print:px-0 print:py-0.5 print:mb-0"
                     :class="{
                       'opacity-40':
                         drag?.active && drag.payload.kind === 'assignment' && drag.payload.assignmentId === a.id,
                     }"
                     @pointerdown="onChipPointerDown($event, assignmentDragPayload(a))"
                   >
-                    <div class="flex items-center gap-1.5 text-xs">
+                    <div class="flex items-center gap-1.5 text-xs print:text-[7px] print:gap-1">
                       <span
-                        class="w-2 h-2 rounded-full shrink-0"
+                        class="w-2 h-2 rounded-full shrink-0 print:w-1.5 print:h-1.5"
                         :style="{ backgroundColor: shiftTypeById(a.shiftTypeId)?.color }"
                       ></span>
                       {{ shiftTypeById(a.shiftTypeId)?.name }}
                     </div>
-                    <div class="font-mono text-[11px] text-slate-500">
+                    <div class="font-mono text-[11px] text-slate-500 print:text-[7px]">
                       {{ a.startTime.slice(0, 5) }}–{{ a.endTime.slice(0, 5) }}
                     </div>
                   </div>

@@ -427,11 +427,34 @@ What's built:
     dependency — no library added. `printEmployeeId` (unset for "all", set for a single row)
     hides non-matching `<tr>`s via `print:hidden`; the toolbar, palette, search/filter row,
     validation panel, and sidebar (`components/AppShell.vue`) are all `print:hidden` too, and a
-    scoped `@page { size: landscape }` block fits a month's ~30 day columns on the page. Users
-    save the resulting print dialog as PDF themselves (every major browser's print dialog offers
-    "Save as PDF" natively) — there's no server-side PDF generation. Verified via
-    `vue-tsc -b`/`vite build` clean; not clicked through in an actual browser print preview (same
-    Playwright-install gap as the rest of this app's frontend work).
+    scoped `@page { size: landscape }` block sets the page orientation. Users save the resulting
+    print dialog as PDF themselves (every major browser's print dialog offers "Save as PDF"
+    natively) — there's no server-side PDF generation.
+    First cut just relied on that `@page` block and the table's normal on-screen sizing, which
+    reliably spilled a full month (28-31 day columns × every employee) across several pages both
+    across and down — reported as "the export feature is bad, we need to compress the plan to
+    fit on one page" and fixed the same session. Two changes: the table's print-only styling was
+    tightened (smaller padding/font on headers/cells/assignment chips, the per-employee hour
+    progress bar hidden — `netHoursFor`/`targetHoursFor`'s numbers stay, just the decorative bar
+    goes) to shrink its natural footprint; then `computePrintZoom()` measures that footprint
+    (`table.scrollWidth`/`scrollHeight`, or just the header + the one matching `<tr>` when
+    `printEmployeeId` scopes to a single employee — that row's still in the DOM either way, just
+    hidden via `print:hidden`) right before printing and sets a CSS `zoom` (not
+    `transform: scale`, which Chrome's print pagination ignores for page-break purposes — `zoom`
+    actually resizes the layout box) on the table wrapper so the whole thing always lands on one
+    landscape A4 page, however many days/employees it has to shrink to fit — deliberately no
+    floor on how small that zoom can go, since "always fits on one page" was the explicit ask,
+    even for a plan dense enough that this makes it small. Verified for real this time, not just
+    `vue-tsc -b`/`vite build` clean: this session could reach `/opt/pw-browsers/chromium`
+    directly, so a scratch Playwright script drove the real dev server (API mocked at the network
+    layer, same technique as the touch drag-and-drop verification below) with a synthetic
+    worst-case month (18 employees × a full 31-day month, most days double-booked) and called
+    `page.pdf()` — the browser's actual print engine, same one `window.print()`'s "Save as PDF"
+    uses — for both the "all" and single-employee export paths, then rasterized the output with
+    PyMuPDF to confirm visually: both are exactly 1 page, the single-employee export correctly
+    shows only that one row, and a second pass with a narrower (10-day) synthetic schedule
+    confirmed the single-employee zoom is computed independently from the all-employees one
+    (0.72 vs 0.36) rather than reusing the same (over-conservative) figure.
   - `views/Dashboard/DashboardView.vue` (issues #30/#31, frontend-only — the backend read model
     from issue #29 needed no changes) — new `/dashboard` route, reachable via a new "Übersicht"
     nav entry (placed first, as the landing overview). One `GET /dashboard` fetch per
