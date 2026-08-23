@@ -3,12 +3,24 @@ import { X } from '@lucide/vue'
 
 defineProps<{ title: string; wide?: boolean }>()
 const emit = defineEmits<{ close: [] }>()
+
+// A tap that opens this modal (e.g. an assignment chip on a touch device)
+// is followed by the browser's synthetic "click" compatibility event at the
+// same coordinates — which, once the backdrop exists, lands squarely on it
+// and would immediately close what the tap just opened. Ignore backdrop
+// clicks in the brief window right after mount so only a real outside tap
+// closes the modal.
+const openedAt = Date.now()
+function onBackdropClick() {
+  if (Date.now() - openedAt < 500) return
+  emit('close')
+}
 </script>
 
 <template>
   <div
     class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-    @click.self="emit('close')"
+    @click.self="onBackdropClick"
   >
     <div
       class="glass rounded-2xl shadow-xl w-full max-h-[90vh] overflow-y-auto"

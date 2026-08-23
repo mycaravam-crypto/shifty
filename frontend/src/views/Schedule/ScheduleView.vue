@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { ChevronLeft, ChevronRight, Copy, Search } from '@lucide/vue'
 import api from '../../services/api'
 import ShiftAssignmentModal from './ShiftAssignmentModal.vue'
@@ -216,6 +216,7 @@ async function load() {
   }
 }
 onMounted(load)
+onUnmounted(cleanupDrag)
 
 function prevMonth() {
   anchorDate.value = addMonths(anchorDate.value, -1)
@@ -281,19 +282,118 @@ async function onCopyMonth() {
   }
 }
 
-function onPaletteDragStart(e: DragEvent, shiftTypeId: string) {
-  e.dataTransfer?.setData('application/json', JSON.stringify({ kind: 'shiftType', shiftTypeId }))
+// Pointer-events-based drag (works for mouse and touch alike — native HTML5
+// DnD has no touch support). Drag only becomes "active" past a small movement
+// threshold so a plain tap/click still opens the assignment modal.
+interface DragPayload {
+  kind: 'shiftType' | 'assignment'
+  shiftTypeId?: string
+  assignmentId?: string
+  label: string
+  color: string
+  time: string
 }
-function onAssignmentDragStart(e: DragEvent, assignmentId: string) {
-  e.dataTransfer?.setData('application/json', JSON.stringify({ kind: 'assignment', assignmentId }))
+interface DragState {
+  payload: DragPayload
+  pointerId: number
+  startX: number
+  startY: number
+  x: number
+  y: number
+  active: boolean
 }
-async function onDrop(e: DragEvent, employeeId: string, dateIso: string) {
-  const raw = e.dataTransfer?.getData('application/json')
-  if (!raw || !currentSchedule.value) return
-  const payload = JSON.parse(raw)
+const DRAG_ACTIVATE_PX = 6
+const drag = ref<DragState | null>(null)
+const dragOverKey = ref<string | null>(null)
+
+function paletteDragPayload(s: ShiftType): DragPayload {
+  return {
+    kind: 'shiftType',
+    shiftTypeId: s.id,
+    label: s.name,
+    color: s.color,
+    time: `${s.startTime.slice(0, 5)}–${s.endTime.slice(0, 5)}`,
+  }
+}
+function assignmentDragPayload(a: Assignment): DragPayload {
+  const shiftType = shiftTypeById(a.shiftTypeId)
+  return {
+    kind: 'assignment',
+    assignmentId: a.id,
+    label: shiftType?.name ?? '',
+    color: shiftType?.color ?? '#64748b',
+    time: `${a.startTime.slice(0, 5)}–${a.endTime.slice(0, 5)}`,
+  }
+}
+
+function onChipPointerDown(e: PointerEvent, payload: DragPayload) {
+  if (e.button !== 0) return
+  ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
+  drag.value = {
+    payload,
+    pointerId: e.pointerId,
+    startX: e.clientX,
+    startY: e.clientY,
+    x: e.clientX,
+    y: e.clientY,
+    active: false,
+  }
+  window.addEventListener('pointermove', onDragPointerMove)
+  window.addEventListener('pointerup', onDragPointerUp)
+  window.addEventListener('pointercancel', onDragPointerCancel)
+}
+function onDragPointerMove(e: PointerEvent) {
+  if (!drag.value || e.pointerId !== drag.value.pointerId) return
+  drag.value.x = e.clientX
+  drag.value.y = e.clientY
+  if (!drag.value.active) {
+    const dx = e.clientX - drag.value.startX
+    const dy = e.clientY - drag.value.startY
+    if (Math.hypot(dx, dy) < DRAG_ACTIVATE_PX) return
+    drag.value.active = true
+  }
+  e.preventDefault()
+  const cell = document
+    .elementFromPoint(e.clientX, e.clientY)
+    ?.closest<HTMLElement>('[data-employee-id]')
+  dragOverKey.value = cell ? `${cell.dataset.employeeId}|${cell.dataset.date}` : null
+}
+async function onDragPointerUp(e: PointerEvent) {
+  if (!drag.value || e.pointerId !== drag.value.pointerId) return
+  const { payload, active } = drag.value
+  const cell = document
+    .elementFromPoint(e.clientX, e.clientY)
+    ?.closest<HTMLElement>('[data-employee-id]')
+  cleanupDrag()
+
+  if (!active) {
+    if (payload.kind === 'assignment') {
+      const assignment = assignments.value.find((a) => a.id === payload.assignmentId)
+      if (assignment) selectedAssignment.value = assignment
+    }
+    return
+  }
+  if (cell?.dataset.employeeId && cell.dataset.date) {
+    await performDrop(payload, cell.dataset.employeeId, cell.dataset.date)
+  }
+}
+function onDragPointerCancel(e: PointerEvent) {
+  if (!drag.value || e.pointerId !== drag.value.pointerId) return
+  cleanupDrag()
+}
+function cleanupDrag() {
+  drag.value = null
+  dragOverKey.value = null
+  window.removeEventListener('pointermove', onDragPointerMove)
+  window.removeEventListener('pointerup', onDragPointerUp)
+  window.removeEventListener('pointercancel', onDragPointerCancel)
+}
+
+async function performDrop(payload: DragPayload, employeeId: string, dateIso: string) {
+  if (!currentSchedule.value) return
 
   if (payload.kind === 'shiftType') {
-    const shiftType = shiftTypeById(payload.shiftTypeId)
+    const shiftType = shiftTypeById(payload.shiftTypeId!)
     if (!shiftType) return
     await api.post(`/schedules/${currentSchedule.value.id}/assignments`, {
       employeeId,
@@ -325,7 +425,16 @@ async function onAssignmentUpdated() {
 </script>
 
 <template>
-  <div class="p-8">
+  <div class="p-8" :class="{ 'select-none': drag?.active }">
+    <div
+      v-if="drag?.active"
+      class="fixed z-50 pointer-events-none flex items-center gap-2 rounded-lg bg-[#11141c] border border-white/20 px-3 py-1.5 text-sm shadow-lg"
+      :style="{ left: drag.x + 14 + 'px', top: drag.y + 14 + 'px' }"
+    >
+      <span class="w-2.5 h-2.5 rounded-full shrink-0" :style="{ backgroundColor: drag.payload.color }"></span>
+      {{ drag.payload.label }}
+      <span class="font-mono text-slate-500 text-xs">{{ drag.payload.time }}</span>
+    </div>
     <div class="flex items-center justify-between mb-6">
       <h1 class="text-2xl font-semibold">Dienstplan</h1>
       <div class="flex items-center gap-3">
@@ -380,9 +489,8 @@ async function onAssignmentUpdated() {
           <div
             v-for="s in activeShiftTypes"
             :key="s.id"
-            draggable="true"
-            class="flex items-center gap-2 rounded-lg bg-white/5 border border-white/10 px-3 py-1.5 text-sm cursor-grab"
-            @dragstart="onPaletteDragStart($event, s.id)"
+            class="flex items-center gap-2 rounded-lg bg-white/5 border border-white/10 px-3 py-1.5 text-sm cursor-grab touch-none select-none"
+            @pointerdown="onChipPointerDown($event, paletteDragPayload(s))"
           >
             <span
               class="w-2.5 h-2.5 rounded-full shrink-0"
@@ -466,17 +574,23 @@ async function onAssignmentUpdated() {
                 <td
                   v-for="d in days"
                   :key="toIso(d)"
-                  class="px-2 py-2 align-top"
-                  @dragover.prevent
-                  @drop="onDrop($event, e.id, toIso(d))"
+                  class="px-2 py-2 align-top transition-colors"
+                  :class="{
+                    'bg-blue-500/10 ring-1 ring-inset ring-blue-500/50':
+                      dragOverKey === `${e.id}|${toIso(d)}`,
+                  }"
+                  :data-employee-id="e.id"
+                  :data-date="toIso(d)"
                 >
                   <div
                     v-for="a in assignmentsFor(e.id, toIso(d))"
                     :key="a.id"
-                    draggable="true"
-                    class="rounded-lg bg-white/5 border border-white/10 px-2 py-1 mb-1 cursor-pointer hover:bg-white/10 transition-colors"
-                    @dragstart="onAssignmentDragStart($event, a.id)"
-                    @click="selectedAssignment = a"
+                    class="rounded-lg bg-white/5 border border-white/10 px-2 py-1 mb-1 cursor-pointer hover:bg-white/10 transition-colors touch-none select-none"
+                    :class="{
+                      'opacity-40':
+                        drag?.active && drag.payload.kind === 'assignment' && drag.payload.assignmentId === a.id,
+                    }"
+                    @pointerdown="onChipPointerDown($event, assignmentDragPayload(a))"
                   >
                     <div class="flex items-center gap-1.5 text-xs">
                       <span
