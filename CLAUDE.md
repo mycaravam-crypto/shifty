@@ -23,7 +23,10 @@ migration + controllers). Frontend UI for it is not. What's built:
     tables too since nothing had been applied before. Unique constraints per readme.md §11
     (`Employee.PersonnelNumber`, `Team.Name`, `ShiftType.Name`, `Contract.EmployeeId+ValidFrom`)
     and FKs (`Employee.TeamId` restrict, `Contract.EmployeeId` cascade) are in the DbContext's
-    `OnModelCreating`, not just app-level checks. Not yet applied to any real database
+    `OnModelCreating`, not just app-level checks. Verified end-to-end against a real local
+    Postgres via `docker compose` — both migrations apply cleanly, CRUD + the eligibility
+    endpoint work, unique-constraint conflicts return 409, and `ApiRead`/`ApiWrite` scope
+    checks behave (401 unauthenticated, 403 for a ReadOnly key on write)
     ([issue #1](https://github.com/mycaravam-crypto/shifty/issues/1)).
   - `Api/Controllers/`: `EmployeesController` (full CRUD), `TeamsController` (GET/POST — matches
     §18's minimal cut exactly, no PUT/DELETE), `ShiftTypesController` (GET/POST/PUT, no DELETE,
