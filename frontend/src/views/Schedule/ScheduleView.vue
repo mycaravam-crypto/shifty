@@ -54,6 +54,10 @@ interface Absence {
   from: string
   to: string
 }
+interface PublicHoliday {
+  date: string
+  name: string
+}
 interface ValidationIssue {
   type: string
   message: string
@@ -104,6 +108,7 @@ const schedules = ref<Schedule[]>([])
 const contractsByEmployee = ref<Map<string, Contract[]>>(new Map())
 const absencesByEmployee = ref<Map<string, Absence[]>>(new Map())
 const balanceByEmployee = ref<Map<string, number>>(new Map())
+const holidays = ref<PublicHoliday[]>([])
 const assignments = ref<Assignment[]>([])
 const validation = ref<ValidationResult | null>(null)
 const selectedAssignment = ref<Assignment | null>(null)
@@ -146,6 +151,15 @@ const days = computed(() => {
 
 function shiftTypeById(id: string) {
   return shiftTypes.value.find((s) => s.id === id)
+}
+function holidayFor(dateIso: string): PublicHoliday | undefined {
+  return holidays.value.find((h) => h.date === dateIso)
+}
+async function loadHolidays() {
+  const res = await api.get('/public-holidays', {
+    params: { start: monthStartIso.value, end: monthEndIso.value },
+  })
+  holidays.value = res.data
 }
 function assignmentsFor(employeeId: string, dateIso: string) {
   return assignments.value.filter((a) => a.employeeId === employeeId && a.date === dateIso)
@@ -245,7 +259,7 @@ async function load() {
     absencesByEmployee.value = new Map(
       employees.value.map((e, i) => [e.id, absencesResults[i].data]),
     )
-    await loadBalances()
+    await Promise.all([loadBalances(), loadHolidays()])
   } catch {
     error.value = 'Dienstplan konnte nicht geladen werden.'
   } finally {
@@ -255,7 +269,10 @@ async function load() {
 onMounted(load)
 onUnmounted(cleanupDrag)
 watch(monthStartIso, () => {
-  if (!loading.value) loadBalances()
+  if (!loading.value) {
+    loadBalances()
+    loadHolidays()
+  }
 })
 
 function prevMonth() {
@@ -575,8 +592,20 @@ async function onAssignmentUpdated() {
                 class="text-left text-[10px] uppercase tracking-wider font-bold text-slate-500 border-b border-white/8"
               >
                 <th class="px-4 py-3">Mitarbeiter</th>
-                <th v-for="d in days" :key="toIso(d)" class="px-3 py-3 min-w-[130px]">
-                  {{ weekdayFmt.format(d) }}
+                <th
+                  v-for="d in days"
+                  :key="toIso(d)"
+                  class="px-3 py-3 min-w-[130px]"
+                  :class="{ 'text-amber-400': holidayFor(toIso(d)) }"
+                  :title="holidayFor(toIso(d))?.name"
+                >
+                  <span class="inline-flex items-center gap-1">
+                    {{ weekdayFmt.format(d) }}
+                    <span
+                      v-if="holidayFor(toIso(d))"
+                      class="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0"
+                    ></span>
+                  </span>
                 </th>
               </tr>
             </thead>
