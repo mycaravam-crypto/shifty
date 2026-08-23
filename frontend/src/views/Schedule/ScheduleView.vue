@@ -60,16 +60,19 @@ interface ValidationResult {
   isValid: boolean
 }
 
-function mondayOf(date: Date): Date {
-  const d = new Date(date)
-  d.setDate(d.getDate() - ((d.getDay() + 6) % 7))
-  d.setHours(0, 0, 0, 0)
-  return d
+function firstOfMonth(date: Date): Date {
+  return new Date(date.getFullYear(), date.getMonth(), 1)
+}
+function lastOfMonth(date: Date): Date {
+  return new Date(date.getFullYear(), date.getMonth() + 1, 0)
 }
 function addDays(date: Date, n: number): Date {
   const d = new Date(date)
   d.setDate(d.getDate() + n)
   return d
+}
+function addMonths(date: Date, n: number): Date {
+  return new Date(date.getFullYear(), date.getMonth() + n, 1)
 }
 function toIso(date: Date): string {
   const y = date.getFullYear()
@@ -81,18 +84,12 @@ function parseIso(iso: string): Date {
   const [y, m, d] = iso.split('-').map(Number)
   return new Date(y, m - 1, d)
 }
-function isoWeekNumber(date: Date): number {
-  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()))
-  const dayNum = d.getUTCDay() || 7
-  d.setUTCDate(d.getUTCDate() + 4 - dayNum)
-  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1))
-  return Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7)
-}
 const weekdayFmt = new Intl.DateTimeFormat('de-DE', {
   weekday: 'short',
   day: '2-digit',
   month: '2-digit',
 })
+const monthFmt = new Intl.DateTimeFormat('de-DE', { month: 'long', year: 'numeric' })
 
 const employees = ref<Employee[]>([])
 const teams = ref<Team[]>([])
@@ -106,14 +103,15 @@ const anchorDate = ref(new Date())
 const loading = ref(true)
 const error = ref('')
 const creatingSchedule = ref(false)
-const copyingWeek = ref(false)
+const copyingMonth = ref(false)
 const search = ref('')
 const teamFilter = ref('')
 
-const weekStart = computed(() => mondayOf(anchorDate.value))
-const weekEnd = computed(() => addDays(weekStart.value, 6))
-const weekStartIso = computed(() => toIso(weekStart.value))
-const weekEndIso = computed(() => toIso(weekEnd.value))
+const monthStart = computed(() => firstOfMonth(anchorDate.value))
+const monthEnd = computed(() => lastOfMonth(anchorDate.value))
+const monthStartIso = computed(() => toIso(monthStart.value))
+const monthEndIso = computed(() => toIso(monthEnd.value))
+const monthLabel = computed(() => monthFmt.format(monthStart.value))
 
 const activeEmployees = computed(() => employees.value.filter((e) => e.active))
 const activeShiftTypes = computed(() => shiftTypes.value.filter((s) => s.active))
@@ -127,12 +125,12 @@ const visibleEmployees = computed(() => {
 })
 
 const currentSchedule = computed(() =>
-  schedules.value.find((s) => s.startDate === weekStartIso.value),
+  schedules.value.find((s) => s.startDate === monthStartIso.value),
 )
 
 const days = computed(() => {
-  const start = currentSchedule.value ? parseIso(currentSchedule.value.startDate) : weekStart.value
-  const end = currentSchedule.value ? parseIso(currentSchedule.value.endDate) : weekEnd.value
+  const start = currentSchedule.value ? parseIso(currentSchedule.value.startDate) : monthStart.value
+  const end = currentSchedule.value ? parseIso(currentSchedule.value.endDate) : monthEnd.value
   const result: Date[] = []
   for (let d = start; d <= end; d = addDays(d, 1)) result.push(d)
   return result
@@ -152,11 +150,12 @@ function netHoursFor(employeeId: string) {
 function targetHoursFor(employeeId: string): number | null {
   const contracts = contractsByEmployee.value.get(employeeId) ?? []
   if (!contracts.length) return null
-  const start = weekStartIso.value
+  const start = monthStartIso.value
   const active = contracts.find((c) => c.validFrom <= start && (!c.validTo || c.validTo >= start))
   const contract =
     active ?? [...contracts].sort((a, b) => b.validFrom.localeCompare(a.validFrom))[0]
-  return contract.weeklyHours
+  const daysInMonth = monthEnd.value.getDate()
+  return Math.round(((contract.weeklyHours * daysInMonth) / 7) * 10) / 10
 }
 function barWidth(employeeId: string) {
   const target = targetHoursFor(employeeId)
@@ -208,20 +207,20 @@ async function load() {
 }
 onMounted(load)
 
-function prevWeek() {
-  anchorDate.value = addDays(weekStart.value, -7)
+function prevMonth() {
+  anchorDate.value = addMonths(anchorDate.value, -1)
 }
-function nextWeek() {
-  anchorDate.value = addDays(weekStart.value, 7)
+function nextMonth() {
+  anchorDate.value = addMonths(anchorDate.value, 1)
 }
 
 async function onCreateSchedule() {
   creatingSchedule.value = true
   try {
     await api.post('/schedules', {
-      name: `Woche ${isoWeekNumber(weekStart.value)}`,
-      startDate: weekStartIso.value,
-      endDate: weekEndIso.value,
+      name: monthLabel.value,
+      startDate: monthStartIso.value,
+      endDate: monthEndIso.value,
     })
     schedules.value = (await api.get('/schedules')).data
   } finally {
@@ -229,43 +228,46 @@ async function onCreateSchedule() {
   }
 }
 
-async function onCopyWeek() {
+async function onCopyMonth() {
   if (!currentSchedule.value) return
-  copyingWeek.value = true
+  copyingMonth.value = true
   try {
-    const nextStart = addDays(weekStart.value, 7)
+    const nextStart = addMonths(anchorDate.value, 1)
     const nextStartIso = toIso(nextStart)
+    const nextMonthDays = lastOfMonth(nextStart).getDate()
     let target = schedules.value.find((s) => s.startDate === nextStartIso)
 
     if (!target) {
       const created = await api.post('/schedules', {
-        name: `Woche ${isoWeekNumber(nextStart)}`,
+        name: monthFmt.format(nextStart),
         startDate: nextStartIso,
-        endDate: toIso(addDays(nextStart, 6)),
+        endDate: toIso(lastOfMonth(nextStart)),
       })
       target = created.data
       schedules.value.push(target!)
     } else {
       const existing = await api.get(`/schedules/${target.id}`)
       if (existing.data.assignments.length) {
-        error.value = 'Nächste Woche hat bereits Schichten — Kopieren abgebrochen.'
+        error.value = 'Nächster Monat hat bereits Schichten — Kopieren abgebrochen.'
         return
       }
     }
 
     for (const a of assignments.value) {
+      // Same day-of-month next month; clamped into shorter months (e.g. 31 → 28/29/30).
+      const day = Math.min(parseIso(a.date).getDate(), nextMonthDays)
       await api.post(`/schedules/${target!.id}/assignments`, {
         employeeId: a.employeeId,
         shiftTypeId: a.shiftTypeId,
-        date: toIso(addDays(parseIso(a.date), 7)),
+        date: toIso(new Date(nextStart.getFullYear(), nextStart.getMonth(), day)),
         startTime: a.startTime,
         endTime: a.endTime,
         breakMinutes: a.breakMinutes,
       })
     }
-    nextWeek()
+    nextMonth()
   } finally {
-    copyingWeek.value = false
+    copyingMonth.value = false
   }
 }
 
@@ -317,11 +319,11 @@ async function onAssignmentUpdated() {
     <div class="flex items-center justify-between mb-6">
       <h1 class="text-2xl font-semibold">Dienstplan</h1>
       <div class="flex items-center gap-3">
-        <button class="text-slate-400 hover:text-slate-200 transition-colors" @click="prevWeek">
+        <button class="text-slate-400 hover:text-slate-200 transition-colors" @click="prevMonth">
           <ChevronLeft :size="18" />
         </button>
-        <span class="font-mono text-sm text-slate-400">{{ weekStartIso }} – {{ weekEndIso }}</span>
-        <button class="text-slate-400 hover:text-slate-200 transition-colors" @click="nextWeek">
+        <span class="font-mono text-sm text-slate-400 capitalize">{{ monthLabel }}</span>
+        <button class="text-slate-400 hover:text-slate-200 transition-colors" @click="nextMonth">
           <ChevronRight :size="18" />
         </button>
       </div>
@@ -332,13 +334,13 @@ async function onAssignmentUpdated() {
 
     <template v-else>
       <div v-if="!currentSchedule" class="glass rounded-xl p-8 text-center">
-        <p class="text-sm text-slate-500 mb-4">Für diese Woche existiert noch kein Dienstplan.</p>
+        <p class="text-sm text-slate-500 mb-4">Für diesen Monat existiert noch kein Dienstplan.</p>
         <button
           :disabled="creatingSchedule"
           class="rounded-lg bg-linear-to-r from-blue-600 to-indigo-600 px-4 py-2 text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
           @click="onCreateSchedule"
         >
-          {{ creatingSchedule ? 'Anlegen…' : 'Diese Woche anlegen' }}
+          {{ creatingSchedule ? 'Anlegen…' : 'Diesen Monat anlegen' }}
         </button>
       </div>
 
@@ -358,12 +360,12 @@ async function onAssignmentUpdated() {
         <div class="flex flex-wrap items-center gap-2 mb-4">
           <button
             v-if="assignments.length"
-            :disabled="copyingWeek"
+            :disabled="copyingMonth"
             class="flex items-center gap-1.5 rounded-lg bg-white/5 border border-white/10 px-3 py-1.5 text-sm hover:bg-white/10 transition-colors disabled:opacity-50"
-            @click="onCopyWeek"
+            @click="onCopyMonth"
           >
             <Copy :size="14" />
-            {{ copyingWeek ? 'Kopiere…' : 'Woche kopieren' }}
+            {{ copyingMonth ? 'Kopiere…' : 'Monat kopieren' }}
           </button>
           <div
             v-for="s in activeShiftTypes"

@@ -85,7 +85,9 @@ just started — only week-copy exists so far, frontend-only. What's built:
     seven rules (each its own static class, matching the readme's `PlanningDomain` diagram
     naming where it named one): `ShiftOverlapValidator` (Warning), `ContractValidator`
     (planned hours vs. the Contract active at the schedule's start, Error — the only two
-    outcomes the readme's own JSON example spells out), `EligibilityValidator` (issue #6,
+    outcomes the readme's own JSON example spells out; scales `Contract.WeeklyHours` by the
+    Schedule's actual span in days/7 rather than assuming a 7-day Schedule, since Schedules
+    are month-long in practice — see the Wochenansicht note below), `EligibilityValidator` (issue #6,
     Error — an employee with an empty `EligibleShiftTypes` list is treated as unrestricted,
     since that's every employee's default today), `BreakMinutesValidator` (issue #10, ArbZG
     §4 minimums — 30min over 6h worked, 45min over 9h — Error), `StaffingValidator` (issue
@@ -130,43 +132,58 @@ just started — only week-copy exists so far, frontend-only. What's built:
     `EmployeeDetailModal.vue` (in a reusable `components/ModalShell.vue`, pm-tool2-style):
     edit/team-assignment, eligible-shift-types checkboxes (`GET`/`PUT
     /employees/{id}/eligible-shift-types`), and Contract list/create/delete
-    (`/employees/{id}/contracts`, `/contracts/{id}`). Teams/ShiftTypes management still has
-    no frontend at all — only reachable today via Swagger/API key.
+    (`/employees/{id}/contracts`, `/contracts/{id}`).
+  - `views/Stammdaten/StammdatenView.vue` — Teams (list + create only; the backend has no
+    `PUT`/`DELETE` for Teams) and ShiftTypes (list + create + click-to-edit via
+    `views/Stammdaten/ShiftTypeDetailModal.vue`, since `ShiftTypesController` does have a
+    `PUT`) on one page, mirroring `EmployeesView.vue`'s list/create pattern. Reachable at
+    `/stammdaten` in the sidebar nav — previously this data was only reachable via
+    Swagger/API key.
   - `views/Schedule/ScheduleView.vue` — the Wochenansicht (readme.md §15/§16), no longer a
-    placeholder. Employees (rows) × the current Schedule's days (columns, generated from its
-    actual `StartDate..EndDate`, not hardcoded Mon–Fri); prev/next week nav computed client-side
-    (plain `Date` math, no dependency); an empty-state "Diese Woche anlegen" button
-    (`POST /schedules`, Mon–Sun) when no Schedule exists yet for the visible week. A palette of
-    active ShiftTypes above the grid, and both palette chips and placed assignment chips are
-    native-HTML5-`draggable` (no drag-and-drop library added — none was installed, and this is
-    a simple day×employee matrix); dropping a palette chip on a cell `POST`s a new assignment
-    from the ShiftType's template times, dropping an existing chip on a different cell `PUT`s
-    the same assignment onto the new employee/date (a move). No touch/mobile drag support
-    (accepted gap — desktop-only per readme.md §16's own interaction model). Each employee row
-    shows a `font-mono` "Xh / Yh ⚠" hour readout + progress bar — sums the backend's
-    already-computed `netHours` (never re-derives the subtraction client-side), target hours
-    from whichever of the employee's Contracts is active on the visible week's Monday.
-    Clicking an assignment chip opens `views/Schedule/ShiftAssignmentModal.vue`
+    placeholder. In practice a Schichtplan is always created for a full calendar month (not a
+    week — an earlier cut used Mon–Sun `Schedule`s, but that didn't match how the user actually
+    plans), so the grid is Employees (rows) × the current month's days (columns, ~28–31 of
+    them, generated from the Schedule's actual `StartDate..EndDate` — the column-generation
+    logic itself didn't need to change, only what date range gets passed to it); the table's
+    existing `overflow-x-auto` wrapper handles the wider column count with horizontal scroll,
+    no layout rework needed. Prev/next nav moves by calendar month (plain `Date` math, no
+    dependency); an empty-state "Diesen Monat anlegen" button (`POST /schedules`, 1st–last of
+    month, named e.g. "August 2026") when no Schedule exists yet for the visible month. A
+    palette of active ShiftTypes above the grid, and both palette chips and placed assignment
+    chips are native-HTML5-`draggable` (no drag-and-drop library added — none was installed,
+    and this is a simple day×employee matrix); dropping a palette chip on a cell `POST`s a new
+    assignment from the ShiftType's template times, dropping an existing chip on a different
+    cell `PUT`s the same assignment onto the new employee/date (a move). No touch/mobile drag
+    support (accepted gap — desktop-only per readme.md §16's own interaction model). Each
+    employee row shows a `font-mono` "Xh / Yh ⚠" hour readout + progress bar — sums the
+    backend's already-computed `netHours` (never re-derives the subtraction client-side),
+    target hours scaled from the active Contract's `WeeklyHours` by the visible month's day
+    count ÷ 7 (a Contract still only defines a weekly figure — no separate monthly-target field
+    was added). Clicking an assignment chip opens `views/Schedule/ShiftAssignmentModal.vue`
     (`ModalShell`-based, mirrors `EmployeeDetailModal.vue`'s shape) to change ShiftType/times/
     break or delete — content edits only, moving stays drag-only, and it has no create mode.
     A glass panel above the palette lists every issue from `GET
     /schedules/{id}/validate` (❌ red for Errors, ⚠ amber for Warnings), refetched alongside
     the assignments on every load/move/create — the existing per-employee "Xh / Yh ⚠" bar is
     unchanged (still a client-side glance, not fed by `ValidationResult`) since it already
-    covers the same ground `ContractValidator` does for the common case. **Phase 4
-    "Usability"** (readme.md §22) has started: a "Woche kopieren" button (visible once the
-    visible week has assignments) copies every assignment to the same weekday one week later,
-    creating that week's `Schedule` first if it doesn't exist yet — pure client-side
-    orchestration of the existing `/schedules`/`assignments` endpoints, no backend change.
-    Guards against clobbering: aborts with an inline error if the target week's `Schedule`
-    already has assignments. A search box + team `<select>` (reusing `Employee.TeamId` and
-    `GET /teams`, same as `EmployeesView.vue`'s existing pattern) filters the employee rows
-    client-side — covers both "Filter" and "Suche" from readme.md's Phase 4 list in one
-    toolbar since they're the same filter-the-row-set operation here; a dedicated
-    shift-type/date filter wasn't added since the palette + week nav already cover that.
-    Shortcuts/optimized drag-and-drop (the rest of Phase 4) aren't started.
-  - `components/AppShell.vue` — sidebar nav (Dienstplan/Mitarbeiter/Einstellungen) + user
-    identity + logout, applying CLAUDE.md's "Visual design" tokens (dark glass, Inter,
+    covers the same ground `ContractValidator` does for the common case (`ContractValidator`
+    itself was updated alongside this — see above — to scale by the Schedule's actual span
+    rather than assume 7 days, since it would otherwise flag almost every month-long Schedule
+    as over-hours). **Phase 4 "Usability"** (readme.md §22) has started: a "Monat kopieren"
+    button (visible once the visible month has assignments; was "Woche kopieren" before the
+    week→month switch) copies every assignment to the same day-of-month one month later
+    (clamped into shorter months, e.g. the 31st → the 28th/29th/30th), creating that month's
+    `Schedule` first if it doesn't exist yet — pure client-side orchestration of the existing
+    `/schedules`/`assignments` endpoints, no backend change. Guards against clobbering: aborts
+    with an inline error if the target month's `Schedule` already has assignments. A search
+    box + team `<select>` (reusing `Employee.TeamId` and `GET /teams`, same as
+    `EmployeesView.vue`'s existing pattern) filters the employee rows client-side — covers both
+    "Filter" and "Suche" from readme.md's Phase 4 list in one toolbar since they're the same
+    filter-the-row-set operation here; a dedicated shift-type/date filter wasn't added since
+    the palette + month nav already cover that. Shortcuts/optimized drag-and-drop (the rest of
+    Phase 4) aren't started.
+  - `components/AppShell.vue` — sidebar nav (Dienstplan/Mitarbeiter/Stammdaten/Einstellungen) +
+    user identity + logout, applying CLAUDE.md's "Visual design" tokens (dark glass, Inter,
     blue→indigo accent). `SettingsView` is still a styled-but-minimal placeholder — this is a
     functional cut of [issue #5](https://github.com/mycaravam-crypto/shifty/issues/5), not the
     full pm-tool2/vanspace3d component-level parity pass.
@@ -180,6 +197,15 @@ just started — only week-copy exists so far, frontend-only. What's built:
     it hasn't been clicked in an actual browser yet. Same for the search/team-filter toolbar:
     confirmed `GET /teams` returns 200 and `Employee` already carries `teamId` matching the
     new frontend types, and the dev server boots with no console/runtime errors, but not
+    interactively exercised in a browser (no local Team data exists yet to click through
+    either). The week→month switch (creation, nav, "Monat kopieren", the scaled hour target,
+    and the matching `ContractValidator` fix) is verified the same indirect way — `vue-tsc -b`
+    clean, the backend rebuilt and `dotnet build` clean, and the exact request sequence each
+    button makes round-tripped against a real local Postgres via curl (including a
+    31-assignment month that correctly triggers `ContractHoursExceeded` at the scaled monthly
+    limit, where the old unscaled check would've false-flagged nearly every month). Playwright's
+    browser install is broken in this environment (`TypeError: onExit is not a function`), so
+    none of this has actually been clicked through in a browser yet.
     interactively exercised in a browser (no local Team data exists yet to click through
     either).
 - **Docker/deploy**: `docker-compose.yml` (db/api/web) validated with `docker compose config`,

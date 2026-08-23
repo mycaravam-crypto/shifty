@@ -13,6 +13,9 @@ public static class ContractValidator
         IReadOnlyList<Contract> contracts,
         ValidationResult result)
     {
+        // Schedules aren't always a week (e.g. a full calendar month) — scale the contract's
+        // weekly limit to the schedule's actual span instead of assuming 7 days.
+        var scheduleDays = schedule.EndDate.DayNumber - schedule.StartDate.DayNumber + 1;
         foreach (var group in assignments.GroupBy(a => a.EmployeeId))
         {
             var contract = contracts
@@ -22,12 +25,13 @@ public static class ContractValidator
             if (contract is null)
                 continue;
 
+            var expectedHours = contract.WeeklyHours * scheduleDays / 7m;
             var plannedHours = group.Sum(a => WorkingTimeCalculator.NetHours(a.StartTime, a.EndTime, a.BreakMinutes));
-            if (plannedHours > contract.WeeklyHours)
+            if (plannedHours > expectedHours)
             {
                 result.Errors.Add(new ValidationIssue(
                     "ContractHoursExceeded",
-                    $"{plannedHours}h geplant, Vertrag sieht {contract.WeeklyHours}h vor.",
+                    $"{plannedHours}h geplant, Vertrag sieht {Math.Round(expectedHours, 1)}h für diesen Zeitraum vor.",
                     group.Key));
             }
         }
