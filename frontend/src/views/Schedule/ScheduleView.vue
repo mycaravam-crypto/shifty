@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
-import { ChevronLeft, ChevronRight } from '@lucide/vue'
+import { ChevronLeft, ChevronRight, Copy } from '@lucide/vue'
 import api from '../../services/api'
 import ShiftAssignmentModal from './ShiftAssignmentModal.vue'
 
@@ -100,6 +100,7 @@ const anchorDate = ref(new Date())
 const loading = ref(true)
 const error = ref('')
 const creatingSchedule = ref(false)
+const copyingWeek = ref(false)
 
 const weekStart = computed(() => mondayOf(anchorDate.value))
 const weekEnd = computed(() => addDays(weekStart.value, 6))
@@ -210,6 +211,46 @@ async function onCreateSchedule() {
   }
 }
 
+async function onCopyWeek() {
+  if (!currentSchedule.value) return
+  copyingWeek.value = true
+  try {
+    const nextStart = addDays(weekStart.value, 7)
+    const nextStartIso = toIso(nextStart)
+    let target = schedules.value.find((s) => s.startDate === nextStartIso)
+
+    if (!target) {
+      const created = await api.post('/schedules', {
+        name: `Woche ${isoWeekNumber(nextStart)}`,
+        startDate: nextStartIso,
+        endDate: toIso(addDays(nextStart, 6)),
+      })
+      target = created.data
+      schedules.value.push(target!)
+    } else {
+      const existing = await api.get(`/schedules/${target.id}`)
+      if (existing.data.assignments.length) {
+        error.value = 'Nächste Woche hat bereits Schichten — Kopieren abgebrochen.'
+        return
+      }
+    }
+
+    for (const a of assignments.value) {
+      await api.post(`/schedules/${target.id}/assignments`, {
+        employeeId: a.employeeId,
+        shiftTypeId: a.shiftTypeId,
+        date: toIso(addDays(parseIso(a.date), 7)),
+        startTime: a.startTime,
+        endTime: a.endTime,
+        breakMinutes: a.breakMinutes,
+      })
+    }
+    nextWeek()
+  } finally {
+    copyingWeek.value = false
+  }
+}
+
 function onPaletteDragStart(e: DragEvent, shiftTypeId: string) {
   e.dataTransfer?.setData('application/json', JSON.stringify({ kind: 'shiftType', shiftTypeId }))
 }
@@ -296,7 +337,16 @@ async function onAssignmentUpdated() {
           </p>
         </div>
 
-        <div class="flex flex-wrap gap-2 mb-4">
+        <div class="flex flex-wrap items-center gap-2 mb-4">
+          <button
+            v-if="assignments.length"
+            :disabled="copyingWeek"
+            class="flex items-center gap-1.5 rounded-lg bg-white/5 border border-white/10 px-3 py-1.5 text-sm hover:bg-white/10 transition-colors disabled:opacity-50"
+            @click="onCopyWeek"
+          >
+            <Copy :size="14" />
+            {{ copyingWeek ? 'Kopiere…' : 'Woche kopieren' }}
+          </button>
           <div
             v-for="s in activeShiftTypes"
             :key="s.id"

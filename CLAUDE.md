@@ -13,8 +13,8 @@ readme.md §22 "Phase 1: Foundation" is done (Employee, Team, Contract, ShiftTyp
 basic frontend). "Phase 2: Planung" (Schedule, ShiftAssignment, Wochenansicht, Drag & Drop,
 Stundenberechnung) is also now built, backend + frontend. Phase 3 (Validierung) is now fully
 built, including the two rules needing cross-assignment history (Ruhezeit, max-consecutive-days
-— issues #8/#9, see below). Phase 4 (Usability: week-copy/filters/search/shortcuts) is not
-started. What's built:
+— issues #8/#9, see below). Phase 4 (Usability: week-copy/filters/search/shortcuts) has
+just started — only week-copy exists so far, frontend-only. What's built:
 
 - **Backend** (`src/`): 4-project skeleton (Domain → Application → Infrastructure → Api)
   matching readme.md §19/§20. Builds clean (`dotnet build ShiftPlanner.sln`, verified via
@@ -153,7 +153,14 @@ started. What's built:
     /schedules/{id}/validate` (❌ red for Errors, ⚠ amber for Warnings), refetched alongside
     the assignments on every load/move/create — the existing per-employee "Xh / Yh ⚠" bar is
     unchanged (still a client-side glance, not fed by `ValidationResult`) since it already
-    covers the same ground `ContractValidator` does for the common case.
+    covers the same ground `ContractValidator` does for the common case. **Phase 4
+    "Usability"** (readme.md §22) has started: a "Woche kopieren" button (visible once the
+    visible week has assignments) copies every assignment to the same weekday one week later,
+    creating that week's `Schedule` first if it doesn't exist yet — pure client-side
+    orchestration of the existing `/schedules`/`assignments` endpoints, no backend change.
+    Guards against clobbering: aborts with an inline error if the target week's `Schedule`
+    already has assignments. Filters/search/shortcuts/optimized drag-and-drop (the rest of
+    Phase 4) aren't started.
   - `components/AppShell.vue` — sidebar nav (Dienstplan/Mitarbeiter/Einstellungen) + user
     identity + logout, applying CLAUDE.md's "Visual design" tokens (dark glass, Inter,
     blue→indigo accent). `SettingsView` is still a styled-but-minimal placeholder — this is a
@@ -163,7 +170,10 @@ started. What's built:
     success/failure, employee list load, create, 409-conflict surfaced in the UI, logout,
     Dienstplan empty-state schedule creation, drag-to-place, drag-to-move, hour-bar update,
     modal edit, and delete. Re-verified after the validation panel landed: an assignment
-    violating `BreakMinutesValidator` renders the ❌ banner live in the browser.
+    violating `BreakMinutesValidator` renders the ❌ banner live in the browser. "Woche
+    kopieren" is only verified against the real API directly (curl, mirroring the exact
+    request sequence the button makes) — no browser tooling was available in that session, so
+    it hasn't been clicked in an actual browser yet.
 - **Docker/deploy**: `docker-compose.yml` (db/api/web) validated with `docker compose config`,
   never actually deployed. No `.env` exists anywhere yet (only `.env.example`).
 - **Versioning**: same scheme as vanspace3d. `frontend/package.json`'s `version` is shown
