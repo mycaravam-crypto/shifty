@@ -3,7 +3,11 @@ import { onMounted, ref } from 'vue'
 import { Plus, Trash2 } from '@lucide/vue'
 import axios from 'axios'
 import api from '@/services/api'
+import { useToastStore } from '@/stores/toast'
+import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import EmployeeDetailModal from './EmployeeDetailModal.vue'
+
+const toast = useToastStore()
 
 interface Employee {
   id: string
@@ -29,6 +33,7 @@ const saving = ref(false)
 
 const form = ref({ personnelNumber: '', firstName: '', lastName: '', email: '', teamId: '' })
 const selectedEmployee = ref<Employee | null>(null)
+const employeeToDelete = ref<Employee | null>(null)
 
 function teamName(teamId: string | null) {
   return teams.value.find((t) => t.id === teamId)?.name ?? '—'
@@ -50,7 +55,6 @@ async function load() {
 
 async function onCreate() {
   saving.value = true
-  error.value = ''
   try {
     await api.post('/employees', {
       personnelNumber: form.value.personnelNumber,
@@ -61,21 +65,29 @@ async function onCreate() {
     })
     form.value = { personnelNumber: '', firstName: '', lastName: '', email: '', teamId: '' }
     showForm.value = false
+    toast.success('Mitarbeiter angelegt.')
     await load()
   } catch (e) {
-    error.value =
+    toast.error(
       axios.isAxiosError(e) && e.response?.data
         ? e.response.data
-        : 'Mitarbeiter konnte nicht angelegt werden.'
+        : 'Mitarbeiter konnte nicht angelegt werden.',
+    )
   } finally {
     saving.value = false
   }
 }
 
-async function onDelete(id: string) {
-  if (!confirm('Mitarbeiter wirklich löschen?')) return
-  await api.delete(`/employees/${id}`)
-  await load()
+async function onDeleteConfirmed() {
+  if (!employeeToDelete.value) return
+  try {
+    await api.delete(`/employees/${employeeToDelete.value.id}`)
+    toast.success('Mitarbeiter gelöscht.')
+    employeeToDelete.value = null
+    await load()
+  } catch {
+    toast.error('Mitarbeiter konnte nicht gelöscht werden.')
+  }
 }
 
 async function onEmployeeUpdated() {
@@ -87,7 +99,7 @@ onMounted(load)
 </script>
 
 <template>
-  <div class="p-8 max-w-4xl">
+  <div class="p-4 sm:p-8 max-w-4xl">
     <div class="flex items-center justify-between mb-6">
       <h1 class="text-2xl font-semibold">Mitarbeiter</h1>
       <button
@@ -102,7 +114,7 @@ onMounted(load)
 
     <form
       v-if="showForm"
-      class="glass rounded-xl p-5 mb-6 grid grid-cols-2 gap-4"
+      class="glass rounded-xl p-5 mb-6 grid grid-cols-1 sm:grid-cols-2 gap-4"
       @submit.prevent="onCreate"
     >
       <input
@@ -145,54 +157,95 @@ onMounted(load)
       </button>
     </form>
 
-    <p v-if="loading" class="text-sm text-slate-500">Lädt…</p>
+    <div v-if="loading" class="glass rounded-xl p-4 space-y-3" aria-label="Lädt…">
+      <div v-for="i in 6" :key="i" class="h-10 rounded-lg bg-white/5 animate-pulse"></div>
+    </div>
     <div v-else class="glass rounded-xl overflow-hidden">
-      <table class="w-full text-sm">
-        <thead>
-          <tr
-            class="text-left text-[10px] uppercase tracking-wider font-bold text-slate-500 border-b border-white/8"
-          >
-            <th class="px-4 py-3">Name</th>
-            <th class="px-4 py-3">Personalnummer</th>
-            <th class="px-4 py-3">Team</th>
-            <th class="px-4 py-3">Status</th>
-            <th class="px-4 py-3"></th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr
-            v-for="e in employees"
-            :key="e.id"
-            class="border-b border-white/5 last:border-0 hover:bg-white/3 cursor-pointer"
-            @click="selectedEmployee = e"
-          >
-            <td class="px-4 py-3">{{ e.lastName }}, {{ e.firstName }}</td>
-            <td class="px-4 py-3 font-mono text-slate-400">{{ e.personnelNumber }}</td>
-            <td class="px-4 py-3 text-slate-400">{{ teamName(e.teamId) }}</td>
-            <td class="px-4 py-3">
-              <span
-                class="rounded-full px-2 py-0.5 text-xs"
-                :class="
-                  e.active ? 'bg-emerald-500/15 text-emerald-400' : 'bg-slate-500/15 text-slate-400'
-                "
-              >
-                {{ e.active ? 'Aktiv' : 'Inaktiv' }}
-              </span>
-            </td>
-            <td class="px-4 py-3 text-right">
-              <button
-                class="text-slate-500 hover:text-rose-400 transition-colors"
-                @click.stop="onDelete(e.id)"
-              >
-                <Trash2 :size="16" />
-              </button>
-            </td>
-          </tr>
-          <tr v-if="!employees.length">
-            <td colspan="5" class="px-4 py-8 text-center text-slate-500">Keine Mitarbeiter.</td>
-          </tr>
-        </tbody>
-      </table>
+      <div class="md:hidden divide-y divide-white/5">
+        <div
+          v-for="e in employees"
+          :key="e.id"
+          class="p-4 flex items-center justify-between gap-3 hover:bg-white/3 cursor-pointer"
+          @click="selectedEmployee = e"
+        >
+          <div class="min-w-0">
+            <div class="text-sm truncate">{{ e.lastName }}, {{ e.firstName }}</div>
+            <div class="text-xs text-slate-500 font-mono mt-0.5 truncate">
+              {{ e.personnelNumber }} · {{ teamName(e.teamId) }}
+            </div>
+          </div>
+          <div class="flex items-center gap-3 shrink-0">
+            <span
+              class="rounded-full px-2 py-0.5 text-xs"
+              :class="
+                e.active ? 'bg-emerald-500/15 text-emerald-400' : 'bg-slate-500/15 text-slate-400'
+              "
+            >
+              {{ e.active ? 'Aktiv' : 'Inaktiv' }}
+            </span>
+            <button
+              class="text-slate-500 hover:text-rose-400 transition-colors"
+              @click.stop="employeeToDelete = e"
+            >
+              <Trash2 :size="16" />
+            </button>
+          </div>
+        </div>
+        <p v-if="!employees.length" class="px-4 py-8 text-center text-slate-500 text-sm">
+          Keine Mitarbeiter.
+        </p>
+      </div>
+
+      <div class="hidden md:block overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr
+              class="text-left text-[10px] uppercase tracking-wider font-bold text-slate-500 border-b border-white/8"
+            >
+              <th class="px-4 py-3">Name</th>
+              <th class="px-4 py-3">Personalnummer</th>
+              <th class="px-4 py-3">Team</th>
+              <th class="px-4 py-3">Status</th>
+              <th class="px-4 py-3"></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              v-for="e in employees"
+              :key="e.id"
+              class="border-b border-white/5 last:border-0 hover:bg-white/3 cursor-pointer"
+              @click="selectedEmployee = e"
+            >
+              <td class="px-4 py-3">{{ e.lastName }}, {{ e.firstName }}</td>
+              <td class="px-4 py-3 font-mono text-slate-400">{{ e.personnelNumber }}</td>
+              <td class="px-4 py-3 text-slate-400">{{ teamName(e.teamId) }}</td>
+              <td class="px-4 py-3">
+                <span
+                  class="rounded-full px-2 py-0.5 text-xs"
+                  :class="
+                    e.active
+                      ? 'bg-emerald-500/15 text-emerald-400'
+                      : 'bg-slate-500/15 text-slate-400'
+                  "
+                >
+                  {{ e.active ? 'Aktiv' : 'Inaktiv' }}
+                </span>
+              </td>
+              <td class="px-4 py-3 text-right">
+                <button
+                  class="text-slate-500 hover:text-rose-400 transition-colors"
+                  @click.stop="employeeToDelete = e"
+                >
+                  <Trash2 :size="16" />
+                </button>
+              </td>
+            </tr>
+            <tr v-if="!employees.length">
+              <td colspan="5" class="px-4 py-8 text-center text-slate-500">Keine Mitarbeiter.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </div>
 
     <EmployeeDetailModal
@@ -201,6 +254,14 @@ onMounted(load)
       :teams="teams"
       @close="selectedEmployee = null"
       @updated="onEmployeeUpdated"
+    />
+
+    <ConfirmDialog
+      v-if="employeeToDelete"
+      title="Mitarbeiter löschen"
+      :message="`${employeeToDelete.firstName} ${employeeToDelete.lastName} wirklich löschen?`"
+      @confirm="onDeleteConfirmed"
+      @close="employeeToDelete = null"
     />
   </div>
 </template>

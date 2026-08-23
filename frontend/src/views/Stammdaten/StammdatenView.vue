@@ -3,7 +3,10 @@ import { onMounted, ref } from 'vue'
 import { Plus } from '@lucide/vue'
 import axios from 'axios'
 import api from '@/services/api'
+import { useToastStore } from '@/stores/toast'
 import ShiftTypeDetailModal from './ShiftTypeDetailModal.vue'
+
+const toast = useToastStore()
 
 interface Team {
   id: string
@@ -51,7 +54,10 @@ async function load() {
   loading.value = true
   error.value = ''
   try {
-    const [teamsRes, shiftTypesRes] = await Promise.all([api.get('/teams'), api.get('/shift-types')])
+    const [teamsRes, shiftTypesRes] = await Promise.all([
+      api.get('/teams'),
+      api.get('/shift-types'),
+    ])
     teams.value = teamsRes.data
     shiftTypes.value = shiftTypesRes.data
   } catch {
@@ -63,14 +69,18 @@ async function load() {
 
 async function onCreateTeam() {
   savingTeam.value = true
-  error.value = ''
   try {
     await api.post('/teams', { name: teamForm.value.name })
     teamForm.value = { name: '' }
     showTeamForm.value = false
+    toast.success('Team angelegt.')
     await load()
   } catch (e) {
-    error.value = axios.isAxiosError(e) && e.response?.data ? e.response.data : 'Team konnte nicht angelegt werden.'
+    toast.error(
+      axios.isAxiosError(e) && e.response?.data
+        ? e.response.data
+        : 'Team konnte nicht angelegt werden.',
+    )
   } finally {
     savingTeam.value = false
   }
@@ -78,7 +88,6 @@ async function onCreateTeam() {
 
 async function onCreateShiftType() {
   savingShiftType.value = true
-  error.value = ''
   try {
     await api.post('/shift-types', {
       name: shiftTypeForm.value.name,
@@ -99,10 +108,14 @@ async function onCreateShiftType() {
       maxStaffing: '',
     }
     showShiftTypeForm.value = false
+    toast.success('Schichttyp angelegt.')
     await load()
   } catch (e) {
-    error.value =
-      axios.isAxiosError(e) && e.response?.data ? e.response.data : 'Schichttyp konnte nicht angelegt werden.'
+    toast.error(
+      axios.isAxiosError(e) && e.response?.data
+        ? e.response.data
+        : 'Schichttyp konnte nicht angelegt werden.',
+    )
   } finally {
     savingShiftType.value = false
   }
@@ -117,14 +130,21 @@ onMounted(load)
 </script>
 
 <template>
-  <div class="p-8 max-w-4xl space-y-10">
+  <div class="p-4 sm:p-8 max-w-4xl space-y-10">
     <div>
       <h1 class="text-2xl font-semibold">Stammdaten</h1>
       <p class="text-sm text-slate-500 mt-1">Teams und Schichttypen</p>
     </div>
 
     <p v-if="error" class="text-sm text-rose-400">{{ error }}</p>
-    <p v-if="loading" class="text-sm text-slate-500">Lädt…</p>
+    <div v-if="loading" class="space-y-6" aria-label="Lädt…">
+      <div class="glass rounded-xl p-4 space-y-3">
+        <div v-for="i in 3" :key="i" class="h-10 rounded-lg bg-white/5 animate-pulse"></div>
+      </div>
+      <div class="glass rounded-xl p-4 space-y-3">
+        <div v-for="i in 4" :key="i" class="h-10 rounded-lg bg-white/5 animate-pulse"></div>
+      </div>
+    </div>
 
     <section v-if="!loading">
       <div class="flex items-center justify-between mb-4">
@@ -137,8 +157,18 @@ onMounted(load)
         </button>
       </div>
 
-      <form v-if="showTeamForm" class="glass rounded-xl p-5 mb-4 flex gap-3" @submit.prevent="onCreateTeam">
-        <input v-model="teamForm.name" placeholder="Teamname" required class="flex-1" :class="inputClass" />
+      <form
+        v-if="showTeamForm"
+        class="glass rounded-xl p-5 mb-4 flex gap-3"
+        @submit.prevent="onCreateTeam"
+      >
+        <input
+          v-model="teamForm.name"
+          placeholder="Teamname"
+          required
+          class="flex-1"
+          :class="inputClass"
+        />
         <button
           type="submit"
           :disabled="savingTeam"
@@ -148,10 +178,12 @@ onMounted(load)
         </button>
       </form>
 
-      <div class="glass rounded-xl overflow-hidden">
+      <div class="glass rounded-xl overflow-x-auto">
         <table class="w-full text-sm">
           <thead>
-            <tr class="text-left text-[10px] uppercase tracking-wider font-bold text-slate-500 border-b border-white/8">
+            <tr
+              class="text-left text-[10px] uppercase tracking-wider font-bold text-slate-500 border-b border-white/8"
+            >
               <th class="px-4 py-3">Name</th>
               <th class="px-4 py-3">Status</th>
             </tr>
@@ -162,7 +194,11 @@ onMounted(load)
               <td class="px-4 py-3">
                 <span
                   class="rounded-full px-2 py-0.5 text-xs"
-                  :class="t.active ? 'bg-emerald-500/15 text-emerald-400' : 'bg-slate-500/15 text-slate-400'"
+                  :class="
+                    t.active
+                      ? 'bg-emerald-500/15 text-emerald-400'
+                      : 'bg-slate-500/15 text-slate-400'
+                  "
                 >
                   {{ t.active ? 'Aktiv' : 'Inaktiv' }}
                 </span>
@@ -189,13 +225,31 @@ onMounted(load)
 
       <form
         v-if="showShiftTypeForm"
-        class="glass rounded-xl p-5 mb-4 grid grid-cols-2 gap-3"
+        class="glass rounded-xl p-5 mb-4 grid grid-cols-1 sm:grid-cols-2 gap-3"
         @submit.prevent="onCreateShiftType"
       >
-        <input v-model="shiftTypeForm.name" placeholder="Name" required class="col-span-2" :class="inputClass" />
+        <input
+          v-model="shiftTypeForm.name"
+          placeholder="Name"
+          required
+          class="sm:col-span-2"
+          :class="inputClass"
+        />
         <!-- lang="de-DE" is a no-op in Chromium (picker format is OS-locale-driven, not page-lang) -->
-        <input v-model="shiftTypeForm.startTime" type="time" lang="de-DE" required :class="inputClass" />
-        <input v-model="shiftTypeForm.endTime" type="time" lang="de-DE" required :class="inputClass" />
+        <input
+          v-model="shiftTypeForm.startTime"
+          type="time"
+          lang="de-DE"
+          required
+          :class="inputClass"
+        />
+        <input
+          v-model="shiftTypeForm.endTime"
+          type="time"
+          lang="de-DE"
+          required
+          :class="inputClass"
+        />
         <input
           v-model.number="shiftTypeForm.breakMinutes"
           type="number"
@@ -204,7 +258,11 @@ onMounted(load)
           placeholder="Pause (Minuten)"
           :class="inputClass"
         />
-        <input v-model="shiftTypeForm.color" type="color" class="h-10 w-full rounded-lg bg-white/5 border border-white/10" />
+        <input
+          v-model="shiftTypeForm.color"
+          type="color"
+          class="h-10 w-full rounded-lg bg-white/5 border border-white/10"
+        />
         <input
           v-model="shiftTypeForm.minStaffing"
           type="number"
@@ -222,53 +280,102 @@ onMounted(load)
         <button
           type="submit"
           :disabled="savingShiftType"
-          class="col-span-2 rounded-lg bg-white/10 hover:bg-white/15 transition-colors py-2 text-sm font-medium disabled:opacity-50"
+          class="sm:col-span-2 rounded-lg bg-white/10 hover:bg-white/15 transition-colors py-2 text-sm font-medium disabled:opacity-50"
         >
           {{ savingShiftType ? 'Speichern…' : 'Anlegen' }}
         </button>
       </form>
 
       <div class="glass rounded-xl overflow-hidden">
-        <table class="w-full text-sm">
-          <thead>
-            <tr class="text-left text-[10px] uppercase tracking-wider font-bold text-slate-500 border-b border-white/8">
-              <th class="px-4 py-3">Name</th>
-              <th class="px-4 py-3">Zeit</th>
-              <th class="px-4 py-3">Pause</th>
-              <th class="px-4 py-3">Besetzung</th>
-              <th class="px-4 py-3">Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr
-              v-for="s in shiftTypes"
-              :key="s.id"
-              class="border-b border-white/5 last:border-0 hover:bg-white/3 cursor-pointer"
-              @click="selectedShiftType = s"
-            >
-              <td class="px-4 py-3">
-                <span class="inline-block w-2.5 h-2.5 rounded-full mr-2 align-middle" :style="{ background: s.color }" />
-                {{ s.name }}
-              </td>
-              <td class="px-4 py-3 font-mono text-slate-400">{{ s.startTime.slice(0, 5) }}–{{ s.endTime.slice(0, 5) }}</td>
-              <td class="px-4 py-3 font-mono text-slate-400">{{ s.breakMinutes }}m</td>
-              <td class="px-4 py-3 text-slate-400">
-                {{ s.minStaffing ?? '–' }} / {{ s.maxStaffing ?? '–' }}
-              </td>
-              <td class="px-4 py-3">
+        <div class="md:hidden divide-y divide-white/5">
+          <div
+            v-for="s in shiftTypes"
+            :key="s.id"
+            class="p-4 flex items-center justify-between gap-3 hover:bg-white/3 cursor-pointer"
+            @click="selectedShiftType = s"
+          >
+            <div class="min-w-0">
+              <div class="text-sm truncate">
                 <span
-                  class="rounded-full px-2 py-0.5 text-xs"
-                  :class="s.active ? 'bg-emerald-500/15 text-emerald-400' : 'bg-slate-500/15 text-slate-400'"
-                >
-                  {{ s.active ? 'Aktiv' : 'Inaktiv' }}
-                </span>
-              </td>
-            </tr>
-            <tr v-if="!shiftTypes.length">
-              <td colspan="5" class="px-4 py-8 text-center text-slate-500">Keine Schichttypen.</td>
-            </tr>
-          </tbody>
-        </table>
+                  class="inline-block w-2.5 h-2.5 rounded-full mr-2 align-middle"
+                  :style="{ background: s.color }"
+                />
+                {{ s.name }}
+              </div>
+              <div class="text-xs text-slate-500 font-mono mt-0.5 truncate">
+                {{ s.startTime.slice(0, 5) }}–{{ s.endTime.slice(0, 5) }} · {{ s.breakMinutes }}m
+                Pause · {{ s.minStaffing ?? '–' }}/{{ s.maxStaffing ?? '–' }}
+              </div>
+            </div>
+            <span
+              class="rounded-full px-2 py-0.5 text-xs shrink-0"
+              :class="
+                s.active ? 'bg-emerald-500/15 text-emerald-400' : 'bg-slate-500/15 text-slate-400'
+              "
+            >
+              {{ s.active ? 'Aktiv' : 'Inaktiv' }}
+            </span>
+          </div>
+          <p v-if="!shiftTypes.length" class="px-4 py-8 text-center text-slate-500 text-sm">
+            Keine Schichttypen.
+          </p>
+        </div>
+
+        <div class="hidden md:block overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead>
+              <tr
+                class="text-left text-[10px] uppercase tracking-wider font-bold text-slate-500 border-b border-white/8"
+              >
+                <th class="px-4 py-3">Name</th>
+                <th class="px-4 py-3">Zeit</th>
+                <th class="px-4 py-3">Pause</th>
+                <th class="px-4 py-3">Besetzung</th>
+                <th class="px-4 py-3">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr
+                v-for="s in shiftTypes"
+                :key="s.id"
+                class="border-b border-white/5 last:border-0 hover:bg-white/3 cursor-pointer"
+                @click="selectedShiftType = s"
+              >
+                <td class="px-4 py-3">
+                  <span
+                    class="inline-block w-2.5 h-2.5 rounded-full mr-2 align-middle"
+                    :style="{ background: s.color }"
+                  />
+                  {{ s.name }}
+                </td>
+                <td class="px-4 py-3 font-mono text-slate-400">
+                  {{ s.startTime.slice(0, 5) }}–{{ s.endTime.slice(0, 5) }}
+                </td>
+                <td class="px-4 py-3 font-mono text-slate-400">{{ s.breakMinutes }}m</td>
+                <td class="px-4 py-3 text-slate-400">
+                  {{ s.minStaffing ?? '–' }} / {{ s.maxStaffing ?? '–' }}
+                </td>
+                <td class="px-4 py-3">
+                  <span
+                    class="rounded-full px-2 py-0.5 text-xs"
+                    :class="
+                      s.active
+                        ? 'bg-emerald-500/15 text-emerald-400'
+                        : 'bg-slate-500/15 text-slate-400'
+                    "
+                  >
+                    {{ s.active ? 'Aktiv' : 'Inaktiv' }}
+                  </span>
+                </td>
+              </tr>
+              <tr v-if="!shiftTypes.length">
+                <td colspan="5" class="px-4 py-8 text-center text-slate-500">
+                  Keine Schichttypen.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </div>
     </section>
 
