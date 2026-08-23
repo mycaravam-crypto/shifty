@@ -1,0 +1,37 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: shiftplanner
+      POSTGRES_USER: shiftplanner
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  api:
+    build:
+      context: .
+      dockerfile: src/ShiftPlanner.Api/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      - db
+    environment:
+      ConnectionStrings__Default: Host=db;Port=5432;Database=shiftplanner;Username=shiftplanner;Password=${POSTGRES_PASSWORD}
+      Jwt__SigningKey: ${JWT_SIGNING_KEY}
+      Jwt__Issuer: ShiftPlanner
+      Jwt__Audience: ShiftPlanner
+      Cors__FrontendOrigin: https://${SHIFTPLANNER_DOMAIN}
+
+  web:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      - "127.0.0.1:8090:80"
+
+volumes:
+  pgdata:

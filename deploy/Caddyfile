@@ -1,0 +1,33 @@
+# Caddy config used *inside* the `web` container (docker-compose.yml).
+# It only listens on :80 inside the container — no TLS here, no direct
+# internet exposure. TLS and the public domain are handled by the Caddy
+# instance already running on the host (vi0lins.de), same as vanspace3d,
+# which reverse-proxies to this container's published port.
+#
+# One-time setup on the host (needs sudo, run interactively — mirrors
+# vanspace3d's deploy/Caddyfile):
+#
+#   sudo tee -a /etc/caddy/Caddyfile <<'EOF'
+#
+#   schichtplaner.vi0lins.de {
+#           reverse_proxy 127.0.0.1:8090
+#   }
+#   EOF
+#   sudo systemctl reload caddy
+#
+# docker-compose.yml publishes the `web` container as 127.0.0.1:8090:80,
+# so it's only reachable through the host Caddy, never directly.
+
+:80 {
+	handle /api/* {
+		reverse_proxy api:8080
+	}
+
+	handle {
+		root * /srv
+		file_server
+		try_files {path} /index.html
+	}
+
+	encode gzip
+}
