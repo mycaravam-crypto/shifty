@@ -1,0 +1,113 @@
+using System.ComponentModel.DataAnnotations;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using ShiftPlanner.Domain.Contracts;
+using ShiftPlanner.Infrastructure.Persistence;
+
+namespace ShiftPlanner.Api.Controllers;
+
+public record ContractDto(Guid Id, Guid EmployeeId, DateOnly ValidFrom, DateOnly? ValidTo, decimal WeeklyHours, int WorkingDaysPerWeek, decimal DailyTargetHours);
+
+public record CreateContractRequest(
+    DateOnly ValidFrom,
+    DateOnly? ValidTo,
+    [Range(0, 168)] decimal WeeklyHours,
+    [Range(0, 7)] int WorkingDaysPerWeek,
+    [Range(0, 24)] decimal DailyTargetHours);
+
+public record UpdateContractRequest(
+    DateOnly ValidFrom,
+    DateOnly? ValidTo,
+    [Range(0, 168)] decimal WeeklyHours,
+    [Range(0, 7)] int WorkingDaysPerWeek,
+    [Range(0, 24)] decimal DailyTargetHours);
+
+[ApiController]
+[Route("api")]
+[Authorize(Policy = "ApiRead")]
+public class ContractsController(ApplicationDbContext db) : ControllerBase
+{
+    private static readonly Func<Contract, ContractDto> ToDto =
+        c => new ContractDto(c.Id, c.EmployeeId, c.ValidFrom, c.ValidTo, c.WeeklyHours, c.WorkingDaysPerWeek, c.DailyTargetHours);
+
+    [HttpGet("employees/{employeeId:guid}/contracts")]
+    public async Task<ActionResult<IEnumerable<ContractDto>>> GetForEmployee(Guid employeeId)
+    {
+        if (!await db.Employees.AnyAsync(e => e.Id == employeeId))
+            return NotFound();
+
+        var contracts = await db.Contracts
+            .Where(c => c.EmployeeId == employeeId)
+            .OrderByDescending(c => c.ValidFrom)
+            .ToListAsync();
+        return Ok(contracts.Select(ToDto));
+    }
+
+    [HttpGet("contracts/{id:guid}")]
+    public async Task<ActionResult<ContractDto>> GetById(Guid id)
+    {
+        var contract = await db.Contracts.FindAsync(id);
+        return contract is null ? NotFound() : Ok(ToDto(contract));
+    }
+
+    [HttpPost("employees/{employeeId:guid}/contracts")]
+    [Authorize(Policy = "ApiWrite")]
+    public async Task<ActionResult<ContractDto>> Create(Guid employeeId, CreateContractRequest request)
+    {
+        if (!await db.Employees.AnyAsync(e => e.Id == employeeId))
+            return NotFound();
+
+        if (await db.Contracts.AnyAsync(c => c.EmployeeId == employeeId && c.ValidFrom == request.ValidFrom))
+            return Conflict($"Employee already has a contract valid from {request.ValidFrom}.");
+
+        var contract = new Contract
+        {
+            Id = Guid.NewGuid(),
+            EmployeeId = employeeId,
+            ValidFrom = request.ValidFrom,
+            ValidTo = request.ValidTo,
+            WeeklyHours = request.WeeklyHours,
+            WorkingDaysPerWeek = request.WorkingDaysPerWeek,
+            DailyTargetHours = request.DailyTargetHours
+        };
+        db.Contracts.Add(contract);
+        await db.SaveChangesAsync();
+
+        return CreatedAtAction(nameof(GetById), new { id = contract.Id }, ToDto(contract));
+    }
+
+    [HttpPut("contracts/{id:guid}")]
+    [Authorize(Policy = "ApiWrite")]
+    public async Task<IActionResult> Update(Guid id, UpdateContractRequest request)
+    {
+        var contract = await db.Contracts.FindAsync(id);
+        if (contract is null)
+            return NotFound();
+
+        if (await db.Contracts.AnyAsync(c => c.EmployeeId == contract.EmployeeId && c.ValidFrom == request.ValidFrom && c.Id != id))
+            return Conflict($"Employee already has a contract valid from {request.ValidFrom}.");
+
+        contract.ValidFrom = request.ValidFrom;
+        contract.ValidTo = request.ValidTo;
+        contract.WeeklyHours = request.WeeklyHours;
+        contract.WorkingDaysPerWeek = request.WorkingDaysPerWeek;
+        contract.DailyTargetHours = request.DailyTargetHours;
+        await db.SaveChangesAsync();
+
+        return NoContent();
+    }
+
+    [HttpDelete("contracts/{id:guid}")]
+    [Authorize(Policy = "ApiWrite")]
+    public async Task<IActionResult> Delete(Guid id)
+    {
+        var contract = await db.Contracts.FindAsync(id);
+        if (contract is null)
+            return NotFound();
+
+        db.Contracts.Remove(contract);
+        await db.SaveChangesAsync();
+        return NoContent();
+    }
+}

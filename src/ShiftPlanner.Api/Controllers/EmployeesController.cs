@@ -1,0 +1,113 @@
+using System.ComponentModel.DataAnnotations;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using ShiftPlanner.Domain.Employees;
+using ShiftPlanner.Infrastructure.Persistence;
+
+namespace ShiftPlanner.Api.Controllers;
+
+public record EmployeeDto(Guid Id, string PersonnelNumber, string FirstName, string LastName, string? Email, bool Active, Guid? TeamId);
+
+public record CreateEmployeeRequest(
+    [Required, MaxLength(50)] string PersonnelNumber,
+    [Required, MaxLength(100)] string FirstName,
+    [Required, MaxLength(100)] string LastName,
+    [EmailAddress] string? Email,
+    Guid? TeamId);
+
+public record UpdateEmployeeRequest(
+    [Required, MaxLength(50)] string PersonnelNumber,
+    [Required, MaxLength(100)] string FirstName,
+    [Required, MaxLength(100)] string LastName,
+    [EmailAddress] string? Email,
+    bool Active,
+    Guid? TeamId);
+
+[ApiController]
+[Route("api/employees")]
+[Authorize(Policy = "ApiRead")]
+public class EmployeesController(ApplicationDbContext db) : ControllerBase
+{
+    private static readonly Func<Employee, EmployeeDto> ToDto =
+        e => new EmployeeDto(e.Id, e.PersonnelNumber, e.FirstName, e.LastName, e.Email, e.Active, e.TeamId);
+
+    [HttpGet]
+    public async Task<ActionResult<IEnumerable<EmployeeDto>>> GetAll()
+    {
+        var employees = await db.Employees
+            .OrderBy(e => e.LastName).ThenBy(e => e.FirstName)
+            .ToListAsync();
+        return Ok(employees.Select(ToDto));
+    }
+
+    [HttpGet("{id:guid}")]
+    public async Task<ActionResult<EmployeeDto>> GetById(Guid id)
+    {
+        var employee = await db.Employees.FindAsync(id);
+        return employee is null ? NotFound() : Ok(ToDto(employee));
+    }
+
+    [HttpPost]
+    [Authorize(Policy = "ApiWrite")]
+    public async Task<ActionResult<EmployeeDto>> Create(CreateEmployeeRequest request)
+    {
+        if (request.TeamId is { } teamId && !await db.Teams.AnyAsync(t => t.Id == teamId))
+            return BadRequest($"Team '{teamId}' does not exist.");
+
+        if (await db.Employees.AnyAsync(e => e.PersonnelNumber == request.PersonnelNumber))
+            return Conflict($"Personnel number '{request.PersonnelNumber}' already exists.");
+
+        var employee = new Employee
+        {
+            Id = Guid.NewGuid(),
+            PersonnelNumber = request.PersonnelNumber,
+            FirstName = request.FirstName,
+            LastName = request.LastName,
+            Email = request.Email,
+            TeamId = request.TeamId
+        };
+        db.Employees.Add(employee);
+        await db.SaveChangesAsync();
+
+        return CreatedAtAction(nameof(GetById), new { id = employee.Id }, ToDto(employee));
+    }
+
+    [HttpPut("{id:guid}")]
+    [Authorize(Policy = "ApiWrite")]
+    public async Task<IActionResult> Update(Guid id, UpdateEmployeeRequest request)
+    {
+        var employee = await db.Employees.FindAsync(id);
+        if (employee is null)
+            return NotFound();
+
+        if (request.TeamId is { } teamId && !await db.Teams.AnyAsync(t => t.Id == teamId))
+            return BadRequest($"Team '{teamId}' does not exist.");
+
+        if (await db.Employees.AnyAsync(e => e.PersonnelNumber == request.PersonnelNumber && e.Id != id))
+            return Conflict($"Personnel number '{request.PersonnelNumber}' already exists.");
+
+        employee.PersonnelNumber = request.PersonnelNumber;
+        employee.FirstName = request.FirstName;
+        employee.LastName = request.LastName;
+        employee.Email = request.Email;
+        employee.Active = request.Active;
+        employee.TeamId = request.TeamId;
+        await db.SaveChangesAsync();
+
+        return NoContent();
+    }
+
+    [HttpDelete("{id:guid}")]
+    [Authorize(Policy = "ApiWrite")]
+    public async Task<IActionResult> Delete(Guid id)
+    {
+        var employee = await db.Employees.FindAsync(id);
+        if (employee is null)
+            return NotFound();
+
+        db.Employees.Remove(employee);
+        await db.SaveChangesAsync();
+        return NoContent();
+    }
+}

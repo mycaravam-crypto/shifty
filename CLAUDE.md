@@ -5,18 +5,38 @@ Full concept (German, source of truth for architecture/data model/decisions): [r
 
 ## Current state
 
-Scaffold only — nothing from readme.md §22 "Phase 1: Foundation" (Employee, Team,
-Contract, ShiftType) exists yet. What's built:
+readme.md §22 "Phase 1: Foundation" backend is done (Employee, Team, Contract, ShiftType +
+migration + controllers). Frontend UI for it is not — that's next. What's built:
 
 - **Backend** (`src/`): 4-project skeleton (Domain → Application → Infrastructure → Api)
   matching readme.md §19/§20. Builds clean (`dotnet build ShiftPlanner.sln`, verified via
   the .NET 10 SDK — **no dotnet SDK installed on this machine**, use the Docker container
   shown below). Program.cs wires Postgres/EF Core, ASP.NET Identity, JWT + API-key auth
-  schemes, rate limiting, CORS, Swagger, `/health`, and `--migrate`. No domain entities,
-  no controllers yet — only the `ApiKey`/`AuditLog` support types and Identity's own tables.
+  schemes, rate limiting, CORS, Swagger, `/health`, and `--migrate`.
+  - Domain entities (`Domain/Employees/Team.cs`, `Employee.cs`, `Domain/Contracts/Contract.cs`,
+    `Domain/Scheduling/ShiftType.cs`) plus the pre-existing `ApiKey`/`AuditLog` support types.
+  - `Infrastructure/Persistence/Migrations/Phase1Foundation` — first migration, covers Identity's
+    tables too since nothing had been applied before. Unique constraints per readme.md §11
+    (`Employee.PersonnelNumber`, `Team.Name`, `ShiftType.Name`, `Contract.EmployeeId+ValidFrom`)
+    and FKs (`Employee.TeamId` restrict, `Contract.EmployeeId` cascade) are in the DbContext's
+    `OnModelCreating`, not just app-level checks. Not yet applied to any real database — no
+    Postgres has been stood up to run `--migrate` against.
+  - `Api/Controllers/`: `EmployeesController` (full CRUD), `TeamsController` (GET/POST — matches
+    §18's minimal cut exactly, no PUT/DELETE), `ShiftTypesController` (GET/POST/PUT, no DELETE,
+    matching §18), `ContractsController` (full CRUD, nested under
+    `/api/employees/{id}/contracts` for list/create — §18 doesn't spell this one out but Contract
+    is a named Phase 1 entity so it needs *some* API surface). Plain CRUD, no
+    Application-layer services yet — there's no business logic to put there until Phase 3
+    validation exists, so controllers talk to `ApplicationDbContext` directly.
+  - `Api/Authorization/ApiWriteRequirement.cs` + two new policies in Program.cs (`ApiRead`,
+    `ApiWrite`): both JWT and `X-Api-Key` can hit these endpoints per readme.md §24, but an
+    API key needs `Scope: ReadWrite` to pass `ApiWrite` — previously the `ApiKeyScope` enum
+    existed but nothing enforced it. No Admin/Manager role split yet (§23's three roles aren't
+    seeded or checked anywhere) — that's still open.
 - **Frontend** (`frontend/`): Vite + Vue 3 + TS + Tailwind v4 + Pinia + Vue Router + Axios.
   Three routes (`/`, `/employees`, `/settings`) each render a bare `<h1>` — no real UI yet.
-  `services/api.ts` has JWT-attach + 401-refresh wired, but nothing calls it.
+  `services/api.ts` has JWT-attach + 401-refresh wired, but nothing calls it. Nothing calls the
+  new Phase 1 endpoints yet either.
 - **Docker/deploy**: `docker-compose.yml` (db/api/web) validated with `docker compose config`,
   never actually deployed. No `.env` exists anywhere yet (only `.env.example`).
 
@@ -84,6 +104,9 @@ still unstyled `<h1>`s. Bring in `lucide-vue-next` and the Inter/JetBrains Mono 
 
 ## Next step
 
-readme.md §22 Phase 1: Employee, Team, Contract, ShiftType domain entities + EF Core
-migrations + the first real controllers — the scaffold has nowhere to apply a migration
-against yet.
+Phase 1 backend is done but unverified against a real database — no Postgres has been stood
+up yet to run `dotnet run -- --migrate` against and smoke-test the controllers. After that:
+wire the Employees view (frontend) to the new `/api/employees` + `/api/teams` endpoints, per
+readme.md §17 and the visual design direction below. Role-based authorization (Admin vs
+Manager, readme.md §23) is still unimplemented — every write today just needs *any*
+authenticated JWT or a ReadWrite API key.

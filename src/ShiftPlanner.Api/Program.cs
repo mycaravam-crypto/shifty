@@ -1,10 +1,12 @@
 using System.Text;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using ShiftPlanner.Api.Authorization;
 using ShiftPlanner.Api.Middleware;
 using ShiftPlanner.Infrastructure.Persistence;
 
@@ -53,7 +55,17 @@ builder.Services.AddAuthorization(options =>
     options.AddPolicy("ExternalApi", policy => policy
         .AddAuthenticationSchemes(ApiKeyAuthenticationHandler.SchemeName)
         .RequireAuthenticatedUser());
+
+    options.AddPolicy("ApiRead", policy => policy
+        .AddAuthenticationSchemes(JwtBearerDefaults.AuthenticationScheme, ApiKeyAuthenticationHandler.SchemeName)
+        .RequireAuthenticatedUser());
+
+    options.AddPolicy("ApiWrite", policy => policy
+        .AddAuthenticationSchemes(JwtBearerDefaults.AuthenticationScheme, ApiKeyAuthenticationHandler.SchemeName)
+        .RequireAuthenticatedUser()
+        .AddRequirements(new ApiWriteRequirement()));
 });
+builder.Services.AddSingleton<IAuthorizationHandler, ApiWriteRequirementHandler>();
 
 builder.Services.AddRateLimiter(options =>
 {
