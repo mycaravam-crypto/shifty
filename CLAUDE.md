@@ -36,6 +36,10 @@ migration + controllers). Frontend UI for it is not. What's built:
     `ApiWrite`): both JWT and `X-Api-Key` can hit these endpoints per readme.md §24, but an
     API key needs `Scope: ReadWrite` to pass `ApiWrite` — previously the `ApiKeyScope` enum
     existed but nothing enforced it.
+  - `Employee.EligibleShiftTypes` (EF many-to-many, join table `EmployeeShiftType`) models
+    "mögliche Schichten" (readme.md §3) — GET/PUT `/api/employees/{id}/eligible-shift-types`.
+    Data model only, no eligibility validator yet — that needs `ShiftAssignment` (Phase 2),
+    which doesn't exist ([issue #6](https://github.com/mycaravam-crypto/shifty/issues/6)).
 - **Frontend** (`frontend/`): Vite + Vue 3 + TS + Tailwind v4 + Pinia + Vue Router + Axios +
   ESLint/Prettier. Three routes (`/`, `/employees`, `/settings`) each render a bare `<h1>` —
   no real UI yet. `services/api.ts` has JWT-attach + 401-refresh wired, but nothing calls it.

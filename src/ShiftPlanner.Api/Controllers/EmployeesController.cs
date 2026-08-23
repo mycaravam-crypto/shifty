@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using ShiftPlanner.Domain.Employees;
+using ShiftPlanner.Domain.Scheduling;
 using ShiftPlanner.Infrastructure.Persistence;
 
 namespace ShiftPlanner.Api.Controllers;
@@ -107,6 +108,37 @@ public class EmployeesController(ApplicationDbContext db) : ControllerBase
             return NotFound();
 
         db.Employees.Remove(employee);
+        await db.SaveChangesAsync();
+        return NoContent();
+    }
+
+    // "mögliche Schichten" (readme.md §3) — which shift types this employee may be
+    // scheduled for. No StaffingValidator yet, see issue #6.
+    [HttpGet("{id:guid}/eligible-shift-types")]
+    public async Task<ActionResult<IEnumerable<ShiftTypeDto>>> GetEligibleShiftTypes(Guid id)
+    {
+        var employee = await db.Employees.Include(e => e.EligibleShiftTypes).FirstOrDefaultAsync(e => e.Id == id);
+        if (employee is null)
+            return NotFound();
+
+        return Ok(employee.EligibleShiftTypes
+            .OrderBy(s => s.StartTime)
+            .Select(s => new ShiftTypeDto(s.Id, s.Name, s.StartTime, s.EndTime, s.BreakMinutes, s.Color, s.Active)));
+    }
+
+    [HttpPut("{id:guid}/eligible-shift-types")]
+    [Authorize(Policy = "ApiWrite")]
+    public async Task<IActionResult> SetEligibleShiftTypes(Guid id, List<Guid> shiftTypeIds)
+    {
+        var employee = await db.Employees.Include(e => e.EligibleShiftTypes).FirstOrDefaultAsync(e => e.Id == id);
+        if (employee is null)
+            return NotFound();
+
+        var shiftTypes = await db.ShiftTypes.Where(s => shiftTypeIds.Contains(s.Id)).ToListAsync();
+        if (shiftTypes.Count != shiftTypeIds.Distinct().Count())
+            return BadRequest("One or more shift type ids do not exist.");
+
+        employee.EligibleShiftTypes = shiftTypes;
         await db.SaveChangesAsync();
         return NoContent();
     }

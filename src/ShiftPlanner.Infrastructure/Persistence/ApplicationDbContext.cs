@@ -32,6 +32,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
                 .WithMany()
                 .HasForeignKey(x => x.TeamId)
                 .OnDelete(DeleteBehavior.Restrict);
+            e.HasMany(x => x.EligibleShiftTypes).WithMany();
         });
 
         builder.Entity<Contract>(c =>
