@@ -116,6 +116,25 @@ just started — only week-copy exists so far, frontend-only. What's built:
     contract hours, rest time, consecutive days — the last two via two adjacent Schedules for
     the same employee) and confirmed in the `ValidationResult` JSON; 401/404 on the new
     endpoint. Closes issues #6/#7/#8/#9/#10.
+  - `AuditLog` (readme.md §23) previously existed only as an entity + `DbSet` — nothing ever
+    wrote to it. Now wired up for real, and extended with `OldValues`/`NewValues` JSON
+    snapshot columns (migration `AuditLogValueSnapshots`), closing
+    [issue #12](https://github.com/mycaravam-crypto/shifty/issues/12) properly rather than
+    just adding columns nothing populates. `ApplicationDbContext.SaveChangesAsync` auto-logs
+    every Create/Update/Delete on the six write-controller entities (Team, Employee, Contract,
+    ShiftType, Schedule, ShiftAssignment) by walking the EF Core change tracker — no
+    per-controller code needed, matching the "no service layer" pattern everywhere else.
+    Actor resolution: JWT `NameIdentifier` (the Staff user id) → API key `Name` → `"system"`
+    (CLI-driven writes like `--seed-user`, which run outside the HTTP pipeline). `OldValues`
+    is a full property snapshot for Delete, `NewValues` likewise for Create; for Update both
+    are diffs of only the actually-changed properties. Requires `IHttpContextAccessor` in
+    Infrastructure (not an `Sdk.Web` project, so added via an explicit `FrameworkReference` to
+    `Microsoft.AspNetCore.App`) to resolve the current actor. **Not build- or
+    runtime-verified** — this session had neither a working Docker daemon (`dockerd` can't
+    start in this sandbox) nor a local dotnet SDK (install blocked by egress policy), so the
+    migration files were hand-written to mirror the existing ones' exact structure/conventions
+    rather than generated via `dotnet ef migrations add`; double-check with a real build
+    before relying on this in prod.
 - **Frontend** (`frontend/`): Vite + Vue 3 + TS + Tailwind v4 + Pinia + Vue Router + Axios +
   ESLint/Prettier + `@lucide/vue` (the `lucide-vue-next` package readme.md/issue #5 named is
   deprecated upstream in favor of this). `services/api.ts`'s JWT-attach + 401-refresh now
