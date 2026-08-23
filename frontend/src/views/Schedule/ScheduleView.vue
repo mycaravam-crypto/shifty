@@ -254,7 +254,7 @@ async function onCopyWeek() {
     }
 
     for (const a of assignments.value) {
-      await api.post(`/schedules/${target.id}/assignments`, {
+      await api.post(`/schedules/${target!.id}/assignments`, {
         employeeId: a.employeeId,
         shiftTypeId: a.shiftTypeId,
         date: toIso(addDays(parseIso(a.date), 7)),
