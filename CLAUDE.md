@@ -16,9 +16,9 @@ built, including the two rules needing cross-assignment history (Ruhezeit, max-c
 — issues #8/#9, see below). Phase 4 (Usability: week-copy/filters/search/shortcuts) has
 just started — only week-copy exists so far, frontend-only. Phase 5 (Erweiterungen) has also
 just started — hourly wage rates (issue #14), touch/mobile drag-and-drop for the
-Wochenansicht (issue #19), absence tracking (issue #17), and the overtime ledger built on top
-of it (issue #18) — see below; the rest of the Phase 5 roadmap (issues #15/#16: holiday
-calendar, wage surcharges) hasn't been started.
+Wochenansicht (issue #19), absence tracking (issue #17), the overtime ledger built on top of
+it (issue #18), and a public holiday calendar (issue #15) — see below; issue #16 (wage
+surcharges, depends on #15) hasn't been started.
 What's built:
 
 - **Backend** (`src/`): 4-project skeleton (Domain → Application → Infrastructure → Api)
@@ -292,6 +292,22 @@ What's built:
     an assignment chip opens `views/Schedule/ShiftAssignmentModal.vue`
     (`ModalShell`-based, mirrors `EmployeeDetailModal.vue`'s shape) to change ShiftType/times/
     break or delete — content edits only, moving stays drag-only, and it has no create mode.
+    Each day column header now gets a small amber dot (+ `title` tooltip with the holiday's
+    name) when it's a gesetzlicher Feiertag (issue #15) — `GET /api/public-holidays?start=&end=`
+    (new `PublicHolidaysController`) is *computed*, not a stored table: `Domain/Scheduling/
+    GermanPublicHolidays.cs` derives the 9 nationwide holidays for any year from Gauss's Easter
+    algorithm plus fixed calendar dates, so there's no yearly seed job and no migration, matching
+    the "no persisted derived state" pattern the codebase already uses for
+    `HoursBalanceCalculator`/`WorkingTimeCalculator`. First cut is nationwide-only — no
+    per-Bundesland holidays (e.g. Fronleichnam, Reformationstag) — since nothing consuming this
+    yet needs that precision; readme.md has no §-reference for holidays at all, this is a new
+    Phase 5 feature. Verified: the Easter algorithm checked against four known Easter Sundays
+    (2024–2027) by hand, `dotnet build` clean, `vue-tsc -b` clean, and round-tripped against a
+    real local Postgres/API (August 2026 correctly returns no nationwide holiday, a
+    Dec-2026→Jan-2027 range correctly crosses the year boundary and returns Christmas + New
+    Year's, `end < start` 400s, unauthenticated 401s) — not yet clicked through in an actual
+    browser (same Playwright-install gap as the rest of the Wochenansicht work). Issue #16
+    (wage surcharges) builds on this next but hasn't started.
     A glass panel above the palette lists every issue from `GET
     /schedules/{id}/validate` (❌ red for Errors, ⚠ amber for Warnings), refetched alongside
     the assignments on every load/move/create — the existing per-employee "Xh / Yh ⚠" bar is
