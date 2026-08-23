@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ChevronLeft, ChevronRight, Copy, Search, Printer } from '@lucide/vue'
+import { ChevronLeft, ChevronRight, Copy, Search, Printer, Keyboard } from '@lucide/vue'
 import api from '../../services/api'
 import ShiftAssignmentModal from './ShiftAssignmentModal.vue'
+import ModalShell from '../../components/ModalShell.vue'
 import SkeletonBlock from '../../components/SkeletonBlock.vue'
 import { useToastStore } from '../../stores/toast'
 
@@ -118,6 +119,7 @@ const holidays = ref<PublicHoliday[]>([])
 const assignments = ref<Assignment[]>([])
 const validation = ref<ValidationResult | null>(null)
 const selectedAssignment = ref<Assignment | null>(null)
+const showShortcuts = ref(false)
 const anchorDate = ref(new Date())
 const loading = ref(true)
 const error = ref('')
@@ -305,7 +307,7 @@ function isTyping(): boolean {
   return tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA'
 }
 function onKeydown(e: KeyboardEvent) {
-  if (selectedAssignment.value) return
+  if (selectedAssignment.value || showShortcuts.value) return
   if (e.key === '/' && !isTyping()) {
     e.preventDefault()
     searchInputRef.value?.focus()
@@ -313,6 +315,9 @@ function onKeydown(e: KeyboardEvent) {
     prevMonth()
   } else if (e.key === 'ArrowRight' && !isTyping()) {
     nextMonth()
+  } else if (e.key === '?' && !isTyping()) {
+    e.preventDefault()
+    showShortcuts.value = true
   }
 }
 
@@ -688,8 +693,40 @@ window.addEventListener('afterprint', () => {
           <Printer :size="14" />
           PDF exportieren
         </button>
+        <button
+          class="text-slate-400 hover:text-slate-200 transition-colors print:hidden"
+          title="Tastenkürzel anzeigen (?)"
+          @click="showShortcuts = true"
+        >
+          <Keyboard :size="18" />
+        </button>
       </div>
     </div>
+
+    <ModalShell v-if="showShortcuts" title="Tastenkürzel" @close="showShortcuts = false">
+      <dl class="text-sm space-y-2">
+        <div class="flex items-center justify-between gap-4">
+          <dt class="text-slate-400">Suche fokussieren</dt>
+          <dd class="font-mono rounded bg-white/10 px-2 py-0.5">/</dd>
+        </div>
+        <div class="flex items-center justify-between gap-4">
+          <dt class="text-slate-400">Vorheriger Monat</dt>
+          <dd class="font-mono rounded bg-white/10 px-2 py-0.5">←</dd>
+        </div>
+        <div class="flex items-center justify-between gap-4">
+          <dt class="text-slate-400">Nächster Monat</dt>
+          <dd class="font-mono rounded bg-white/10 px-2 py-0.5">→</dd>
+        </div>
+        <div class="flex items-center justify-between gap-4">
+          <dt class="text-slate-400">Dialog schließen</dt>
+          <dd class="font-mono rounded bg-white/10 px-2 py-0.5">Esc</dd>
+        </div>
+        <div class="flex items-center justify-between gap-4">
+          <dt class="text-slate-400">Diese Übersicht anzeigen</dt>
+          <dd class="font-mono rounded bg-white/10 px-2 py-0.5">?</dd>
+        </div>
+      </dl>
+    </ModalShell>
 
     <p v-if="error" class="mb-4 text-sm text-rose-400">{{ error }}</p>
 

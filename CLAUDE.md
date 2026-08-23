@@ -26,11 +26,11 @@ issue #27 is fully closed out. A UX/UI audit turned up 8 more issues (#36–#43:
 system, replacing native `confirm()` dialogs, skeleton loaders, a clickable validation panel,
 responsive Employees/Stammdaten tables, filter persistence, keyboard-shortcut discoverability,
 and real `SettingsView` content) — issues #36 (toast system), #37 (`ConfirmDialog`), #38
-(skeleton loaders), #39 (clickable validation panel), #40 (responsive Employees/Stammdaten), and
-#41 (filter persistence) are now built, the rest are still open. Building #40 surfaced a further
-gap outside its own scope — `AppShell.vue`'s sidebar isn't responsive at all and dominates a
-real phone's viewport regardless of how responsive the page content underneath it is — filed as
-issue #44, not started.
+(skeleton loaders), #39 (clickable validation panel), #40 (responsive Employees/Stammdaten),
+#41 (filter persistence), and #42 (keyboard-shortcut discoverability) are now built, the rest
+are still open. Building #40 surfaced a further gap outside its own scope — `AppShell.vue`'s
+sidebar isn't responsive at all and dominates a real phone's viewport regardless of how
+responsive the page content underneath it is — filed as issue #44, not started.
 What's built:
 
 - **Backend** (`src/`): 4-project skeleton (Domain → Application → Infrastructure → Api)
@@ -629,6 +629,18 @@ What's built:
     (private-browsing/storage-full edge cases degrade to "works for the session, doesn't survive
     a reload" rather than throwing). The existing `?scheduleId=` deep-link handling was untouched
     — it never overlapped with this since it's cleared immediately after use, not persisted.
+  - **Keyboard-shortcut discoverability** (issue #42) — `ScheduleView.vue`'s `/`/`ArrowLeft`/
+    `ArrowRight`/`Escape` shortcuts (Phase 4 usability work) had no in-UI hint they existed
+    beyond the search box's own placeholder text. Added a `Keyboard`-icon button in the toolbar
+    (`title="Tastenkürzel anzeigen (?)"`) that opens a small `ModalShell` listing all of them,
+    plus a `?` key itself now opens the same modal (guarded by the same `isTyping()` check the
+    other shortcuts already use, so it doesn't fire while typing a literal `?` into the search
+    box) — `onKeydown`'s existing early-return guard for `selectedAssignment` was extended to
+    also cover `showShortcuts`, so the other shortcuts go inert while this modal is open, same
+    as they already do while the assignment-edit modal is open. Verified in a real headless
+    Chromium: the button opens it, `Escape` closes it (via `ModalShell`'s existing handling,
+    unaffected by issue #37's Escape-suppression fix since there's no nested-modal case here),
+    and pressing `?` unfocused opens it directly.
   - `components/AppShell.vue` — sidebar nav (Übersicht/Dienstplan/Mitarbeiter/Stammdaten/
     Einstellungen) + user identity + logout, applying CLAUDE.md's "Visual design" tokens (dark
     glass, Inter, blue→indigo accent). `SettingsView` is still a styled-but-minimal placeholder
