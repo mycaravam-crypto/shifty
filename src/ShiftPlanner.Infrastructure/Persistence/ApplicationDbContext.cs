@@ -19,7 +19,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     private static readonly Type[] AuditedTypes =
     [
         typeof(Team), typeof(Employee), typeof(Contract), typeof(ShiftType),
-        typeof(Schedule), typeof(ShiftAssignment)
+        typeof(Schedule), typeof(ShiftAssignment), typeof(Absence)
     ];
 
     public DbSet<ApiKey> ApiKeys => Set<ApiKey>();
@@ -28,6 +28,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<Team> Teams => Set<Team>();
     public DbSet<Employee> Employees => Set<Employee>();
     public DbSet<Contract> Contracts => Set<Contract>();
+    public DbSet<Absence> Absences => Set<Absence>();
     public DbSet<ShiftType> ShiftTypes => Set<ShiftType>();
     public DbSet<Schedule> Schedules => Set<Schedule>();
     public DbSet<ShiftAssignment> ShiftAssignments => Set<ShiftAssignment>();
@@ -53,6 +54,14 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
         {
             c.HasIndex(x => new { x.EmployeeId, x.ValidFrom }).IsUnique();
             c.HasOne<Employee>()
+                .WithMany()
+                .HasForeignKey(x => x.EmployeeId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<Absence>(a =>
+        {
+            a.HasOne<Employee>()
                 .WithMany()
                 .HasForeignKey(x => x.EmployeeId)
                 .OnDelete(DeleteBehavior.Cascade);
