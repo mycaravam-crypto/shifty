@@ -3,10 +3,14 @@
 Full concept (German, source of truth for architecture/data model/decisions): [readme.md](readme.md).
 §23–26 cover security/login, external API keys, Docker+Postgres, and deployment.
 
+Ongoing/planned work lives in [GitHub Issues](https://github.com/mycaravam-crypto/shifty/issues),
+not here and not in readme.md — readme.md stays a stable concept doc, this file stays a factual
+snapshot of what exists right now.
+
 ## Current state
 
 readme.md §22 "Phase 1: Foundation" backend is done (Employee, Team, Contract, ShiftType +
-migration + controllers). Frontend UI for it is not — that's next. What's built:
+migration + controllers). Frontend UI for it is not. What's built:
 
 - **Backend** (`src/`): 4-project skeleton (Domain → Application → Infrastructure → Api)
   matching readme.md §19/§20. Builds clean (`dotnet build ShiftPlanner.sln`, verified via
@@ -19,8 +23,8 @@ migration + controllers). Frontend UI for it is not — that's next. What's buil
     tables too since nothing had been applied before. Unique constraints per readme.md §11
     (`Employee.PersonnelNumber`, `Team.Name`, `ShiftType.Name`, `Contract.EmployeeId+ValidFrom`)
     and FKs (`Employee.TeamId` restrict, `Contract.EmployeeId` cascade) are in the DbContext's
-    `OnModelCreating`, not just app-level checks. Not yet applied to any real database — no
-    Postgres has been stood up to run `--migrate` against.
+    `OnModelCreating`, not just app-level checks. Not yet applied to any real database
+    ([issue #1](https://github.com/mycaravam-crypto/shifty/issues/1)).
   - `Api/Controllers/`: `EmployeesController` (full CRUD), `TeamsController` (GET/POST — matches
     §18's minimal cut exactly, no PUT/DELETE), `ShiftTypesController` (GET/POST/PUT, no DELETE,
     matching §18), `ContractsController` (full CRUD, nested under
@@ -31,12 +35,10 @@ migration + controllers). Frontend UI for it is not — that's next. What's buil
   - `Api/Authorization/ApiWriteRequirement.cs` + two new policies in Program.cs (`ApiRead`,
     `ApiWrite`): both JWT and `X-Api-Key` can hit these endpoints per readme.md §24, but an
     API key needs `Scope: ReadWrite` to pass `ApiWrite` — previously the `ApiKeyScope` enum
-    existed but nothing enforced it. No Admin/Manager role split yet (§23's three roles aren't
-    seeded or checked anywhere) — that's still open.
-- **Frontend** (`frontend/`): Vite + Vue 3 + TS + Tailwind v4 + Pinia + Vue Router + Axios.
-  Three routes (`/`, `/employees`, `/settings`) each render a bare `<h1>` — no real UI yet.
-  `services/api.ts` has JWT-attach + 401-refresh wired, but nothing calls it. Nothing calls the
-  new Phase 1 endpoints yet either.
+    existed but nothing enforced it.
+- **Frontend** (`frontend/`): Vite + Vue 3 + TS + Tailwind v4 + Pinia + Vue Router + Axios +
+  ESLint/Prettier. Three routes (`/`, `/employees`, `/settings`) each render a bare `<h1>` —
+  no real UI yet. `services/api.ts` has JWT-attach + 401-refresh wired, but nothing calls it.
 - **Docker/deploy**: `docker-compose.yml` (db/api/web) validated with `docker compose config`,
   never actually deployed. No `.env` exists anywhere yet (only `.env.example`).
 
@@ -61,13 +63,8 @@ values — see docker-compose.yml for which vars).
 behind that host's existing shared Caddy instance (not a containerized one — see the header
 comment in [deploy/Caddyfile](deploy/Caddyfile) for the one-time host-side snippet still
 needed). Deploy pipeline is [.github/workflows/deploy.yml](.github/workflows/deploy.yml) →
-[deploy/deploy.sh](deploy/deploy.sh), triggered on push to `main`.
-
-**Not yet done, needed before the pipeline can run:**
-- GitHub repo secrets: `SHIFTPLANNER_DEPLOY_SSH_KEY`, `SHIFTPLANNER_DEPLOY_HOST`, `SHIFTPLANNER_DEPLOY_PATH`
-- `.env` created on the server at `$SHIFTPLANNER_DEPLOY_PATH/.env` (from `.env.example`)
-- The one-time host Caddy block from `deploy/Caddyfile`'s header comment
-- DNS: `shifty.vi0lins.de` → the server
+[deploy/deploy.sh](deploy/deploy.sh), triggered on push to `main`. The pipeline isn't runnable
+yet — see [issue #4](https://github.com/mycaravam-crypto/shifty/issues/4) for what's missing.
 
 ## Visual design
 
@@ -99,14 +96,4 @@ re-deriving patterns from scratch. Tokens pulled from both:
   shape from readme.md §15.
 
 Not yet applied to the scaffold — the three placeholder views (`ScheduleView.vue` etc.) are
-still unstyled `<h1>`s. Bring in `lucide-vue-next` and the Inter/JetBrains Mono font links
-(see vanspace3d's `index.html` head) when building the real UI, not before.
-
-## Next step
-
-Phase 1 backend is done but unverified against a real database — no Postgres has been stood
-up yet to run `dotnet run -- --migrate` against and smoke-test the controllers. After that:
-wire the Employees view (frontend) to the new `/api/employees` + `/api/teams` endpoints, per
-readme.md §17 and the visual design direction below. Role-based authorization (Admin vs
-Manager, readme.md §23) is still unimplemented — every write today just needs *any*
-authenticated JWT or a ReadWrite API key.
+still unstyled `<h1>`s ([issue #5](https://github.com/mycaravam-crypto/shifty/issues/5)).
