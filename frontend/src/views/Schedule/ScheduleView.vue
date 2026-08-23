@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { ChevronLeft, ChevronRight, Copy, Search, Printer } from '@lucide/vue'
 import api from '../../services/api'
 import ShiftAssignmentModal from './ShiftAssignmentModal.vue'
+import { useToastStore } from '../../stores/toast'
 
 interface Employee {
   id: string
@@ -102,6 +103,7 @@ const weekdayFmt = new Intl.DateTimeFormat('de-DE', {
 })
 const monthFmt = new Intl.DateTimeFormat('de-DE', { month: 'long', year: 'numeric' })
 
+const toast = useToastStore()
 const employees = ref<Employee[]>([])
 const teams = ref<Team[]>([])
 const shiftTypes = ref<ShiftType[]>([])
@@ -323,6 +325,9 @@ async function onCreateSchedule() {
       endDate: monthEndIso.value,
     })
     schedules.value = (await api.get('/schedules')).data
+    toast.success('Monat angelegt.')
+  } catch {
+    toast.error('Monat konnte nicht angelegt werden.')
   } finally {
     creatingSchedule.value = false
   }
@@ -349,6 +354,7 @@ async function onCopyMonth() {
       const existing = await api.get(`/schedules/${target.id}`)
       if (existing.data.assignments.length) {
         error.value = 'Nächster Monat hat bereits Schichten — Kopieren abgebrochen.'
+        toast.error(error.value)
         return
       }
     }
@@ -365,7 +371,10 @@ async function onCopyMonth() {
         breakMinutes: a.breakMinutes,
       })
     }
+    toast.success('Monat kopiert.')
     nextMonth()
+  } catch {
+    toast.error('Monat konnte nicht kopiert werden.')
   } finally {
     copyingMonth.value = false
   }

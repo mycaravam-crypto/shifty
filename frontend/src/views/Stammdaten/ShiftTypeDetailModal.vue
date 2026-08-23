@@ -3,6 +3,7 @@ import { ref } from 'vue'
 import axios from 'axios'
 import api from '../../services/api'
 import ModalShell from '../../components/ModalShell.vue'
+import { useToastStore } from '../../stores/toast'
 
 interface ShiftType {
   id: string
@@ -34,6 +35,7 @@ const form = ref({
 })
 const saving = ref(false)
 const error = ref('')
+const toast = useToastStore()
 
 async function onSave() {
   saving.value = true
@@ -49,6 +51,7 @@ async function onSave() {
       minStaffing: form.value.minStaffing ? Number(form.value.minStaffing) : null,
       maxStaffing: form.value.maxStaffing ? Number(form.value.maxStaffing) : null,
     })
+    toast.success('Schichttyp aktualisiert.')
     emit('updated')
   } catch (e) {
     error.value = axios.isAxiosError(e) && e.response?.data ? e.response.data : 'Speichern fehlgeschlagen.'

@@ -22,7 +22,11 @@ it (issue #18), a public holiday calendar (issue #15), and shift-type wage surch
 last one open. An operational dashboard (issue #27) is now also underway, scoped into three
 sub-issues per the parent issue's own suggestion: the backend read-model endpoint (issue #29),
 the frontend view (issue #30), and its Action Required feed (issue #31) are all now built —
-issue #27 is fully closed out.
+issue #27 is fully closed out. A UX/UI audit turned up 8 more issues (#36–#43: a global toast
+system, replacing native `confirm()` dialogs, skeleton loaders, a clickable validation panel,
+responsive Employees/Stammdaten tables, filter persistence, keyboard-shortcut discoverability,
+and real `SettingsView` content) — issue #36 (toast system) is now built, the rest are still
+open.
 What's built:
 
 - **Backend** (`src/`): 4-project skeleton (Domain → Application → Infrastructure → Api)
@@ -480,6 +484,34 @@ What's built:
     the live issue, and clicking "Öffnen" navigated to Dienstplan and landed on the correct
     month (August 2026) for the affected schedule. Test assignment deleted again afterward to
     leave the dev DB clean.
+  - **Global toast/notification system** (issue #36, first of the UX/UI audit issues) — before
+    this, every create/update/delete across the app gave no positive feedback at all (the modal
+    just closed and the list silently reloaded) and failures were only a per-view inline
+    `error.value` string, easy to miss. `stores/toast.ts` (a plain Pinia store — `push`/
+    `success`/`error`/`dismiss`, auto-dismiss after 4s) + `components/ToastContainer.vue`
+    (fixed bottom-right, `.glass` panel matching the rest of the design system, emerald check /
+    rose X icon, manual dismiss button, mounted once in `App.vue` outside the `AppShell`
+    conditional so it also works on the public `/login` route) — no new dependency, same
+    build-it-in-house approach as `ModalShell.vue`. Wired into every mutating action that
+    previously had no feedback: employee create/delete (`EmployeesView.vue`), team/shift-type
+    create (`StammdatenView.vue`), shift-type update (`ShiftTypeDetailModal.vue`), employee
+    update, eligible-shift-types save, contract create/delete, absence create/delete
+    (`EmployeeDetailModal.vue`), assignment update/delete (`ShiftAssignmentModal.vue`), and
+    schedule create/month-copy (`ScheduleView.vue`) — the last of which also fixed two
+    previously-silent failure paths (`onCreateSchedule` had no `catch` at all;
+    `onDeleteContract`/`onDeleteAbsence`/assignment `onDelete` likewise threw with no user-visible
+    result on failure, all now caught and toasted). Deliberately scoped: drag-and-drop shift
+    placement/move stays toast-free (the chip appearing/moving is its own immediate feedback —
+    a toast per drop would just be noise), and forms with an existing inline validation error
+    (create employee/team/shift-type/contract/absence, employee/shift-type/assignment save) keep
+    that inline message rather than duplicating it as a toast — toasts were only added for
+    actions that previously had zero failure feedback. Verified in a real headless Chromium
+    (API mocked at the network layer, same technique as the dashboard/drag-and-drop verification
+    above): `vue-tsc -b`/`vite build`/`eslint` clean (zero new warnings — the 57 pre-existing
+    Prettier warnings are unchanged from before this work), then round-tripped creating a team
+    through the real dev server — the "Team angelegt." toast renders with the check icon, is
+    dismissible, and correctly coexists with a separate inline "Team existiert bereits."
+    validation error triggered right after it.
   - `components/AppShell.vue` — sidebar nav (Übersicht/Dienstplan/Mitarbeiter/Stammdaten/
     Einstellungen) + user identity + logout, applying CLAUDE.md's "Visual design" tokens (dark
     glass, Inter, blue→indigo accent). `SettingsView` is still a styled-but-minimal placeholder

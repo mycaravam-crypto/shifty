@@ -4,6 +4,7 @@ import { Plus } from '@lucide/vue'
 import axios from 'axios'
 import api from '../../services/api'
 import ShiftTypeDetailModal from './ShiftTypeDetailModal.vue'
+import { useToastStore } from '../../stores/toast'
 
 interface Team {
   id: string
@@ -25,6 +26,7 @@ interface ShiftType {
 const inputClass =
   'rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-indigo-500'
 
+const toast = useToastStore()
 const teams = ref<Team[]>([])
 const shiftTypes = ref<ShiftType[]>([])
 const loading = ref(true)
@@ -68,6 +70,7 @@ async function onCreateTeam() {
     await api.post('/teams', { name: teamForm.value.name })
     teamForm.value = { name: '' }
     showTeamForm.value = false
+    toast.success('Team angelegt.')
     await load()
   } catch (e) {
     error.value = axios.isAxiosError(e) && e.response?.data ? e.response.data : 'Team konnte nicht angelegt werden.'
@@ -99,6 +102,7 @@ async function onCreateShiftType() {
       maxStaffing: '',
     }
     showShiftTypeForm.value = false
+    toast.success('Schichttyp angelegt.')
     await load()
   } catch (e) {
     error.value =

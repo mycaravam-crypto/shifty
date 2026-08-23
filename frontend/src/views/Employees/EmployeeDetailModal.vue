@@ -5,6 +5,7 @@ import axios from 'axios'
 import api from '../../services/api'
 import ModalShell from '../../components/ModalShell.vue'
 import { formatDate } from '../../utils/date'
+import { useToastStore } from '../../stores/toast'
 
 interface Employee {
   id: string
@@ -58,6 +59,7 @@ const emit = defineEmits<{ close: []; updated: [] }>()
 const inputClass =
   'rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-indigo-500'
 
+const toast = useToastStore()
 const form = ref({ ...props.employee })
 const savingEmployee = ref(false)
 const employeeError = ref('')
@@ -74,6 +76,7 @@ async function onSaveEmployee() {
       active: form.value.active,
       teamId: form.value.teamId || null,
     })
+    toast.success('Mitarbeiterdaten gespeichert.')
     emit('updated')
   } catch (e) {
     employeeError.value =
@@ -106,6 +109,9 @@ async function onSaveEligible() {
   savingEligible.value = true
   try {
     await api.put(`/employees/${props.employee.id}/eligible-shift-types`, [...eligibleIds.value])
+    toast.success('Berechtigte Schichten gespeichert.')
+  } catch {
+    toast.error('Berechtigte Schichten konnten nicht gespeichert werden.')
   } finally {
     savingEligible.value = false
   }
@@ -148,6 +154,7 @@ async function onCreateContract() {
       dailyTargetHours: 8,
       hourlyRate: null,
     }
+    toast.success('Vertrag angelegt.')
     await loadContracts()
   } catch (e) {
     contractError.value =
@@ -161,8 +168,13 @@ async function onCreateContract() {
 
 async function onDeleteContract(id: string) {
   if (!confirm('Vertrag wirklich löschen?')) return
-  await api.delete(`/contracts/${id}`)
-  await loadContracts()
+  try {
+    await api.delete(`/contracts/${id}`)
+    toast.success('Vertrag gelöscht.')
+    await loadContracts()
+  } catch {
+    toast.error('Vertrag konnte nicht gelöscht werden.')
+  }
 }
 
 const absences = ref<Absence[]>([])
@@ -191,6 +203,7 @@ async function onCreateAbsence() {
       comment: absenceForm.value.comment || null,
     })
     absenceForm.value = { from: '', to: '', type: 0, comment: '' }
+    toast.success('Abwesenheit angelegt.')
     await loadAbsences()
   } catch (e) {
     absenceError.value =
@@ -204,8 +217,13 @@ async function onCreateAbsence() {
 
 async function onDeleteAbsence(id: string) {
   if (!confirm('Abwesenheit wirklich löschen?')) return
-  await api.delete(`/absences/${id}`)
-  await loadAbsences()
+  try {
+    await api.delete(`/absences/${id}`)
+    toast.success('Abwesenheit gelöscht.')
+    await loadAbsences()
+  } catch {
+    toast.error('Abwesenheit konnte nicht gelöscht werden.')
+  }
 }
 
 onMounted(() => {

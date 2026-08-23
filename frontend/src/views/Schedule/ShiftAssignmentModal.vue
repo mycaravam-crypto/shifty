@@ -3,6 +3,7 @@ import { ref } from 'vue'
 import { Trash2 } from '@lucide/vue'
 import api from '../../services/api'
 import ModalShell from '../../components/ModalShell.vue'
+import { useToastStore } from '../../stores/toast'
 
 interface ShiftType {
   id: string
@@ -37,6 +38,7 @@ const form = ref({
 })
 const saving = ref(false)
 const error = ref('')
+const toast = useToastStore()
 
 function onShiftTypeChange() {
   const shiftType = props.shiftTypes.find((s) => s.id === form.value.shiftTypeId)
@@ -58,6 +60,7 @@ async function onSave() {
       endTime: `${form.value.endTime}:00`,
       breakMinutes: form.value.breakMinutes,
     })
+    toast.success('Schicht aktualisiert.')
     emit('updated')
   } catch {
     error.value = 'Speichern fehlgeschlagen.'
@@ -68,8 +71,13 @@ async function onSave() {
 
 async function onDelete() {
   if (!confirm('Schicht wirklich löschen?')) return
-  await api.delete(`/assignments/${props.assignment.id}`)
-  emit('updated')
+  try {
+    await api.delete(`/assignments/${props.assignment.id}`)
+    toast.success('Schicht gelöscht.')
+    emit('updated')
+  } catch {
+    toast.error('Schicht konnte nicht gelöscht werden.')
+  }
 }
 </script>
 

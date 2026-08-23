@@ -4,6 +4,7 @@ import { Plus, Trash2 } from '@lucide/vue'
 import axios from 'axios'
 import api from '../../services/api'
 import EmployeeDetailModal from './EmployeeDetailModal.vue'
+import { useToastStore } from '../../stores/toast'
 
 interface Employee {
   id: string
@@ -20,6 +21,7 @@ interface Team {
   active: boolean
 }
 
+const toast = useToastStore()
 const employees = ref<Employee[]>([])
 const teams = ref<Team[]>([])
 const loading = ref(true)
@@ -61,6 +63,7 @@ async function onCreate() {
     })
     form.value = { personnelNumber: '', firstName: '', lastName: '', email: '', teamId: '' }
     showForm.value = false
+    toast.success('Mitarbeiter angelegt.')
     await load()
   } catch (e) {
     error.value =
@@ -74,8 +77,13 @@ async function onCreate() {
 
 async function onDelete(id: string) {
   if (!confirm('Mitarbeiter wirklich löschen?')) return
-  await api.delete(`/employees/${id}`)
-  await load()
+  try {
+    await api.delete(`/employees/${id}`)
+    toast.success('Mitarbeiter gelöscht.')
+    await load()
+  } catch {
+    toast.error('Mitarbeiter konnte nicht gelöscht werden.')
+  }
 }
 
 async function onEmployeeUpdated() {
