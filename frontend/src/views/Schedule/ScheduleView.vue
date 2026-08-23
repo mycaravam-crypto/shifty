@@ -303,6 +303,9 @@ onMounted(load)
 onMounted(() => window.addEventListener('keydown', onKeydown))
 onUnmounted(cleanupDrag)
 onUnmounted(() => window.removeEventListener('keydown', onKeydown))
+onUnmounted(() => {
+  if (jumpHighlightTimer !== null) window.clearTimeout(jumpHighlightTimer)
+})
 watch(monthStartIso, () => {
   if (!loading.value) {
     loadBalances()
@@ -404,6 +407,29 @@ interface DragState {
 const DRAG_ACTIVATE_PX = 6
 const drag = ref<DragState | null>(null)
 const dragOverKey = ref<string | null>(null)
+
+// issue #39: clicking a validation issue scrolls to and briefly highlights the row/cell it's
+// about, instead of the panel being a static text list.
+const JUMP_HIGHLIGHT_MS = 2000
+const jumpTarget = ref<{ employeeId: string; dateIso: string | null } | null>(null)
+let jumpHighlightTimer: number | null = null
+function jumpToIssue(issue: ValidationIssue) {
+  if (!issue.employeeId) return
+  const assignment = issue.shiftAssignmentId
+    ? assignments.value.find((a) => a.id === issue.shiftAssignmentId)
+    : undefined
+  jumpTarget.value = { employeeId: issue.employeeId, dateIso: assignment?.date ?? null }
+  if (jumpHighlightTimer !== null) window.clearTimeout(jumpHighlightTimer)
+  jumpHighlightTimer = window.setTimeout(() => {
+    jumpTarget.value = null
+    jumpHighlightTimer = null
+  }, JUMP_HIGHLIGHT_MS)
+  nextTick(() => {
+    document
+      .querySelector(`[data-employee-row="${issue.employeeId}"]`)
+      ?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  })
+}
 
 function paletteDragPayload(s: ShiftType): DragPayload {
   return {
@@ -672,10 +698,24 @@ window.addEventListener('afterprint', () => {
           class="glass rounded-xl p-4 mb-4 text-sm space-y-1 print:hidden"
         >
           <p v-for="(issue, i) in validation.errors" :key="'e' + i" class="text-rose-400">
-            ❌ {{ issue.message }}
+            <button
+              v-if="issue.employeeId"
+              class="text-left hover:underline decoration-dotted underline-offset-2"
+              @click="jumpToIssue(issue)"
+            >
+              ❌ {{ issue.message }}
+            </button>
+            <template v-else>❌ {{ issue.message }}</template>
           </p>
           <p v-for="(issue, i) in validation.warnings" :key="'w' + i" class="text-amber-400">
-            ⚠ {{ issue.message }}
+            <button
+              v-if="issue.employeeId"
+              class="text-left hover:underline decoration-dotted underline-offset-2"
+              @click="jumpToIssue(issue)"
+            >
+              ⚠ {{ issue.message }}
+            </button>
+            <template v-else>⚠ {{ issue.message }}</template>
           </p>
         </div>
 
@@ -764,8 +804,11 @@ window.addEventListener('afterprint', () => {
               <tr
                 v-for="e in visibleEmployees"
                 :key="e.id"
-                class="border-b border-white/5 last:border-0"
-                :class="{ 'print:hidden': printEmployeeId && printEmployeeId !== e.id }"
+                class="border-b border-white/5 last:border-0 transition-colors"
+                :class="{
+                  'print:hidden': printEmployeeId && printEmployeeId !== e.id,
+                  'bg-blue-500/5': jumpTarget?.employeeId === e.id,
+                }"
                 :data-employee-row="e.id"
               >
                 <td class="px-4 py-3 align-top print:px-1 print:py-1">
@@ -818,7 +861,8 @@ window.addEventListener('afterprint', () => {
                   class="px-2 py-2 align-top transition-colors print:px-0.5 print:py-0.5"
                   :class="{
                     'bg-blue-500/10 ring-1 ring-inset ring-blue-500/50':
-                      dragOverKey === `${e.id}|${toIso(d)}`,
+                      dragOverKey === `${e.id}|${toIso(d)}` ||
+                      (jumpTarget?.employeeId === e.id && jumpTarget.dateIso === toIso(d)),
                   }"
                   :data-employee-id="e.id"
                   :data-date="toIso(d)"

@@ -25,8 +25,8 @@ the frontend view (issue #30), and its Action Required feed (issue #31) are all 
 issue #27 is fully closed out. A UX/UI audit turned up 8 more issues (#36–#43: a global toast
 system, replacing native `confirm()` dialogs, skeleton loaders, a clickable validation panel,
 responsive Employees/Stammdaten tables, filter persistence, keyboard-shortcut discoverability,
-and real `SettingsView` content) — issues #36 (toast system), #37 (`ConfirmDialog`), and #38
-(skeleton loaders) are now built, the rest are still open.
+and real `SettingsView` content) — issues #36 (toast system), #37 (`ConfirmDialog`), #38
+(skeleton loaders), and #39 (clickable validation panel) are now built, the rest are still open.
 What's built:
 
 - **Backend** (`src/`): 4-project skeleton (Domain → Application → Infrastructure → Api)
@@ -571,6 +571,23 @@ What's built:
     four render the intended pulsing-placeholder layout (headers/buttons visible immediately on
     the two table views, the full card/panel skeleton on the dashboard, the grid skeleton on the
     schedule) rather than just trusting the markup would look right.
+  - **Clickable validation panel** (issue #39) — `ScheduleView.vue`'s ❌/⚠ validation panel was
+    static text even though each `ValidationIssue` already carries `employeeId`/
+    `shiftAssignmentId`. An issue with an `employeeId` now renders as a button; clicking it
+    (`jumpToIssue`) resolves the `shiftAssignmentId` (when present) against the already-loaded
+    `assignments` list to get its date, `scrollIntoView({ behavior: 'smooth', block: 'center' })`s
+    the matching `[data-employee-row]` `<tr>` (an attribute that already existed for the print-zoom
+    measurement — issue #37's `ConfirmDialog` work wasn't the only reuse of it), and briefly
+    (2s) highlights that row plus, when a date resolved, the specific `[data-employee-id][data-date]`
+    day cell — reusing the exact highlight classes the drag-and-drop hover state already applies,
+    so a validation jump looks like "this is the cell being pointed at," the same visual language
+    the app already uses. An issue with no `employeeId` (schedule-wide problems, if any ever
+    exist) stays plain text — nothing to jump to. Verified in a real headless Chromium: seeded a
+    15-employee schedule with one `BreakMinutesTooShort` error pointed at an employee scrolled
+    off the bottom of a short viewport, confirmed the target row was genuinely off-screen before
+    the click, and that clicking the issue scrolled it into view and applied both the row-level
+    and cell-level highlight classes — not just that the code runs, but that the specific
+    off-screen row actually became visible.
   - `components/AppShell.vue` — sidebar nav (Übersicht/Dienstplan/Mitarbeiter/Stammdaten/
     Einstellungen) + user identity + logout, applying CLAUDE.md's "Visual design" tokens (dark
     glass, Inter, blue→indigo accent). `SettingsView` is still a styled-but-minimal placeholder
