@@ -19,7 +19,10 @@ just started — hourly wage rates (issue #14), touch/mobile drag-and-drop for t
 Wochenansicht (issue #19), absence tracking (issue #17), the overtime ledger built on top of
 it (issue #18), a public holiday calendar (issue #15), and shift-type wage surcharges
 (issue #16) — see below. All Phase 5 issues filed so far are now built; issue #16 was the
-last one open.
+last one open. An operational dashboard (issue #27) is now also underway, scoped into three
+sub-issues per the parent issue's own suggestion: the backend read-model endpoint (issue #29)
+is built, see below; the frontend view (issue #30) and its Action Required feed (issue #31)
+are not started yet.
 What's built:
 
 - **Backend** (`src/`): 4-project skeleton (Domain → Application → Infrastructure → Api)
@@ -224,6 +227,52 @@ What's built:
     API level (curl) rather than through the browser, since the second Playwright pass reused
     state from the first and produced a duplicate row that made the delete-button locator
     ambiguous — a test-script artifact, not a product issue.
+  - **Dashboard read model** (issue #29, sub-issue of #27) — `GET /api/dashboard?from=&to=
+    &teamId=&shiftTypeId=` (new `DashboardController`, mirrors `SchedulesController`'s pattern:
+    DTO records at file scope, static aggregation helpers, `ApiRead` policy, no service layer).
+    `from`/`to` default server-side to the current week (Mon–Sun) when omitted. Every number is
+    derived from existing calculators/validators, not re-derived: `ScheduleValidator` run once
+    per Schedule overlapping the period is the source for the flat `PainPoints` list (also feeds
+    `PlanningStatus.ConflictCount`/`AffectedSchedules` — a schedule "conflicts" if it has Errors);
+    `StaffingValidator`'s `(ShiftTypeId, Date)` grouping is reused (new code) to turn its
+    pass/fail Warnings into a `Coverage` percentage/Green-Yellow-Red list (95%/85% thresholds,
+    computed server-side so there's one source of truth); `WorkingTimeCalculator`/
+    `WageCalculator`/`GermanPublicHolidays` back the cost and hours sums exactly as
+    `SchedulesController` already uses them; `ContractValidator`'s `WeeklyHours × day-span −
+    absence-days` formula is reused for both `Utilization.ContractCapacityHours` and the
+    `OvertimeHours` KPI (`Max(0, actual − expected)` summed, vs. `ContractValidator`'s
+    boolean-ish flag). Scope was deliberately trimmed from the parent issue's mockup — no
+    Location filter (no such entity exists), `PlanningStatus` redefined onto
+    Draft/Published/Conflict counts instead of the mockup's Draft/Published/Incomplete/Conflicts
+    (`Schedule.Status` has no "Incomplete" concept), Cost Overview is total + delta vs previous
+    period only (no regular/overtime/premium/weekend breakdown or budget comparison — no such
+    concepts exist in `WageCalculator` or anywhere else), no per-employee utilization table.
+    `historyAssignments` is omitted when calling `ScheduleValidator` here (cross-schedule-
+    boundary rest-time/consecutive-day precision is lost at the edges of the period) — acceptable
+    for an overview; exact enforcement still lives on the pre-existing
+    `GET /schedules/{id}/validate`, unchanged by this work. Team/ShiftType filters narrow the
+    KPI/coverage/cost/utilization numbers; Pain Points are only filtered by team (via each
+    issue's `EmployeeId`, when set — issues like `Understaffed` that aren't employee-specific are
+    always included) since `ValidationIssue` has no structured `ShiftTypeId` to filter by.
+    Along the way, `OverlapDays` (the absence-overlap day-count helper) — already duplicated
+    verbatim as a *private* method in both `ContractValidator` (Application layer) and
+    `HoursBalanceCalculator` (Domain layer), split apart originally only because Domain can't
+    depend on Application — got extracted to a new public `WorkingTimeCalculator.OverlapDays`
+    (Domain layer, sits below both) now that this endpoint became a 3rd caller needing the same
+    math; both private copies were deleted in favor of it. Verified against a real local Postgres
+    (this machine's existing `docker compose` stack, rebuilt with `docker compose build api`):
+    `dotnet build` clean, then a hand-built scenario (one employee, a 20h/week €15/h contract, a
+    ShiftType with `MinStaffing=2`, three assignments in one week — two weekdays, one Sunday)
+    round-tripped via curl and checked against hand-computed values — coverage 50% (1/2 staffed)
+    on all three dates, labor cost €393.75 (two €112.50 weekday shifts + one €168.75 Sunday
+    shift with the existing 50% surcharge), `ContractHoursExceeded` correctly trips at 22.5h
+    planned vs 20h expected, overtime 2.5h, utilization 112.5%, conflict count 1 with the right
+    `AffectedSchedules` entry, and a second overlapping Draft schedule with no assignments
+    correctly adds to `DraftCount` without adding issues. Also checked: `teamId`/`shiftTypeId`
+    filters correctly zero out non-matching KPIs while leaving team-unfilterable Pain Points
+    (Understaffed) in place, and unauthenticated requests 401. Test data was deleted again
+    afterward to leave the dev DB clean. Not yet clicked through in a browser — there's no
+    frontend for this endpoint yet (issue #30).
 - **Frontend** (`frontend/`): Vite + Vue 3 + TS + Tailwind v4 + Pinia + Vue Router + Axios +
   ESLint/Prettier + `@lucide/vue` (the `lucide-vue-next` package readme.md/issue #5 named is
   deprecated upstream in favor of this). `services/api.ts`'s JWT-attach + 401-refresh now
