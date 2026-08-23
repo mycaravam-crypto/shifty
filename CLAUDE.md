@@ -20,9 +20,9 @@ Wochenansicht (issue #19), absence tracking (issue #17), the overtime ledger bui
 it (issue #18), a public holiday calendar (issue #15), and shift-type wage surcharges
 (issue #16) — see below. All Phase 5 issues filed so far are now built; issue #16 was the
 last one open. An operational dashboard (issue #27) is now also underway, scoped into three
-sub-issues per the parent issue's own suggestion: the backend read-model endpoint (issue #29)
-is built, see below; the frontend view (issue #30) and its Action Required feed (issue #31)
-are not started yet.
+sub-issues per the parent issue's own suggestion: the backend read-model endpoint (issue #29),
+the frontend view (issue #30), and its Action Required feed (issue #31) are all now built —
+issue #27 is fully closed out.
 What's built:
 
 - **Backend** (`src/`): 4-project skeleton (Domain → Application → Infrastructure → Api)
@@ -420,11 +420,36 @@ What's built:
     it on a day that had been off-screen before the auto-scroll (assignment created via a real
     `POST`, confirmed via the API and then deleted again to leave the dev DB clean), and
     confirmed `Escape` closes the resulting `ShiftAssignmentModal`.
-  - `components/AppShell.vue` — sidebar nav (Dienstplan/Mitarbeiter/Stammdaten/Einstellungen) +
-    user identity + logout, applying CLAUDE.md's "Visual design" tokens (dark glass, Inter,
-    blue→indigo accent). `SettingsView` is still a styled-but-minimal placeholder — this is a
-    functional cut of [issue #5](https://github.com/mycaravam-crypto/shifty/issues/5), not the
-    full pm-tool2/vanspace3d component-level parity pass.
+  - `views/Dashboard/DashboardView.vue` (issues #30/#31, frontend-only — the backend read model
+    from issue #29 needed no changes) — new `/dashboard` route, reachable via a new "Übersicht"
+    nav entry (placed first, as the landing overview). One `GET /dashboard` fetch per
+    filter/period change (native `<input type="date">` × 2 + Team/ShiftType `<select>`s, no new
+    filter-option endpoints needed), no client-side KPI computation — every number rendered is
+    read straight off the backend DTO. Six KPI cards (Besetzung/Auslastung/Lohnkosten/Planung/
+    Offene Probleme/Überstunden), a Besetzungsgrad coverage list and a Planungsstatus panel
+    (both `.glass rounded-xl`, matching `ScheduleView.vue`'s panel style), a Pain Points panel
+    reusing that same file's ❌/⚠ row pattern, and — issue #31 — a capped (top 8),
+    severity-sorted "Handlungsbedarf" action feed built from the same already-fetched
+    `painPoints[]`, one sub-issue on top of the other's data with no second backend call.
+    `PainPointDto` carries no per-issue date, only `ScheduleId`/`ScheduleName`, so the feed
+    sorts by severity only (ties keep the backend's own order) — noted inline rather than
+    adding a backend field for it. Each pain-point/affected-schedule row links back into
+    `ScheduleView` via a new `?scheduleId=` query param — `ScheduleView.vue`'s existing `load()`
+    now looks it up against the `schedules` list it already fetches and jumps `anchorDate` to
+    that schedule's month (then strips the query param via `router.replace`), rather than
+    adding a second lookup endpoint. Verified end-to-end in a real headless Chromium against
+    the local stack (Docker `db`/`api` + `npm run dev`): `vue-tsc -b`/`vite build` clean, the
+    empty-state dashboard for the current week loads with no console errors, then a real
+    break-minutes-violation assignment was posted via the API to exercise a non-empty state —
+    the Pain Points panel, Planungsstatus conflict count, and Handlungsbedarf feed all rendered
+    the live issue, and clicking "Öffnen" navigated to Dienstplan and landed on the correct
+    month (August 2026) for the affected schedule. Test assignment deleted again afterward to
+    leave the dev DB clean.
+  - `components/AppShell.vue` — sidebar nav (Übersicht/Dienstplan/Mitarbeiter/Stammdaten/
+    Einstellungen) + user identity + logout, applying CLAUDE.md's "Visual design" tokens (dark
+    glass, Inter, blue→indigo accent). `SettingsView` is still a styled-but-minimal placeholder
+    — this is a functional cut of [issue #5](https://github.com/mycaravam-crypto/shifty/issues/5),
+    not the full pm-tool2/vanspace3d component-level parity pass.
   - Verified end-to-end in a real headless browser against the local stack below: login
     success/failure, employee list load, create, 409-conflict surfaced in the UI, logout,
     Dienstplan empty-state schedule creation, drag-to-place, drag-to-move, hour-bar update,
