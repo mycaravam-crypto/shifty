@@ -17,6 +17,7 @@ var connectionString = builder.Configuration.GetConnectionString("Default")
 var jwtKey = builder.Configuration["Jwt:SigningKey"]
     ?? throw new InvalidOperationException("Missing Jwt:SigningKey (set via env var).");
 
+builder.Services.AddHttpContextAccessor();
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseNpgsql(connectionString));
 
