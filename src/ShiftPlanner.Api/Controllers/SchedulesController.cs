@@ -435,13 +435,20 @@ public class SchedulesController(ApplicationDbContext db) : ControllerBase
             return Ok(Array.Empty<ShiftAssignmentDto>());
 
         var shiftTypesById = await db.ShiftTypes.ToDictionaryAsync(s => s.Id);
+        // issue #104: pre-load every referenced EmployeeId in one query instead of an
+        // AnyAsync roundtrip per item — same pre-load shape shiftTypesById already uses.
+        var requestedEmployeeIds = request.Assignments.Select(a => a.EmployeeId).Distinct().ToList();
+        var existingEmployeeIds = await db.Employees
+            .Where(e => requestedEmployeeIds.Contains(e.Id))
+            .Select(e => e.Id)
+            .ToHashSetAsync();
         var created = new List<ShiftAssignment>();
         foreach (var item in request.Assignments)
         {
             if (item.Date < schedule.StartDate || item.Date > schedule.EndDate)
                 return BadRequest($"Date '{item.Date}' is outside the schedule's range.");
 
-            if (!await db.Employees.AnyAsync(e => e.Id == item.EmployeeId))
+            if (!existingEmployeeIds.Contains(item.EmployeeId))
                 return BadRequest($"Employee '{item.EmployeeId}' does not exist.");
 
             if (!shiftTypesById.TryGetValue(item.ShiftTypeId, out var shiftType))
