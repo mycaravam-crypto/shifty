@@ -468,6 +468,17 @@ What's built:
     Year's, `end < start` 400s, unauthenticated 401s) — not yet clicked through in an actual
     browser (same Playwright-install gap as the rest of the Wochenansicht work). Issue #16
     (wage surcharges, backend-only, see above) builds on this and is now done.
+    Saturday/Sunday day columns ([issue #64](https://github.com/mycaravam-crypto/shifty/issues/64))
+    now get a subtle `bg-white/[0.03]` shade on both the header `<th>` and each employee's `<td>`
+    — a plain `Date.getDay()` check (`isWeekend`), same `data-date`-driving `Date` objects the
+    grid already builds for drag-and-drop, no backend change. Composes alongside the holiday dot
+    rather than replacing it (a weekend holiday shows both), and is skipped on drag-over/highlighted
+    cells so it never fights the existing blue highlight tint. Frontend-only. Verified via
+    `npm run lint`/`npm run build` clean, and — Playwright's browser install worked in this
+    session — actually clicked through in real headless Chromium against the dev server with
+    `/api/*` mocked at the network layer: the Dienstplan grid for August 2026 (1st a Saturday)
+    loads with no console errors and the Sat/Sun columns are visibly shaded darker than the
+    weekday columns in both the header and body rows.
     A glass panel above the palette lists every issue from `GET
     /schedules/{id}/validate` (❌ red for Errors, ⚠ amber for Warnings), refetched alongside
     the assignments on every load/move/create — the existing per-employee "Xh / Yh ⚠" bar is

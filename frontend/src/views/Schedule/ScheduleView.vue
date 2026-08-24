@@ -200,6 +200,14 @@ function shiftTypeById(id: string) {
 function holidayFor(dateIso: string): PublicHoliday | undefined {
   return holidays.value.find((h) => h.date === dateIso)
 }
+function isWeekend(date: Date): boolean {
+  const day = date.getDay()
+  return day === 0 || day === 6
+}
+function isCellHighlighted(employeeId: string, dateIso: string): boolean {
+  const key = `${employeeId}|${dateIso}`
+  return dragOverKey.value === key || highlightKey.value === key
+}
 async function loadHolidays() {
   const res = await api.get('/public-holidays', {
     params: { start: monthStartIso.value, end: monthEndIso.value },
@@ -893,7 +901,10 @@ window.addEventListener('afterprint', () => {
                   v-for="d in days"
                   :key="toIso(d)"
                   class="px-3 py-3 min-w-[130px]"
-                  :class="{ 'text-amber-400': holidayFor(toIso(d)) }"
+                  :class="{
+                    'text-amber-400': holidayFor(toIso(d)),
+                    'bg-white/[0.03]': isWeekend(d),
+                  }"
                   :title="holidayFor(toIso(d))?.name"
                 >
                   <span class="inline-flex items-center gap-1">
@@ -968,9 +979,11 @@ window.addEventListener('afterprint', () => {
                   :key="toIso(d)"
                   class="px-2 py-2 align-top transition-colors"
                   :class="{
-                    'bg-blue-500/10 ring-1 ring-inset ring-blue-500/50':
-                      dragOverKey === `${e.id}|${toIso(d)}` ||
-                      highlightKey === `${e.id}|${toIso(d)}`,
+                    'bg-blue-500/10 ring-1 ring-inset ring-blue-500/50': isCellHighlighted(
+                      e.id,
+                      toIso(d),
+                    ),
+                    'bg-white/[0.03]': isWeekend(d) && !isCellHighlighted(e.id, toIso(d)),
                   }"
                   :data-employee-id="e.id"
                   :data-date="toIso(d)"
