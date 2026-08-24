@@ -28,7 +28,12 @@ built) and no CI gate before `deploy.yml`'s push-to-`main` (issues #50/#51, see 
 backlog of eight frontend UX-polish issues (#36–#43) had also accumulated with no toast/
 confirm-dialog system, loading skeletons, filter persistence, a keyboard-shortcuts hint, or
 mobile-responsive tables on the two main list views — all closed now, including #43 (a real
-`SettingsView`, see below), which was the last one open.
+`SettingsView`, see below), which was the last one open. Two more features landed with no
+issue filed for either (same as the earlier PDF export): `Employee.PhoneNumber` rounds out
+contact info alongside the pre-existing (and already-editable) Email field, and a first cut of
+readme.md §17's "später können hier Arbeitszeitpräferenzen ergänzt werden" — per-employee
+shift-type/weekday preferences plus a ShiftSuggestionEngine that ranks candidates for an open
+(date, ShiftType) slot, surfaced as a "Vorschlagen" action in the Wochenansicht. See below.
 What's built:
 
 - **Backend** (`src/`): 4-project skeleton (Domain → Application → Infrastructure → Api)
@@ -291,6 +296,48 @@ What's built:
     that didn't exist before it. Verified via the `mcr.microsoft.com/dotnet/sdk:10.0` Docker
     image in both Debug and the Release configuration CI actually uses: solution builds clean,
     all 74 tests pass.
+  - **Contact info + Arbeitszeitpräferenzen / shift suggestions** (no issue filed) —
+    `Employee.PhoneNumber` (nullable string) sits alongside the pre-existing Email field, same
+    optional-contact-field shape, migration `EmployeePreferences`. Two new small entities cover
+    readme.md §17's "später können hier Arbeitszeitpräferenzen ergänzt werden":
+    `ShiftTypePreference` (EmployeeId+ShiftTypeId, unique) and `WeekdayPreference`
+    (EmployeeId+DayOfWeek, unique), both just a `PreferenceLevel` enum (`Preferred`/`Avoid` —
+    no stored `Neutral`; the absence of a row already means neutral, so the enum only needs the
+    two poles). `EmployeesController` gets `GET`/`PUT /employees/{id}/shift-type-preferences`
+    and `/weekday-preferences`, both full-replace PUTs mirroring the existing
+    `eligible-shift-types` endpoint's shape exactly (distinct concept, though — eligibility is
+    "allowed", preference is "wanted").
+    `Application/Suggestions/ShiftSuggestionEngine.cs` (new `PlanningDomain`-adjacent static
+    class, same stateless-over-POCOs pattern as every validator) ranks active employees for one
+    open (date, ShiftType) slot: `Eligible` mirrors exactly the four rules ScheduleValidator
+    treats as Errors for that employee/date/shiftType (`EligibilityValidator`,
+    `AbsenceValidator`, `RestTimeValidator`'s 11h-rest check against the shift immediately
+    before/after, `ConsecutiveDaysValidator`'s 6-day-streak check) — a suggestion shouldn't
+    recommend something the validator would immediately flag red. A second same-day shift
+    (which `ShiftOverlapValidator` only Warns about, not Errors) stays eligible but scores -3,
+    same Error-vs-Warning severity split as the validators themselves. Everything else is a
+    scored nudge, not a filter: ShiftType preference (±2), weekday preference (±1), and a +1
+    "under contract target" bonus reusing `ContractValidator`'s exact expected-vs-actual-hours
+    formula (scaled to the Schedule's span, Absence days excluded) to favor whoever's furthest
+    under their contracted hours for this Schedule. `SchedulesController`'s new
+    `GET /schedules/{id}/suggestions?date=&shiftTypeId=` loads the same shape of data the
+    existing `/validate` endpoint already does (±6-day history window for the two cross-schedule
+    rules, absences overlapping the one date, this Schedule's own assignments, contracts,
+    both preference tables) and returns employees ranked eligible-first then score-descending.
+    `ShiftPlanner.Tests`: 11 new tests for the engine (one per hard-exclude rule, the
+    Warning-not-Error same-day case, each scoring dimension, and the final ordering) — 85 tests
+    total now, all passing.
+    Verified end-to-end against a real local Postgres (this session's Docker daemon wasn't
+    running by default but `dockerd` itself was installable and reachable, and the .NET SDK
+    came from the same `mcr.microsoft.com/dotnet/sdk:10.0` image the rest of this file already
+    uses — a local `postgresql-16` package turned out to already be installed too, same
+    resourcefulness prior sessions used when Docker Hub was blocked): `dotnet build`/`dotnet
+    test` clean, migration applied, then curl round-tripped every rule individually — phone
+    number persists, both preference PUT/GETs round-trip, a preferred ShiftType scores +2 vs. an
+    avoided one at -2, restricting `EligibleShiftTypes` correctly flips `Eligible` to false,
+    an Absence on the target date does too, an adjacent shift with <11h gap correctly trips
+    `InsufficientRest`, and six consecutive prior days correctly trips `TooManyConsecutiveDays`
+    on the would-be 7th. Test data deleted again afterward to leave the dev DB clean.
 - **Frontend** (`frontend/`): Vite + Vue 3 + TS + Tailwind v4 + Pinia + Vue Router + Axios +
   ESLint/Prettier + `@lucide/vue` (the `lucide-vue-next` package readme.md/issue #5 named is
   deprecated upstream in favor of this). `services/api.ts`'s JWT-attach + 401-refresh now
@@ -503,6 +550,41 @@ What's built:
     `?team=`), an explicit `?team=` in the URL is left untouched (overrides the default), and
     resetting to "Alle Teams" clears `localStorage` and a subsequent fresh load carries no team
     param — no console/page errors throughout.
+  - **Contact info + Arbeitszeitpräferenzen / shift suggestions** (backend above, no issue
+    filed) — `EmployeeDetailModal.vue` gets a "Telefon" input next to the existing E-Mail one
+    (`EmployeesView.vue`'s create form too), and a new "Präferenzen" section below "Mögliche
+    Schichten": one chip row per ShiftType and one per Wochentag, each chip a 3-state
+    click-to-cycle toggle (neutral → 👍 bevorzugt → 👎 vermeiden → neutral again, emerald/rose/
+    neutral styling) rather than a `<select>` — matches the app's existing chip aesthetic
+    (palette chips, eligibility chips) more than the form-select pattern Absence/Contract use.
+    One shared "Speichern" button PUTs both preference endpoints in parallel. In
+    `ScheduleView.vue`, each palette ShiftType chip gets a small `Sparkles` icon button
+    ("Vorschlagen") that opens the new `ShiftSuggestionModal.vue`: a date picker (defaulting to
+    and clamped within the visible month) plus the ranked suggestion list from
+    `GET /schedules/{id}/suggestions`, each row showing a ✓/✗ eligibility icon, the score, and
+    every reason with a 👍/👎 icon (ineligible rows stay visible and clickable — same
+    flag-don't-block philosophy `ScheduleValidator`'s Errors already use elsewhere in this
+    view — just styled rose/dimmed). Clicking "Zuweisen" `POST`s the assignment (same payload
+    shape `performDrop`'s ShiftType-drop branch already sends) and re-fetches the suggestion
+    list in place, so assigning one employee immediately re-scores the rest (e.g. the
+    just-assigned employee now shows the same-day/rest-time reasons for a second slot) without
+    closing the modal — a manager filling several open shifts doesn't have to reopen it each
+    time. The `@pointerdown.stop`/`@click.stop` on that icon button keep it from being swallowed
+    by the chip's own drag-start handler. Verified end-to-end in real headless Chromium against
+    the local stack this session actually had running (Docker daemon + `dockerd`, the local
+    `postgresql-16` install, the API run via `dotnet run` in the SDK container, `npm run dev`) —
+    not the usual "not clicked through, no Docker" caveat seen elsewhere in this file: logged
+    in, opened Anna Schmidt, changed and saved the phone number (toast confirmed, modal closes
+    on Stammdaten-save same as before — pre-existing behavior, not new), reopened the modal and
+    cycled/saved a ShiftType preference and a Wochentag preference, reopened a third time and
+    confirmed both persisted (phone value intact, the cycled chip still emerald). On
+    Dienstplan, clicked the Sparkles icon on a ShiftType chip, confirmed the modal opened with
+    the right title/date, saw the preferred-ShiftType employee ranked with the correct score and
+    reason text, clicked "Zuweisen", confirmed the success toast and that the suggestion list
+    live-updated to show the same employee now ineligible for a second same-day slot (rest-time
+    + already-assigned reasons) — no console/page errors throughout, aside from the pre-existing
+    benign 401 every page load already produces from `stores/auth.ts`'s silent-refresh-on-boot
+    attempt when no session cookie exists yet.
   - Verified end-to-end in a real headless browser against the local stack below: login
     success/failure, employee list load, create, 409-conflict surfaced in the UI, logout,
     Dienstplan empty-state schedule creation, drag-to-place, drag-to-move, hour-bar update,

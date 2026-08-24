@@ -32,6 +32,8 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<ShiftType> ShiftTypes => Set<ShiftType>();
     public DbSet<Schedule> Schedules => Set<Schedule>();
     public DbSet<ShiftAssignment> ShiftAssignments => Set<ShiftAssignment>();
+    public DbSet<ShiftTypePreference> ShiftTypePreferences => Set<ShiftTypePreference>();
+    public DbSet<WeekdayPreference> WeekdayPreferences => Set<WeekdayPreference>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -69,6 +71,28 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
 
         builder.Entity<ShiftType>()
             .HasIndex(s => s.Name).IsUnique();
+
+        builder.Entity<ShiftTypePreference>(p =>
+        {
+            p.HasIndex(x => new { x.EmployeeId, x.ShiftTypeId }).IsUnique();
+            p.HasOne<Employee>()
+                .WithMany(e => e.ShiftTypePreferences)
+                .HasForeignKey(x => x.EmployeeId)
+                .OnDelete(DeleteBehavior.Cascade);
+            p.HasOne(x => x.ShiftType)
+                .WithMany()
+                .HasForeignKey(x => x.ShiftTypeId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<WeekdayPreference>(p =>
+        {
+            p.HasIndex(x => new { x.EmployeeId, x.DayOfWeek }).IsUnique();
+            p.HasOne<Employee>()
+                .WithMany(e => e.WeekdayPreferences)
+                .HasForeignKey(x => x.EmployeeId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
 
         builder.Entity<ShiftAssignment>(a =>
         {

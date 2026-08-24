@@ -16,6 +16,7 @@ interface Employee {
   firstName: string
   lastName: string
   email: string | null
+  phoneNumber: string | null
   active: boolean
   teamId: string | null
 }
@@ -75,6 +76,7 @@ async function onSaveEmployee() {
       firstName: form.value.firstName,
       lastName: form.value.lastName,
       email: form.value.email || null,
+      phoneNumber: form.value.phoneNumber || null,
       active: form.value.active,
       teamId: form.value.teamId || null,
     })
@@ -113,6 +115,77 @@ async function onSaveEligible() {
     await api.put(`/employees/${props.employee.id}/eligible-shift-types`, [...eligibleIds.value])
   } finally {
     savingEligible.value = false
+  }
+}
+
+// readme.md §17's "Arbeitszeitpräferenzen" (issue: shift-suggestion feature) — Bevorzugt/
+// Vermeiden per ShiftType and per Wochentag, feeding the Dienstplan's suggestion engine.
+// null = neutral (no row persisted), matching PreferenceLevel's two poles (1/-1) backend-side.
+type PrefLevel = 1 | -1 | null
+const WEEKDAYS: { value: number; label: string }[] = [
+  { value: 1, label: 'Montag' },
+  { value: 2, label: 'Dienstag' },
+  { value: 3, label: 'Mittwoch' },
+  { value: 4, label: 'Donnerstag' },
+  { value: 5, label: 'Freitag' },
+  { value: 6, label: 'Samstag' },
+  { value: 0, label: 'Sonntag' },
+]
+const shiftTypePrefs = ref<Map<string, PrefLevel>>(new Map())
+const weekdayPrefs = ref<Map<number, PrefLevel>>(new Map())
+const savingPreferences = ref(false)
+
+async function loadPreferences() {
+  const [shiftRes, weekdayRes] = await Promise.all([
+    api.get(`/employees/${props.employee.id}/shift-type-preferences`),
+    api.get(`/employees/${props.employee.id}/weekday-preferences`),
+  ])
+  shiftTypePrefs.value = new Map(
+    (shiftRes.data as { shiftTypeId: string; level: PrefLevel }[]).map((p) => [
+      p.shiftTypeId,
+      p.level,
+    ]),
+  )
+  weekdayPrefs.value = new Map(
+    (weekdayRes.data as { dayOfWeek: number; level: PrefLevel }[]).map((p) => [
+      p.dayOfWeek,
+      p.level,
+    ]),
+  )
+}
+
+function nextPrefLevel(current: PrefLevel): PrefLevel {
+  if (current === null) return 1
+  if (current === 1) return -1
+  return null
+}
+function cycleShiftTypePref(id: string) {
+  const next = nextPrefLevel(shiftTypePrefs.value.get(id) ?? null)
+  shiftTypePrefs.value = new Map(shiftTypePrefs.value).set(id, next)
+}
+function cycleWeekdayPref(day: number) {
+  const next = nextPrefLevel(weekdayPrefs.value.get(day) ?? null)
+  weekdayPrefs.value = new Map(weekdayPrefs.value).set(day, next)
+}
+
+async function onSavePreferences() {
+  savingPreferences.value = true
+  try {
+    const shiftTypePayload = [...shiftTypePrefs.value]
+      .filter(([, level]) => level !== null)
+      .map(([shiftTypeId, level]) => ({ shiftTypeId, level }))
+    const weekdayPayload = [...weekdayPrefs.value]
+      .filter(([, level]) => level !== null)
+      .map(([dayOfWeek, level]) => ({ dayOfWeek, level }))
+    await Promise.all([
+      api.put(`/employees/${props.employee.id}/shift-type-preferences`, shiftTypePayload),
+      api.put(`/employees/${props.employee.id}/weekday-preferences`, weekdayPayload),
+    ])
+    toast.success('Präferenzen gespeichert.')
+  } catch {
+    toast.error('Präferenzen konnten nicht gespeichert werden.')
+  } finally {
+    savingPreferences.value = false
   }
 }
 
@@ -235,6 +308,7 @@ async function onDeleteAbsenceConfirmed() {
 
 onMounted(() => {
   loadEligibleShiftTypes()
+  loadPreferences()
   loadContracts()
   loadAbsences()
 })
@@ -264,6 +338,13 @@ onMounted(() => {
             v-model="form.email"
             type="email"
             placeholder="E-Mail"
+            class="col-span-2"
+            :class="inputClass"
+          />
+          <input
+            v-model="form.phoneNumber"
+            type="tel"
+            placeholder="Telefon"
             class="col-span-2"
             :class="inputClass"
           />
@@ -310,6 +391,66 @@ onMounted(() => {
           @click="onSaveEligible"
         >
           {{ savingEligible ? 'Speichern…' : 'Speichern' }}
+        </button>
+      </section>
+
+      <section>
+        <h3 class="text-[10px] uppercase tracking-wider font-bold text-slate-500 mb-3">
+          Präferenzen
+        </h3>
+        <p class="text-xs text-slate-500 mb-2">
+          Schichtart (Klick wechselt: neutral → bevorzugt → vermeiden)
+        </p>
+        <div class="flex flex-wrap gap-2 mb-4">
+          <button
+            v-for="s in shiftTypes"
+            :key="s.id"
+            type="button"
+            class="flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm transition-colors"
+            :class="{
+              'bg-white/5 border-white/10 text-slate-300': !shiftTypePrefs.get(s.id),
+              'bg-emerald-500/15 border-emerald-500/40 text-emerald-300':
+                shiftTypePrefs.get(s.id) === 1,
+              'bg-rose-500/15 border-rose-500/40 text-rose-300': shiftTypePrefs.get(s.id) === -1,
+            }"
+            @click="cycleShiftTypePref(s.id)"
+          >
+            {{ s.name }}
+            <span v-if="shiftTypePrefs.get(s.id) === 1">👍</span>
+            <span v-else-if="shiftTypePrefs.get(s.id) === -1">👎</span>
+          </button>
+          <p v-if="!shiftTypes.length" class="text-sm text-slate-500">
+            Keine Schichtarten angelegt.
+          </p>
+        </div>
+        <p class="text-xs text-slate-500 mb-2">
+          Wochentag (Klick wechselt: neutral → bevorzugt → vermeiden)
+        </p>
+        <div class="flex flex-wrap gap-2 mb-3">
+          <button
+            v-for="w in WEEKDAYS"
+            :key="w.value"
+            type="button"
+            class="flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm transition-colors"
+            :class="{
+              'bg-white/5 border-white/10 text-slate-300': !weekdayPrefs.get(w.value),
+              'bg-emerald-500/15 border-emerald-500/40 text-emerald-300':
+                weekdayPrefs.get(w.value) === 1,
+              'bg-rose-500/15 border-rose-500/40 text-rose-300': weekdayPrefs.get(w.value) === -1,
+            }"
+            @click="cycleWeekdayPref(w.value)"
+          >
+            {{ w.label }}
+            <span v-if="weekdayPrefs.get(w.value) === 1">👍</span>
+            <span v-else-if="weekdayPrefs.get(w.value) === -1">👎</span>
+          </button>
+        </div>
+        <button
+          :disabled="savingPreferences"
+          class="rounded-lg bg-white/10 hover:bg-white/15 transition-colors px-4 py-1.5 text-sm font-medium disabled:opacity-50"
+          @click="onSavePreferences"
+        >
+          {{ savingPreferences ? 'Speichern…' : 'Speichern' }}
         </button>
       </section>
 

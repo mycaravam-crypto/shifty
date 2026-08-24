@@ -2,6 +2,7 @@ using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using ShiftPlanner.Application.Suggestions;
 using ShiftPlanner.Application.Validation;
 using ShiftPlanner.Domain.Contracts;
 using ShiftPlanner.Domain.Scheduling;
@@ -24,6 +25,8 @@ public record CreateScheduleRequest([Required, MaxLength(200)] string Name, Date
 
 public record UpdateScheduleRequest(
     [Required, MaxLength(200)] string Name, DateOnly StartDate, DateOnly EndDate, ScheduleStatus Status);
+
+public record ShiftSuggestionDto(Guid EmployeeId, string FirstName, string LastName, bool Eligible, decimal Score, List<SuggestionReason> Reasons);
 
 public record CreateAssignmentRequest(
     Guid EmployeeId, Guid ShiftTypeId, DateOnly Date, TimeOnly StartTime, TimeOnly EndTime,
@@ -148,6 +151,52 @@ public class SchedulesController(ApplicationDbContext db) : ControllerBase
             .ToListAsync();
 
         return Ok(ScheduleValidator.Validate(schedule, assignments, employees, shiftTypes, contracts, historyAssignments, absences));
+    }
+
+    // readme.md §17's "Arbeitszeitpräferenzen" — ranks active employees for one open
+    // (date, ShiftType) slot in this Schedule. See ShiftSuggestionEngine for the scoring.
+    [HttpGet("schedules/{id:guid}/suggestions")]
+    public async Task<ActionResult<IEnumerable<ShiftSuggestionDto>>> Suggest(Guid id, DateOnly date, Guid shiftTypeId)
+    {
+        var schedule = await db.Schedules.FindAsync(id);
+        if (schedule is null)
+            return NotFound();
+        if (date < schedule.StartDate || date > schedule.EndDate)
+            return BadRequest("Date is outside the schedule's range.");
+
+        var shiftType = await db.ShiftTypes.FindAsync(shiftTypeId);
+        if (shiftType is null)
+            return NotFound();
+
+        var employees = await db.Employees.Include(e => e.EligibleShiftTypes)
+            .Where(e => e.Active).ToListAsync();
+        var employeeIds = employees.Select(e => e.Id).ToList();
+
+        // Same ±6-day lookback window as the /validate endpoint's historyAssignments, and the
+        // same reason: rest-time/consecutive-day checks need shifts outside this Schedule too.
+        var historyStart = date.AddDays(-6);
+        var historyEnd = date.AddDays(6);
+        var historyAssignments = await db.ShiftAssignments
+            .Where(a => employeeIds.Contains(a.EmployeeId) && a.Date >= historyStart && a.Date <= historyEnd)
+            .ToListAsync();
+
+        var absences = await db.Absences
+            .Where(a => employeeIds.Contains(a.EmployeeId) && a.From <= date && a.To >= date)
+            .ToListAsync();
+        var scheduleAssignments = await db.ShiftAssignments.Where(a => a.ScheduleId == id).ToListAsync();
+        var contracts = await db.Contracts.Where(c => employeeIds.Contains(c.EmployeeId)).ToListAsync();
+        var shiftTypePreferences = await db.ShiftTypePreferences.Where(p => employeeIds.Contains(p.EmployeeId)).ToListAsync();
+        var weekdayPreferences = await db.WeekdayPreferences.Where(p => employeeIds.Contains(p.EmployeeId)).ToListAsync();
+
+        var suggestions = ShiftSuggestionEngine.Suggest(
+            date, shiftType, employees, historyAssignments, absences,
+            schedule.StartDate, schedule.EndDate, scheduleAssignments, contracts,
+            shiftTypePreferences, weekdayPreferences);
+
+        var employeesById = employees.ToDictionary(e => e.Id);
+        return Ok(suggestions.Select(s => new ShiftSuggestionDto(
+            s.EmployeeId, employeesById[s.EmployeeId].FirstName, employeesById[s.EmployeeId].LastName,
+            s.Eligible, s.Score, s.Reasons)));
     }
 
     [HttpPost("schedules/{id:guid}/assignments")]

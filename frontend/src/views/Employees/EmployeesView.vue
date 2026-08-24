@@ -15,6 +15,7 @@ interface Employee {
   firstName: string
   lastName: string
   email: string | null
+  phoneNumber: string | null
   active: boolean
   teamId: string | null
 }
@@ -31,7 +32,14 @@ const error = ref('')
 const showForm = ref(false)
 const saving = ref(false)
 
-const form = ref({ personnelNumber: '', firstName: '', lastName: '', email: '', teamId: '' })
+const form = ref({
+  personnelNumber: '',
+  firstName: '',
+  lastName: '',
+  email: '',
+  phoneNumber: '',
+  teamId: '',
+})
 const selectedEmployee = ref<Employee | null>(null)
 const employeeToDelete = ref<Employee | null>(null)
 
@@ -61,9 +69,17 @@ async function onCreate() {
       firstName: form.value.firstName,
       lastName: form.value.lastName,
       email: form.value.email || null,
+      phoneNumber: form.value.phoneNumber || null,
       teamId: form.value.teamId || null,
     })
-    form.value = { personnelNumber: '', firstName: '', lastName: '', email: '', teamId: '' }
+    form.value = {
+      personnelNumber: '',
+      firstName: '',
+      lastName: '',
+      email: '',
+      phoneNumber: '',
+      teamId: '',
+    }
     showForm.value = false
     toast.success('Mitarbeiter angelegt.')
     await load()
@@ -146,7 +162,13 @@ onMounted(load)
         v-model="form.email"
         type="email"
         placeholder="E-Mail (optional)"
-        class="col-span-2 rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+        class="rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+      />
+      <input
+        v-model="form.phoneNumber"
+        type="tel"
+        placeholder="Telefon (optional)"
+        class="rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
       />
       <button
         type="submit"
