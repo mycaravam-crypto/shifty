@@ -29,6 +29,7 @@ public record UpdateEmployeeRequest(
 
 public record ShiftTypePreferenceDto(Guid ShiftTypeId, PreferenceLevel Level);
 public record WeekdayPreferenceDto(DayOfWeek DayOfWeek, PreferenceLevel Level);
+public record SetEligibleShiftTypesRequest(List<Guid> ShiftTypeIds);
 
 [ApiController]
 [Route("api/employees")]
@@ -155,8 +156,9 @@ public class EmployeesController(ApplicationDbContext db) : ControllerBase
 
     [HttpPut("{id:guid}/eligible-shift-types")]
     [Authorize(Policy = "ManagerWrite")]
-    public async Task<IActionResult> SetEligibleShiftTypes(Guid id, List<Guid> shiftTypeIds)
+    public async Task<IActionResult> SetEligibleShiftTypes(Guid id, SetEligibleShiftTypesRequest request)
     {
+        var shiftTypeIds = request.ShiftTypeIds;
         var employee = await db.Employees.Include(e => e.EligibleShiftTypes).FirstOrDefaultAsync(e => e.Id == id);
         if (employee is null)
             return NotFound();
