@@ -1,7 +1,9 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using ShiftPlanner.Domain.Common;
 using ShiftPlanner.Infrastructure.Persistence;
 
 namespace ShiftPlanner.Api.Authentication;
@@ -10,23 +12,61 @@ namespace ShiftPlanner.Api.Authentication;
 // sent as Authorization: Bearer) and a longer-lived refresh token (httpOnly cookie, distinguished
 // by a "token_use" claim so one can't be used in place of the other).
 //
-// ponytail: refresh tokens are self-contained JWTs, not DB-backed, so there's no server-side
-// revocation (logout / password change can't invalidate one before it expires). Upgrade path:
-// a RefreshToken table (UserId, TokenHash, ExpiresAt, RevokedAt) once that's actually needed.
+// issue #55: refresh tokens are still self-contained JWTs (so a syntactically/cryptographically
+// valid, unexpired one is always accepted on that axis alone), but each one is now *also*
+// tracked as a RefreshToken row keyed by a SHA-256 hash of the token. ValidateRefreshTokenAsync
+// requires BOTH the JWT check and a live, non-revoked, non-expired DB row to pass, which is
+// what makes server-side revocation (logout / logout-all) possible.
 public static class JwtTokenFactory
 {
     private const string TokenUseClaim = "token_use";
+    public static readonly TimeSpan RefreshTokenLifetime = TimeSpan.FromDays(7);
 
     public static string CreateAccessToken(ApplicationUser user, IEnumerable<string> roles, IConfiguration config) =>
         Create(user, config, TimeSpan.FromMinutes(15), [new Claim(TokenUseClaim, "access"), .. roles.Select(r => new Claim(ClaimTypes.Role, r))]);
 
     public static string CreateRefreshToken(ApplicationUser user, IConfiguration config) =>
-        Create(user, config, TimeSpan.FromDays(7), [new Claim(TokenUseClaim, "refresh")]);
+        Create(user, config, RefreshTokenLifetime, [new Claim(TokenUseClaim, "refresh")]);
+
+    // Builds the DB-backed row for a refresh token just issued via CreateRefreshToken above —
+    // caller is responsible for adding it to the DbContext and saving. Kept as a separate step
+    // (rather than folded into CreateRefreshToken) so callers can choose whether/when to persist,
+    // same "no DI service layer" shape as the rest of the codebase.
+    public static RefreshToken CreateRefreshTokenRecord(string refreshToken, string userId)
+    {
+        var now = DateTimeOffset.UtcNow;
+        return new RefreshToken
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            TokenHash = RefreshToken.Hash(refreshToken),
+            IssuedAt = now,
+            ExpiresAt = now.Add(RefreshTokenLifetime),
+        };
+    }
 
     public static ClaimsPrincipal? ValidateRefreshToken(string token, IConfiguration config)
     {
         var principal = Validate(token, config);
         return principal?.FindFirstValue(TokenUseClaim) == "refresh" ? principal : null;
+    }
+
+    // Full refresh-token validation: JWT signature/expiry/claims AND a matching, still-active
+    // (not revoked, not expired) DB row for the same user. Both must pass. Does not revoke or
+    // rotate the row itself — that's the caller's decision (see AuthController.Refresh/Logout).
+    public static async Task<RefreshTokenValidationResult?> ValidateRefreshTokenAsync(
+        string token, IConfiguration config, ApplicationDbContext db)
+    {
+        var principal = ValidateRefreshToken(token, config);
+        var userId = principal?.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (userId is null)
+            return null;
+
+        var hash = RefreshToken.Hash(token);
+        var record = await db.RefreshTokens
+            .FirstOrDefaultAsync(r => r.TokenHash == hash && r.UserId == userId);
+
+        return record is not null && record.IsActive ? new RefreshTokenValidationResult(userId, record) : null;
     }
 
     private static string Create(ApplicationUser user, IConfiguration config, TimeSpan lifetime, IEnumerable<Claim> extraClaims)
@@ -77,3 +117,5 @@ public static class JwtTokenFactory
         }
     }
 }
+
+public record RefreshTokenValidationResult(string UserId, RefreshToken Record);

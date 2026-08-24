@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useSettingsStore } from '@/stores/settings'
 import { useToastStore } from '@/stores/toast'
@@ -13,9 +14,11 @@ interface Team {
 const auth = useAuthStore()
 const settings = useSettingsStore()
 const toast = useToastStore()
+const router = useRouter()
 
 const teams = ref<Team[]>([])
 const loading = ref(true)
+const loggingOutAll = ref(false)
 
 onMounted(async () => {
   try {
@@ -29,6 +32,19 @@ function onDefaultTeamChange(e: Event) {
   const value = (e.target as HTMLSelectElement).value
   settings.setDefaultTeamId(value || null)
   toast.success('Einstellung gespeichert.')
+}
+
+// issue #55: revokes every refresh-token session for this account server-side, including
+// this browser's own — so the local session ends too and the user is sent back to login.
+async function onLogoutAll() {
+  loggingOutAll.value = true
+  try {
+    await auth.logoutAll()
+    toast.success('Alle Sitzungen wurden abgemeldet.')
+    router.push({ name: 'login' })
+  } finally {
+    loggingOutAll.value = false
+  }
 }
 </script>
 
@@ -45,6 +61,20 @@ function onDefaultTeamChange(e: Event) {
       <div class="flex justify-between">
         <span class="text-slate-500">Rolle</span>
         <span>{{ auth.claims.role }}</span>
+      </div>
+      <div class="pt-2">
+        <button
+          type="button"
+          :disabled="loggingOutAll"
+          class="text-xs rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 hover:bg-white/10 transition-colors disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+          @click="onLogoutAll"
+        >
+          Alle Sitzungen abmelden
+        </button>
+        <p class="text-xs text-slate-500 mt-1.5">
+          Meldet dieses Konto auf allen Geräten ab (z. B. bei einem verlorenen Gerät oder
+          Mitarbeiteraustritt) — inklusive dieser Sitzung.
+        </p>
       </div>
     </div>
 

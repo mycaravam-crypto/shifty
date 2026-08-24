@@ -38,10 +38,28 @@ export const useAuthStore = defineStore('auth', {
       this.setAccessToken(res.data.accessToken)
     },
     async logout() {
+      // issue #55: refresh tokens are now DB-backed, so logging out actually revokes the
+      // current session's RefreshToken row server-side (and clears the httpOnly cookie via
+      // Set-Cookie) instead of just discarding local state — an httpOnly cookie can't be
+      // cleared from JS anyway, so the old client-side `document.cookie` write below never
+      // actually worked. Best-effort: if the call fails (e.g. the access token already
+      // expired), still clear local state so the user ends up logged out either way.
+      try {
+        await api.post('/v1/auth/logout')
+      } catch {
+        // ignore — falling through to local cleanup regardless
+      }
       this.setAccessToken(null)
-      // no server-side session to invalidate (refresh tokens are stateless JWTs);
-      // clearing the cookie client-side is enough to end the session locally.
-      document.cookie = 'refreshToken=; Max-Age=0; path=/'
+    },
+    // "Log out other sessions" (issue #55) — revokes every refresh-token session for this
+    // user, including this one, so the caller is left logged out locally too.
+    async logoutAll() {
+      try {
+        await api.post('/v1/auth/logout-all')
+      } catch {
+        // ignore — falling through to local cleanup regardless
+      }
+      this.setAccessToken(null)
     },
     // Attempts to exchange the httpOnly refresh cookie for an access token, e.g. on page load.
     async tryRefresh() {

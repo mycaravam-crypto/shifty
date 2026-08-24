@@ -34,7 +34,8 @@ contact info alongside the pre-existing (and already-editable) Email field, and 
 readme.md §17's "später können hier Arbeitszeitpräferenzen ergänzt werden" — per-employee
 shift-type/weekday preferences plus a ShiftSuggestionEngine that ranks candidates for an open
 (date, ShiftType) slot, surfaced as a "Vorschlagen" action in the Wochenansicht. See below.
-What's built:
+Server-side refresh-token revocation (issue #55, the original ask behind issue #3 that never
+got built) is now also done — see below. What's built:
 
 - **Backend** (`src/`): 4-project skeleton (Domain → Application → Infrastructure → Api)
   matching readme.md §19/§20. Builds clean (`dotnet build ShiftPlanner.sln`, verified via
@@ -71,11 +72,48 @@ What's built:
     otherwise. Three roles (Admin/Manager/Employee) are seeded by `--migrate`; since there's
     no Benutzer-management endpoint yet, `--seed-user` (env vars `SeedUser:Email/Password/Role`)
     bootstraps the first Staff accounts. Refresh tokens are self-contained JWTs (`token_use`
-    claim distinguishes them from access tokens), not DB-backed — no server-side revocation
-    yet (issue #3's original ask; login/refresh + seeding were an unplanned but necessary
-    add-on — [issue #3](https://github.com/mycaravam-crypto/shifty/issues/3)). Verified
+    claim distinguishes them from access tokens) — login/refresh + seeding were an unplanned
+    but necessary add-on to the original ask
+    ([issue #3](https://github.com/mycaravam-crypto/shifty/issues/3)). Verified
     end-to-end (login, role-gated writes, refresh, tampered/wrong-purpose-token rejection)
     against a real local Postgres.
+  - **Server-side refresh-token revocation** ([issue #55](https://github.com/mycaravam-crypto/shifty/issues/55),
+    issue #3's deferred original ask) — a refresh token is still a self-contained JWT (that
+    check still runs first), but each one issued is now *also* tracked as a `RefreshToken` row
+    (`Domain/Common/RefreshToken.cs`, same folder/shape as `ApiKey`/`AuditLog`: `Id`, `UserId`
+    as a plain string FK — not a navigation property, Domain can't reference Infrastructure's
+    `ApplicationUser` — `TokenHash` (SHA-256 hex, same `Convert.ToHexString(SHA256.HashData(...))`
+    pattern `ApiKeyAuthenticationHandler` already used, raw token never stored), `IssuedAt`,
+    `ExpiresAt`, nullable `RevokedAt`, `IsActive` computed from the latter two). Migration
+    `AddRefreshTokens` (unique index on `TokenHash`, cascade FK to `AspNetUsers`) — generated
+    for real via `dotnet ef migrations add` (Docker reachable, proxy CA installed into the SDK
+    container + `--network host`, same approach prior sessions documented). `JwtTokenFactory`
+    gets `CreateRefreshTokenRecord` (builds the row for a just-issued token) and
+    `ValidateRefreshTokenAsync` (requires BOTH the JWT check and a matching active DB row —
+    exists, not revoked, not expired). **Rotation decision: refresh tokens rotate on use** —
+    `AuthController.Refresh` revokes the presented token's DB row and issues a brand-new
+    token/row on every refresh, rather than reusing one long-lived row until natural expiry;
+    this caps a stolen refresh token to one silent exchange before the next refresh attempt
+    (by either party) fails loudly. New endpoints, both `[Authorize(Policy = "Staff")]`:
+    `POST /v1/auth/logout` (revokes just the DB row behind the caller's own refresh cookie —
+    matched by `TokenHash` *and* the access token's `UserId`, so it can't be used to revoke
+    someone else's session) and `POST /v1/auth/logout-all` ("log out other sessions" from the
+    issue — revokes every non-revoked row for the current user, including this one). Both clear
+    the refresh cookie via `Set-Cookie` with an epoch expiry. `ShiftPlanner.Tests`: the DB-lookup
+    half of validation needs a live `ApplicationDbContext` and isn't unit-tested, but the pure
+    logic around it (`RefreshToken.Hash`, `IsActive`'s revoked/expired states) is — 9 new tests,
+    94 total, all passing. Verified: `dotnet build`/`dotnet test` clean (Debug and Release), and
+    `dotnet ef migrations script` confirms the exact expected `CREATE TABLE "RefreshTokens"`
+    DDL — **not exercised against a live Postgres** (no live DB used this session, matching
+    prior sessions' own precedent when one wasn't available; only build/test/migration-script
+    level). Frontend: `stores/auth.ts`'s `logout()` now calls the new endpoint (best-effort —
+    still clears local state if the call fails, e.g. an already-expired access token) instead
+    of the old `document.cookie` write, which never actually worked anyway (an httpOnly cookie
+    can't be cleared from JS at all — only the real fix, a `Set-Cookie` from the server, does).
+    A new `logoutAll()` action + a "Alle Sitzungen abmelden" button in `SettingsView.vue` cover
+    the issue's optional "log out other sessions" UI ask. `npm run lint`/`npm run build` clean —
+    not clicked through in an actual browser (same Playwright-install gap noted elsewhere in
+    this file).
   - `Employee.EligibleShiftTypes` (EF many-to-many, join table `EmployeeShiftType`) models
     "mögliche Schichten" (readme.md §3) — GET/PUT `/api/employees/{id}/eligible-shift-types`,
     enforced by `EligibilityValidator` (below) — closes
