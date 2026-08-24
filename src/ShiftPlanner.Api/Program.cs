@@ -6,7 +6,9 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
+using ShiftPlanner.Api.Authentication;
 using ShiftPlanner.Api.Authorization;
 using ShiftPlanner.Api.Middleware;
 using ShiftPlanner.Infrastructure.Persistence;
@@ -15,8 +17,22 @@ var builder = WebApplication.CreateBuilder(args);
 
 var connectionString = builder.Configuration.GetConnectionString("Default")
     ?? throw new InvalidOperationException("Missing ConnectionStrings:Default (set via env var).");
-var jwtKey = builder.Configuration["Jwt:SigningKey"]
-    ?? throw new InvalidOperationException("Missing Jwt:SigningKey (set via env var).");
+
+// issue #111: the "Jwt" config section is bound once into a strongly-typed JwtOptions instead of
+// three independent IConfiguration["Jwt:..."] indexer reads scattered across this file and
+// JwtTokenFactory — a typo in a key name now fails to compile against JwtOptions' properties
+// rather than silently reading null at runtime.
+//
+// AddJwtBearer's TokenValidationParameters below are needed while *building* the DI container
+// (before builder.Build() runs, so before any IOptions<T> can be resolved) — so this reads
+// directly off builder.Configuration here, using the same "Jwt" section/key names JwtOptions
+// itself binds from via services.AddOptions<JwtOptions>() further down, and the same
+// JwtOptionsValidator so a missing/blank key fails exactly as loudly here as it would via
+// IOptions<JwtOptions> elsewhere (e.g. in JwtTokenFactory via AuthController).
+var jwtOptions = builder.Configuration.GetSection(JwtOptions.SectionName).Get<JwtOptions>() ?? new JwtOptions();
+var jwtValidationResult = new JwtOptionsValidator().Validate(null, jwtOptions);
+if (jwtValidationResult.Failed)
+    throw new InvalidOperationException(string.Join(" ", jwtValidationResult.Failures));
 
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
@@ -40,9 +56,9 @@ builder.Services
             ValidateAudience = true,
             ValidateLifetime = true,
             ValidateIssuerSigningKey = true,
-            ValidIssuer = builder.Configuration["Jwt:Issuer"],
-            ValidAudience = builder.Configuration["Jwt:Audience"],
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
+            ValidIssuer = jwtOptions.Issuer,
+            ValidAudience = jwtOptions.Audience,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtOptions.SigningKey))
         };
         // Access and refresh tokens are both self-contained JWTs (JwtTokenFactory) distinguished
         // only by a "token_use" claim — without this check, a refresh token satisfies the same
@@ -61,6 +77,17 @@ builder.Services
     })
     .AddScheme<AuthenticationSchemeOptions, ApiKeyAuthenticationHandler>(
         ApiKeyAuthenticationHandler.SchemeName, _ => { });
+
+// The DI-bound counterpart of the early jwtOptions binding above — same "Jwt" section/key
+// names, resolved as IOptions<JwtOptions> by AuthController/JwtTokenFactory instead of reading
+// IConfiguration directly. ValidateOnStart() re-runs JwtOptionsValidator (registered as
+// IValidateOptions<JwtOptions> so both binding paths share the same check) against this
+// binding too, once the host starts — belt-and-suspenders with the throw above, which already
+// covers the earliest possible failure point.
+builder.Services.AddSingleton<IValidateOptions<JwtOptions>, JwtOptionsValidator>();
+builder.Services.AddOptions<JwtOptions>()
+    .BindConfiguration(JwtOptions.SectionName)
+    .ValidateOnStart();
 
 builder.Services.AddAuthorization(options =>
 {
