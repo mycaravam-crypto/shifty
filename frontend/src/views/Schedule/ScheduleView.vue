@@ -4,10 +4,12 @@ import { useRoute, useRouter } from 'vue-router'
 import { ChevronLeft, ChevronRight, Copy, Search, Printer, HelpCircle } from '@lucide/vue'
 import api from '@/services/api'
 import { useToastStore } from '@/stores/toast'
+import { useSettingsStore } from '@/stores/settings'
 import ModalShell from '@/components/ModalShell.vue'
 import ShiftAssignmentModal from './ShiftAssignmentModal.vue'
 
 const toast = useToastStore()
+const settings = useSettingsStore()
 
 interface Employee {
   id: string
@@ -261,8 +263,9 @@ async function load() {
   loading.value = true
   error.value = ''
   try {
+    const hadTeamQuery = typeof route.query.team === 'string'
     if (typeof route.query.q === 'string') search.value = route.query.q
-    if (typeof route.query.team === 'string') teamFilter.value = route.query.team
+    if (hadTeamQuery) teamFilter.value = route.query.team as string
 
     const [schedulesRes, employeesRes, shiftTypesRes, teamsRes] = await Promise.all([
       api.get('/schedules'),
@@ -274,6 +277,15 @@ async function load() {
     employees.value = employeesRes.data
     shiftTypes.value = shiftTypesRes.data
     teams.value = teamsRes.data
+
+    // issue #43: fall back to the Settings-configured default team filter, but only when
+    // the URL didn't already specify one — an explicit ?team= (e.g. a shared/bookmarked
+    // link) always wins over the user's own default.
+    if (!hadTeamQuery && settings.defaultTeamId) {
+      if (teams.value.some((t) => t.id === settings.defaultTeamId)) {
+        teamFilter.value = settings.defaultTeamId
+      }
+    }
 
     // Deep link from the dashboard's pain-point/planning-status links (issue #30/#31):
     // jump to the month of the linked schedule instead of always showing today's month.
