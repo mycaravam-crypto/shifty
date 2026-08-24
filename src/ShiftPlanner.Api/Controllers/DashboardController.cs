@@ -114,12 +114,20 @@ public class DashboardController(ApplicationDbContext db) : ControllerBase
         // as a pool spanning every schedule in view, then sliced back to each schedule's own
         // ±6-day window inside BuildPainPoints (matching what /validate would compute per-schedule,
         // without a per-schedule DB round trip).
+        //
+        // schedules.Min/.Max are pre-computed into plain DateOnly locals before the query: EF
+        // Core cannot translate a Min()/Max() call over an already-materialized in-memory list
+        // when it appears inline inside a Where() lambda passed to the DbSet — it throws
+        // InvalidOperationException at runtime trying to translate it as SQL. Only reachable
+        // (and only ever 500'd) whenever at least one schedule overlaps the requested period.
+        var historyWindowStart = schedules.Count == 0 ? default : schedules.Min(s => s.StartDate).AddDays(-6);
+        var historyWindowEnd = schedules.Count == 0 ? default : schedules.Max(s => s.EndDate).AddDays(6);
         List<ShiftAssignment> historyPool = schedules.Count == 0
             ? []
             : await db.ShiftAssignments
                 .Where(a => employeeIds.Contains(a.EmployeeId)
-                    && a.Date >= schedules.Min(s => s.StartDate).AddDays(-6)
-                    && a.Date <= schedules.Max(s => s.EndDate).AddDays(6))
+                    && a.Date >= historyWindowStart
+                    && a.Date <= historyWindowEnd)
                 .ToListAsync();
 
         // Mirrors SchedulesController.GetById: which nationwide-vs-Bundesland holiday set
@@ -127,12 +135,19 @@ public class DashboardController(ApplicationDbContext db) : ControllerBase
         // Bundesland actually in play (including null = nationwide-only) rather than one
         // shared set — otherwise state-specific holiday surcharges are undercounted here even
         // though the same shift's cost is correct in the Schedule detail view.
+        //
+        // Bundesland? (null = nationwide-only) cannot be used as a Dictionary key directly:
+        // Dictionary<TKey,TValue> throws ArgumentNullException on a null key at runtime even
+        // when TKey is a nullable value type. A non-nullable Dictionary<Bundesland, ...> for
+        // actual states plus a separate set for the nationwide/null case avoids that.
         var bundeslandByEmployee = employees.ToDictionary(e => e.Id, e => e.Team?.Bundesland);
-#pragma warning disable CS8714
-        var holidaysByBundesland = new Dictionary<Bundesland?, HashSet<DateOnly>>();
-#pragma warning restore CS8714
+        var nationwideHolidays = GermanPublicHolidays.InRange(prevFrom, periodTo).Select(h => h.Date).ToHashSet();
+        var holidaysByBundesland = new Dictionary<Bundesland, HashSet<DateOnly>>();
         foreach (var land in bundeslandByEmployee.Values.Distinct())
-            holidaysByBundesland[land] = GermanPublicHolidays.InRange(prevFrom, periodTo, land).Select(h => h.Date).ToHashSet();
+        {
+            if (land is { } b)
+                holidaysByBundesland[b] = GermanPublicHolidays.InRange(prevFrom, periodTo, b).Select(h => h.Date).ToHashSet();
+        }
 
         bool InScope(ShiftAssignment a) =>
             MatchesTeam(a.EmployeeId) && (shiftTypeId is null || a.ShiftTypeId == shiftTypeId);
@@ -145,9 +160,9 @@ public class DashboardController(ApplicationDbContext db) : ControllerBase
         var painPoints = BuildPainPoints(schedules, assignmentsByScheduleId, historyPool, employeesById, shiftTypes, contracts, absences, teamId);
         var planningStatus = BuildPlanningStatus(schedules, painPoints);
 
-        var costBreakdown = BuildCostBreakdown(current, contracts, bundeslandByEmployee, holidaysByBundesland);
+        var costBreakdown = BuildCostBreakdown(current, contracts, bundeslandByEmployee, holidaysByBundesland, nationwideHolidays);
         var costTotal = costBreakdown.Total;
-        var previousCostTotal = BuildCostBreakdown(previous, contracts, bundeslandByEmployee, holidaysByBundesland).Total;
+        var previousCostTotal = BuildCostBreakdown(previous, contracts, bundeslandByEmployee, holidaysByBundesland, nationwideHolidays).Total;
 
         var matchingEmployees = employees.Where(e => MatchesTeam(e.Id)).ToList();
         var employeeUtilization = BuildEmployeeUtilization(matchingEmployees, current, contracts, absences, periodFrom, periodTo);
@@ -263,14 +278,16 @@ public class DashboardController(ApplicationDbContext db) : ControllerBase
     private static CostBreakdownDto BuildCostBreakdown(
         IReadOnlyList<ShiftAssignment> assignments, IReadOnlyList<Contract> contracts,
         IReadOnlyDictionary<Guid, Bundesland?> bundeslandByEmployee,
-        IReadOnlyDictionary<Bundesland?, HashSet<DateOnly>> holidaysByBundesland)
+        IReadOnlyDictionary<Bundesland, HashSet<DateOnly>> holidaysByBundesland,
+        HashSet<DateOnly> nationwideHolidays)
     {
         decimal regular = 0, night = 0, sunday = 0, holiday = 0;
         foreach (var a in assignments)
         {
             var contract = ActiveContract(contracts, a.EmployeeId, a.Date);
             var netHours = WorkingTimeCalculator.NetHours(a.StartTime, a.EndTime, a.BreakMinutes);
-            var isHoliday = holidaysByBundesland[bundeslandByEmployee.GetValueOrDefault(a.EmployeeId)].Contains(a.Date);
+            var land = bundeslandByEmployee.GetValueOrDefault(a.EmployeeId);
+            var isHoliday = (land is { } bl ? holidaysByBundesland[bl] : nationwideHolidays).Contains(a.Date);
             // issue #58: BreakMinutes/BreakStartTime threaded through so the night-surcharge
             // portion of the breakdown gets the same break-adjusted precision LaborCost's other
             // call sites already have.

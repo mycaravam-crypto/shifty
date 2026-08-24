@@ -107,24 +107,31 @@ public class SchedulesController(ApplicationDbContext db) : ControllerBase
         // issue #57: which nationwide-vs-Bundesland holiday set applies depends on each
         // assignment's employee's Team, so this resolves a HashSet per distinct Bundesland
         // actually in play (including null = nationwide-only) rather than one shared set.
+        //
+        // Bundesland? (null = nationwide-only) cannot be used as a Dictionary key directly:
+        // Dictionary<TKey,TValue> throws ArgumentNullException on a null key at runtime even
+        // when TKey is a nullable value type — CS8714 here was flagging a real bug, not just a
+        // nullable-analysis false positive. HolidaysFor keeps a non-nullable Dictionary<Bundesland,
+        // ...> for actual states plus a separate set for the nationwide/null case instead.
         var bundeslandByEmployee = await db.Employees.Include(e => e.Team)
             .Where(e => employeeIds.Contains(e.Id))
             .ToDictionaryAsync(e => e.Id, e => e.Team?.Bundesland);
-        // Dictionary<TKey,TValue>'s `notnull` constraint is a compiler-only nullable-analysis
-        // warning (CS8714), not a hard constraint violation — Bundesland? (null =
-        // nationwide-only) is a perfectly valid runtime key here, so this is suppressed
-        // deliberately rather than worked around with an artificial sentinel/wrapper type.
-#pragma warning disable CS8714
-        var holidaysByBundesland = new Dictionary<Bundesland?, HashSet<DateOnly>>();
-#pragma warning restore CS8714
+        var nationwideHolidays = GermanPublicHolidays.InRange(schedule.StartDate, schedule.EndDate)
+            .Select(h => h.Date).ToHashSet();
+        var holidaysByBundesland = new Dictionary<Bundesland, HashSet<DateOnly>>();
         foreach (var land in bundeslandByEmployee.Values.Distinct())
-            holidaysByBundesland[land] = GermanPublicHolidays.InRange(schedule.StartDate, schedule.EndDate, land)
-                .Select(h => h.Date).ToHashSet();
+        {
+            if (land is { } b)
+                holidaysByBundesland[b] = GermanPublicHolidays.InRange(schedule.StartDate, schedule.EndDate, b)
+                    .Select(h => h.Date).ToHashSet();
+        }
+        HashSet<DateOnly> HolidaysFor(Bundesland? land) =>
+            land is { } b ? holidaysByBundesland[b] : nationwideHolidays;
 
         return Ok(new ScheduleDetailDto(schedule.Id, schedule.Name, schedule.StartDate, schedule.EndDate,
             schedule.Status, schedule.PublishedAt, schedule.PublishedBy,
             assignments.Select(a => ToAssignmentDto(a, HourlyRateOn(contracts, a.EmployeeId, a.Date),
-                holidaysByBundesland[bundeslandByEmployee.GetValueOrDefault(a.EmployeeId)].Contains(a.Date))).ToList()));
+                HolidaysFor(bundeslandByEmployee.GetValueOrDefault(a.EmployeeId)).Contains(a.Date))).ToList()));
     }
 
     [HttpPost("schedules")]
