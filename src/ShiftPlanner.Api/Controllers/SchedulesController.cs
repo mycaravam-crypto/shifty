@@ -85,24 +85,25 @@ public class SchedulesController(ApplicationDbContext db) : ControllerBase
     [HttpGet("schedules")]
     public async Task<ActionResult<IEnumerable<ScheduleDto>>> GetAll()
     {
-        var schedules = await db.Schedules.OrderByDescending(s => s.StartDate).ToListAsync();
+        var schedules = await db.Schedules.AsNoTracking().OrderByDescending(s => s.StartDate).ToListAsync();
         return Ok(schedules.Select(ToDto));
     }
 
     [HttpGet("schedules/{id:guid}")]
     public async Task<ActionResult<ScheduleDetailDto>> GetById(Guid id)
     {
-        var schedule = await db.Schedules.FindAsync(id);
+        var schedule = await db.Schedules.AsNoTracking().FirstOrDefaultAsync(s => s.Id == id);
         if (schedule is null)
             return NotFound();
 
         var assignments = await db.ShiftAssignments
+            .AsNoTracking()
             .Where(a => a.ScheduleId == id)
             .OrderBy(a => a.Date).ThenBy(a => a.StartTime)
             .ToListAsync();
 
         var employeeIds = assignments.Select(a => a.EmployeeId).Distinct().ToList();
-        var contracts = await db.Contracts.Where(c => employeeIds.Contains(c.EmployeeId)).ToListAsync();
+        var contracts = await db.Contracts.AsNoTracking().Where(c => employeeIds.Contains(c.EmployeeId)).ToListAsync();
 
         // issue #57: which nationwide-vs-Bundesland holiday set applies depends on each
         // assignment's employee's Team, so this resolves a HashSet per distinct Bundesland
@@ -113,7 +114,7 @@ public class SchedulesController(ApplicationDbContext db) : ControllerBase
         // when TKey is a nullable value type — CS8714 here was flagging a real bug, not just a
         // nullable-analysis false positive. HolidaysFor keeps a non-nullable Dictionary<Bundesland,
         // ...> for actual states plus a separate set for the nationwide/null case instead.
-        var bundeslandByEmployee = await db.Employees.Include(e => e.Team)
+        var bundeslandByEmployee = await db.Employees.AsNoTracking().Include(e => e.Team)
             .Where(e => employeeIds.Contains(e.Id))
             .ToDictionaryAsync(e => e.Id, e => e.Team?.Bundesland);
         var nationwideHolidays = GermanPublicHolidays.InRange(schedule.StartDate, schedule.EndDate)
@@ -177,24 +178,26 @@ public class SchedulesController(ApplicationDbContext db) : ControllerBase
     // the two can never disagree about what counts as a blocking Error.
     private async Task<Application.Validation.ValidationResult> ValidateScheduleAsync(Schedule schedule)
     {
-        var assignments = await db.ShiftAssignments.Where(a => a.ScheduleId == schedule.Id).ToListAsync();
+        var assignments = await db.ShiftAssignments.AsNoTracking().Where(a => a.ScheduleId == schedule.Id).ToListAsync();
         var employeeIds = assignments.Select(a => a.EmployeeId).Distinct().ToList();
-        var employees = await db.Employees.Include(e => e.EligibleShiftTypes)
+        var employees = await db.Employees.AsNoTracking().Include(e => e.EligibleShiftTypes)
             .Where(e => employeeIds.Contains(e.Id)).ToListAsync();
-        var shiftTypes = await db.ShiftTypes.ToListAsync();
-        var contracts = await db.Contracts.Where(c => employeeIds.Contains(c.EmployeeId)).ToListAsync();
+        var shiftTypes = await db.ShiftTypes.AsNoTracking().ToListAsync();
+        var contracts = await db.Contracts.AsNoTracking().Where(c => employeeIds.Contains(c.EmployeeId)).ToListAsync();
 
         // issues #8/#9: rest-time and consecutive-day rules need shifts outside this
         // Schedule's own date range too (an adjacent week already planned).
         var historyStart = schedule.StartDate.AddDays(-6);
         var historyEnd = schedule.EndDate.AddDays(6);
         var historyAssignments = await db.ShiftAssignments
+            .AsNoTracking()
             .Where(a => employeeIds.Contains(a.EmployeeId) && a.Date >= historyStart && a.Date <= historyEnd)
             .ToListAsync();
 
         // issue #17: only absences overlapping this Schedule's own span matter here — unlike
         // the rest-time/consecutive-days history window above, absences don't need lookback.
         var absences = await db.Absences
+            .AsNoTracking()
             .Where(a => employeeIds.Contains(a.EmployeeId) && a.From <= schedule.EndDate && a.To >= schedule.StartDate)
             .ToListAsync();
 
@@ -314,7 +317,7 @@ public class SchedulesController(ApplicationDbContext db) : ControllerBase
     [HttpGet("schedules/{id:guid}/validate")]
     public async Task<ActionResult<Application.Validation.ValidationResult>> Validate(Guid id)
     {
-        var schedule = await db.Schedules.FindAsync(id);
+        var schedule = await db.Schedules.AsNoTracking().FirstOrDefaultAsync(s => s.Id == id);
         if (schedule is null)
             return NotFound();
 
@@ -326,17 +329,17 @@ public class SchedulesController(ApplicationDbContext db) : ControllerBase
     [HttpGet("schedules/{id:guid}/suggestions")]
     public async Task<ActionResult<IEnumerable<ShiftSuggestionDto>>> Suggest(Guid id, DateOnly date, Guid shiftTypeId)
     {
-        var schedule = await db.Schedules.FindAsync(id);
+        var schedule = await db.Schedules.AsNoTracking().FirstOrDefaultAsync(s => s.Id == id);
         if (schedule is null)
             return NotFound();
         if (date < schedule.StartDate || date > schedule.EndDate)
             return BadRequest("Date is outside the schedule's range.");
 
-        var shiftType = await db.ShiftTypes.FindAsync(shiftTypeId);
+        var shiftType = await db.ShiftTypes.AsNoTracking().FirstOrDefaultAsync(s => s.Id == shiftTypeId);
         if (shiftType is null)
             return NotFound();
 
-        var employees = await db.Employees.Include(e => e.EligibleShiftTypes)
+        var employees = await db.Employees.AsNoTracking().Include(e => e.EligibleShiftTypes)
             .Where(e => e.Active).ToListAsync();
         var employeeIds = employees.Select(e => e.Id).ToList();
 
@@ -345,16 +348,18 @@ public class SchedulesController(ApplicationDbContext db) : ControllerBase
         var historyStart = date.AddDays(-6);
         var historyEnd = date.AddDays(6);
         var historyAssignments = await db.ShiftAssignments
+            .AsNoTracking()
             .Where(a => employeeIds.Contains(a.EmployeeId) && a.Date >= historyStart && a.Date <= historyEnd)
             .ToListAsync();
 
         var absences = await db.Absences
+            .AsNoTracking()
             .Where(a => employeeIds.Contains(a.EmployeeId) && a.From <= date && a.To >= date)
             .ToListAsync();
-        var scheduleAssignments = await db.ShiftAssignments.Where(a => a.ScheduleId == id).ToListAsync();
-        var contracts = await db.Contracts.Where(c => employeeIds.Contains(c.EmployeeId)).ToListAsync();
-        var shiftTypePreferences = await db.ShiftTypePreferences.Where(p => employeeIds.Contains(p.EmployeeId)).ToListAsync();
-        var weekdayPreferences = await db.WeekdayPreferences.Where(p => employeeIds.Contains(p.EmployeeId)).ToListAsync();
+        var scheduleAssignments = await db.ShiftAssignments.AsNoTracking().Where(a => a.ScheduleId == id).ToListAsync();
+        var contracts = await db.Contracts.AsNoTracking().Where(c => employeeIds.Contains(c.EmployeeId)).ToListAsync();
+        var shiftTypePreferences = await db.ShiftTypePreferences.AsNoTracking().Where(p => employeeIds.Contains(p.EmployeeId)).ToListAsync();
+        var weekdayPreferences = await db.WeekdayPreferences.AsNoTracking().Where(p => employeeIds.Contains(p.EmployeeId)).ToListAsync();
 
         var suggestions = ShiftSuggestionEngine.Suggest(
             date, shiftType, employees, historyAssignments, absences,
@@ -374,7 +379,7 @@ public class SchedulesController(ApplicationDbContext db) : ControllerBase
     [HttpGet("schedules/{id:guid}/auto-fill-preview")]
     public async Task<ActionResult<IEnumerable<AutoFillProposalDto>>> AutoFillPreview(Guid id, DateOnly? from, DateOnly? to)
     {
-        var schedule = await db.Schedules.FindAsync(id);
+        var schedule = await db.Schedules.AsNoTracking().FirstOrDefaultAsync(s => s.Id == id);
         if (schedule is null)
             return NotFound();
 
@@ -383,8 +388,8 @@ public class SchedulesController(ApplicationDbContext db) : ControllerBase
         if (rangeStart < schedule.StartDate || rangeEnd > schedule.EndDate || rangeEnd < rangeStart)
             return BadRequest("Range must be a valid sub-range of the schedule's own date range.");
 
-        var shiftTypes = await db.ShiftTypes.Where(s => s.Active).ToListAsync();
-        var employees = await db.Employees.Include(e => e.EligibleShiftTypes)
+        var shiftTypes = await db.ShiftTypes.AsNoTracking().Where(s => s.Active).ToListAsync();
+        var employees = await db.Employees.AsNoTracking().Include(e => e.EligibleShiftTypes)
             .Where(e => e.Active).ToListAsync();
         var employeeIds = employees.Select(e => e.Id).ToList();
 
@@ -393,16 +398,18 @@ public class SchedulesController(ApplicationDbContext db) : ControllerBase
         var historyStart = rangeStart.AddDays(-6);
         var historyEnd = rangeEnd.AddDays(6);
         var historyAssignments = await db.ShiftAssignments
+            .AsNoTracking()
             .Where(a => employeeIds.Contains(a.EmployeeId) && a.Date >= historyStart && a.Date <= historyEnd)
             .ToListAsync();
 
         var absences = await db.Absences
+            .AsNoTracking()
             .Where(a => employeeIds.Contains(a.EmployeeId) && a.From <= rangeEnd && a.To >= rangeStart)
             .ToListAsync();
-        var scheduleAssignments = await db.ShiftAssignments.Where(a => a.ScheduleId == id).ToListAsync();
-        var contracts = await db.Contracts.Where(c => employeeIds.Contains(c.EmployeeId)).ToListAsync();
-        var shiftTypePreferences = await db.ShiftTypePreferences.Where(p => employeeIds.Contains(p.EmployeeId)).ToListAsync();
-        var weekdayPreferences = await db.WeekdayPreferences.Where(p => employeeIds.Contains(p.EmployeeId)).ToListAsync();
+        var scheduleAssignments = await db.ShiftAssignments.AsNoTracking().Where(a => a.ScheduleId == id).ToListAsync();
+        var contracts = await db.Contracts.AsNoTracking().Where(c => employeeIds.Contains(c.EmployeeId)).ToListAsync();
+        var shiftTypePreferences = await db.ShiftTypePreferences.AsNoTracking().Where(p => employeeIds.Contains(p.EmployeeId)).ToListAsync();
+        var weekdayPreferences = await db.WeekdayPreferences.AsNoTracking().Where(p => employeeIds.Contains(p.EmployeeId)).ToListAsync();
 
         var proposals = ShiftSuggestionEngine.AutoFill(
             rangeStart, rangeEnd, shiftTypes, employees, historyAssignments, absences,

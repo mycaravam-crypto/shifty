@@ -42,6 +42,7 @@ public class ContractsController(ApplicationDbContext db) : ControllerBase
             return NotFound();
 
         var contracts = await db.Contracts
+            .AsNoTracking()
             .Where(c => c.EmployeeId == employeeId)
             .OrderByDescending(c => c.ValidFrom)
             .ToListAsync();
@@ -51,7 +52,7 @@ public class ContractsController(ApplicationDbContext db) : ControllerBase
     [HttpGet("contracts/{id:guid}")]
     public async Task<ActionResult<ContractDto>> GetById(Guid id)
     {
-        var contract = await db.Contracts.FindAsync(id);
+        var contract = await db.Contracts.AsNoTracking().FirstOrDefaultAsync(c => c.Id == id);
         return contract is null ? NotFound() : Ok(ToDto(contract));
     }
 
