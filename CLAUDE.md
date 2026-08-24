@@ -374,7 +374,20 @@ What's built:
     `views/Stammdaten/ShiftTypeDetailModal.vue`, since `ShiftTypesController` does have a
     `PUT`) on one page, mirroring `EmployeesView.vue`'s list/create pattern. Reachable at
     `/stammdaten` in the sidebar nav — previously this data was only reachable via
-    Swagger/API key.
+    Swagger/API key. **Component-level parity pass** ([issue #60](https://github.com/mycaravam-crypto/shifty/issues/60))
+    — the Teams table was the one concrete gap found against `EmployeesView.vue`: the
+    ShiftTypes table already got issue #40's `md:hidden` stacked-card / `hidden md:block`
+    table split, but the Teams table next to it in the same file never did (still an
+    unscrollable table below `md`), so it now gets the identical split. The color `<input>`
+    in both `StammdatenView.vue`'s create form and `ShiftTypeDetailModal.vue` was also missing
+    the `outline-none focus-visible:ring-2 focus-visible:ring-indigo-500` every other input in
+    the app carries — added to both for consistency. Everything else audited against
+    `EmployeesView.vue`/`EmployeeDetailModal.vue` (skeleton loading, toast/`ConfirmDialog`
+    usage, gradient/`bg-white/10` button split, `inputClass`, glass panels, chip styling,
+    hover/`cursor-pointer` on clickable rows) was already at parity from earlier work, so
+    nothing else changed. `npm run lint`/`npm run build` (`vue-tsc -b` + `vite build`) clean;
+    not clicked through in an actual browser (same Playwright-install gap noted elsewhere in
+    this file).
   - `views/Schedule/ScheduleView.vue` — the Wochenansicht (readme.md §15/§16), no longer a
     placeholder. In practice a Schichtplan is always created for a full calendar month (not a
     week — an earlier cut used Mon–Sun `Schedule`s, but that didn't match how the user actually
