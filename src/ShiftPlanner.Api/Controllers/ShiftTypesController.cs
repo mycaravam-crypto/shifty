@@ -72,7 +72,10 @@ public class ShiftTypesController(ApplicationDbContext db) : ControllerBase
 
         var dto = new ShiftTypeDto(shiftType.Id, shiftType.Name, shiftType.StartTime, shiftType.EndTime, shiftType.BreakMinutes, shiftType.Color, shiftType.Active,
             shiftType.MinStaffing, shiftType.MaxStaffing);
-        return CreatedAtAction(nameof(GetAll), new { id = shiftType.Id }, dto);
+        // No GetById endpoint exists for this resource, so CreatedAtAction(nameof(GetAll), ...)
+        // would produce a Location header pointing at the collection, not the created resource
+        // (GetAll takes no id parameter) — StatusCode(201, ...) avoids that misleading header.
+        return StatusCode(StatusCodes.Status201Created, dto);
     }
 
     [HttpPut("{id:guid}")]
