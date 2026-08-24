@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -10,7 +11,9 @@ using ShiftPlanner.Infrastructure.Persistence;
 
 namespace ShiftPlanner.Api.Controllers;
 
-public record ScheduleDto(Guid Id, string Name, DateOnly StartDate, DateOnly EndDate, ScheduleStatus Status);
+public record ScheduleDto(
+    Guid Id, string Name, DateOnly StartDate, DateOnly EndDate, ScheduleStatus Status,
+    DateTimeOffset? PublishedAt, string? PublishedBy);
 
 public record ShiftAssignmentDto(
     Guid Id, Guid ScheduleId, Guid EmployeeId, Guid ShiftTypeId,
@@ -19,12 +22,16 @@ public record ShiftAssignmentDto(
 
 public record ScheduleDetailDto(
     Guid Id, string Name, DateOnly StartDate, DateOnly EndDate, ScheduleStatus Status,
+    DateTimeOffset? PublishedAt, string? PublishedBy,
     List<ShiftAssignmentDto> Assignments);
 
 public record CreateScheduleRequest([Required, MaxLength(200)] string Name, DateOnly StartDate, DateOnly EndDate);
 
-public record UpdateScheduleRequest(
-    [Required, MaxLength(200)] string Name, DateOnly StartDate, DateOnly EndDate, ScheduleStatus Status);
+// issue #68: Status is no longer settable here — a Schedule only transitions Draft ->
+// Published via POST .../publish (gated on zero blocking validation Errors) and Published ->
+// Archived via POST .../archive. Name/StartDate/EndDate remain editable through this endpoint,
+// but only while still Draft (see Update below).
+public record UpdateScheduleRequest([Required, MaxLength(200)] string Name, DateOnly StartDate, DateOnly EndDate);
 
 public record ShiftSuggestionDto(Guid EmployeeId, string FirstName, string LastName, bool Eligible, decimal Score, List<SuggestionReason> Reasons);
 
@@ -57,7 +64,7 @@ public record UpdateAssignmentRequest(
 public class SchedulesController(ApplicationDbContext db) : ControllerBase
 {
     private static readonly Func<Schedule, ScheduleDto> ToDto =
-        s => new ScheduleDto(s.Id, s.Name, s.StartDate, s.EndDate, s.Status);
+        s => new ScheduleDto(s.Id, s.Name, s.StartDate, s.EndDate, s.Status, s.PublishedAt, s.PublishedBy);
 
     private static ShiftAssignmentDto ToAssignmentDto(ShiftAssignment a, decimal? hourlyRate, bool isHoliday)
     {
@@ -100,7 +107,7 @@ public class SchedulesController(ApplicationDbContext db) : ControllerBase
             .Select(h => h.Date).ToHashSet();
 
         return Ok(new ScheduleDetailDto(schedule.Id, schedule.Name, schedule.StartDate, schedule.EndDate,
-            schedule.Status,
+            schedule.Status, schedule.PublishedAt, schedule.PublishedBy,
             assignments.Select(a => ToAssignmentDto(a, HourlyRateOn(contracts, a.EmployeeId, a.Date), holidays.Contains(a.Date))).ToList()));
     }
 
@@ -129,13 +136,96 @@ public class SchedulesController(ApplicationDbContext db) : ControllerBase
         if (schedule is null)
             return NotFound();
 
+        // issue #68: a Published/Archived schedule's own span is what /publish's validation
+        // was run against — changing it afterwards would silently invalidate that check.
+        if (schedule.Status != ScheduleStatus.Draft)
+            return Conflict($"Schedule is {schedule.Status}; only a Draft schedule's name/dates can be edited.");
+
         schedule.Name = request.Name;
         schedule.StartDate = request.StartDate;
         schedule.EndDate = request.EndDate;
-        schedule.Status = request.Status;
         await db.SaveChangesAsync();
 
         return NoContent();
+    }
+
+    // issue #68: loads exactly the data ScheduleValidator needs for one Schedule — shared by
+    // both the read-only /validate endpoint and the /publish use case's own blocking check, so
+    // the two can never disagree about what counts as a blocking Error.
+    private async Task<Application.Validation.ValidationResult> ValidateScheduleAsync(Schedule schedule)
+    {
+        var assignments = await db.ShiftAssignments.Where(a => a.ScheduleId == schedule.Id).ToListAsync();
+        var employeeIds = assignments.Select(a => a.EmployeeId).Distinct().ToList();
+        var employees = await db.Employees.Include(e => e.EligibleShiftTypes)
+            .Where(e => employeeIds.Contains(e.Id)).ToListAsync();
+        var shiftTypes = await db.ShiftTypes.ToListAsync();
+        var contracts = await db.Contracts.Where(c => employeeIds.Contains(c.EmployeeId)).ToListAsync();
+
+        // issues #8/#9: rest-time and consecutive-day rules need shifts outside this
+        // Schedule's own date range too (an adjacent week already planned).
+        var historyStart = schedule.StartDate.AddDays(-6);
+        var historyEnd = schedule.EndDate.AddDays(6);
+        var historyAssignments = await db.ShiftAssignments
+            .Where(a => employeeIds.Contains(a.EmployeeId) && a.Date >= historyStart && a.Date <= historyEnd)
+            .ToListAsync();
+
+        // issue #17: only absences overlapping this Schedule's own span matter here — unlike
+        // the rest-time/consecutive-days history window above, absences don't need lookback.
+        var absences = await db.Absences
+            .Where(a => employeeIds.Contains(a.EmployeeId) && a.From <= schedule.EndDate && a.To >= schedule.StartDate)
+            .ToListAsync();
+
+        return ScheduleValidator.Validate(schedule, assignments, employees, shiftTypes, contracts, historyAssignments, absences);
+    }
+
+    private string CurrentUserId() =>
+        User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue(ClaimTypes.Name) ?? "system";
+
+    // issue #68: the PublishSchedule use case — requires zero blocking Errors from the same
+    // check /validate already exposes, so a manager can't publish (and thereby freeze) a
+    // schedule that's still legally/operationally broken. Returns the full ValidationResult in
+    // the 409 body when blocked, reusing the exact shape the validation panel already renders.
+    [HttpPost("schedules/{id:guid}/publish")]
+    [Authorize(Policy = "ManagerWrite")]
+    public async Task<ActionResult<ScheduleDto>> Publish(Guid id)
+    {
+        var schedule = await db.Schedules.FindAsync(id);
+        if (schedule is null)
+            return NotFound();
+
+        if (schedule.Status != ScheduleStatus.Draft)
+            return Conflict($"Schedule is {schedule.Status}; only a Draft schedule can be published.");
+
+        var result = await ValidateScheduleAsync(schedule);
+        if (!result.IsValid)
+            return Conflict(result);
+
+        schedule.Status = ScheduleStatus.Published;
+        schedule.PublishedAt = DateTimeOffset.UtcNow;
+        schedule.PublishedBy = CurrentUserId();
+        await db.SaveChangesAsync();
+
+        return Ok(ToDto(schedule));
+    }
+
+    // issue #68: Published -> Archived. No validation re-check — a schedule already published
+    // can be archived regardless of anything that changed operationally since (e.g. an employee
+    // later deactivated), since Archived is a "this period is over" marker, not a quality gate.
+    [HttpPost("schedules/{id:guid}/archive")]
+    [Authorize(Policy = "ManagerWrite")]
+    public async Task<ActionResult<ScheduleDto>> Archive(Guid id)
+    {
+        var schedule = await db.Schedules.FindAsync(id);
+        if (schedule is null)
+            return NotFound();
+
+        if (schedule.Status != ScheduleStatus.Published)
+            return Conflict($"Schedule is {schedule.Status}; only a Published schedule can be archived.");
+
+        schedule.Status = ScheduleStatus.Archived;
+        await db.SaveChangesAsync();
+
+        return Ok(ToDto(schedule));
     }
 
     // issue #82: the frontend's "Monat kopieren" used to create each copied assignment via its
@@ -157,6 +247,8 @@ public class SchedulesController(ApplicationDbContext db) : ControllerBase
         var sourceAssignments = await db.ShiftAssignments.Where(a => a.ScheduleId == id).ToListAsync();
 
         var target = await db.Schedules.FirstOrDefaultAsync(s => s.StartDate == request.TargetStartDate);
+        if (target is not null && target.Status != ScheduleStatus.Draft)
+            return Conflict($"Target schedule is {target.Status}; copy aborted.");
         if (target is not null && await db.ShiftAssignments.AnyAsync(a => a.ScheduleId == target.Id))
             return Conflict("Target month already has assignments; copy aborted.");
 
@@ -203,28 +295,7 @@ public class SchedulesController(ApplicationDbContext db) : ControllerBase
         if (schedule is null)
             return NotFound();
 
-        var assignments = await db.ShiftAssignments.Where(a => a.ScheduleId == id).ToListAsync();
-        var employeeIds = assignments.Select(a => a.EmployeeId).Distinct().ToList();
-        var employees = await db.Employees.Include(e => e.EligibleShiftTypes)
-            .Where(e => employeeIds.Contains(e.Id)).ToListAsync();
-        var shiftTypes = await db.ShiftTypes.ToListAsync();
-        var contracts = await db.Contracts.Where(c => employeeIds.Contains(c.EmployeeId)).ToListAsync();
-
-        // issues #8/#9: rest-time and consecutive-day rules need shifts outside this
-        // Schedule's own date range too (an adjacent week already planned).
-        var historyStart = schedule.StartDate.AddDays(-6);
-        var historyEnd = schedule.EndDate.AddDays(6);
-        var historyAssignments = await db.ShiftAssignments
-            .Where(a => employeeIds.Contains(a.EmployeeId) && a.Date >= historyStart && a.Date <= historyEnd)
-            .ToListAsync();
-
-        // issue #17: only absences overlapping this Schedule's own span matter here — unlike
-        // the rest-time/consecutive-days history window above, absences don't need lookback.
-        var absences = await db.Absences
-            .Where(a => employeeIds.Contains(a.EmployeeId) && a.From <= schedule.EndDate && a.To >= schedule.StartDate)
-            .ToListAsync();
-
-        return Ok(ScheduleValidator.Validate(schedule, assignments, employees, shiftTypes, contracts, historyAssignments, absences));
+        return Ok(await ValidateScheduleAsync(schedule));
     }
 
     // readme.md §17's "Arbeitszeitpräferenzen" — ranks active employees for one open
@@ -334,6 +405,9 @@ public class SchedulesController(ApplicationDbContext db) : ControllerBase
         if (schedule is null)
             return NotFound();
 
+        if (schedule.Status != ScheduleStatus.Draft)
+            return Conflict($"Schedule is {schedule.Status}; assignments can only be committed to a Draft schedule.");
+
         if (request.Assignments.Count == 0)
             return Ok(Array.Empty<ShiftAssignmentDto>());
 
@@ -377,8 +451,19 @@ public class SchedulesController(ApplicationDbContext db) : ControllerBase
     [Authorize(Policy = "ManagerWrite")]
     public async Task<ActionResult<ShiftAssignmentDto>> CreateAssignment(Guid id, CreateAssignmentRequest request)
     {
-        if (!await db.Schedules.AnyAsync(s => s.Id == id))
+        var schedule = await db.Schedules.FindAsync(id);
+        if (schedule is null)
             return NotFound();
+
+        // issue #68: writes are only allowed while the owning Schedule is still Draft, and an
+        // assignment's Date must fall within the Schedule's own span — neither was enforced
+        // server-side before, so a stale UI (or a direct API call) could silently corrupt an
+        // already-published schedule or place a shift outside the period it belongs to.
+        if (schedule.Status != ScheduleStatus.Draft)
+            return Conflict($"Schedule is {schedule.Status}; assignments can only be added to a Draft schedule.");
+
+        if (request.Date < schedule.StartDate || request.Date > schedule.EndDate)
+            return BadRequest("Date is outside the schedule's range.");
 
         if (!await db.Employees.AnyAsync(e => e.Id == request.EmployeeId))
             return BadRequest($"Employee '{request.EmployeeId}' does not exist.");
@@ -422,6 +507,16 @@ public class SchedulesController(ApplicationDbContext db) : ControllerBase
         if (assignment is null)
             return NotFound();
 
+        var schedule = await db.Schedules.FindAsync(assignment.ScheduleId);
+        if (schedule is null)
+            return NotFound();
+
+        if (schedule.Status != ScheduleStatus.Draft)
+            return Conflict($"Schedule is {schedule.Status}; assignments can only be edited on a Draft schedule.");
+
+        if (request.Date < schedule.StartDate || request.Date > schedule.EndDate)
+            return BadRequest("Date is outside the schedule's range.");
+
         if (!await db.Employees.AnyAsync(e => e.Id == request.EmployeeId))
             return BadRequest($"Employee '{request.EmployeeId}' does not exist.");
 
@@ -450,6 +545,13 @@ public class SchedulesController(ApplicationDbContext db) : ControllerBase
         var assignment = await db.ShiftAssignments.FindAsync(id);
         if (assignment is null)
             return NotFound();
+
+        var schedule = await db.Schedules.FindAsync(assignment.ScheduleId);
+        if (schedule is null)
+            return NotFound();
+
+        if (schedule.Status != ScheduleStatus.Draft)
+            return Conflict($"Schedule is {schedule.Status}; assignments can only be deleted from a Draft schedule.");
 
         db.ShiftAssignments.Remove(assignment);
         await db.SaveChangesAsync();
