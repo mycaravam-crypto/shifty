@@ -10,4 +10,12 @@
     <ProjectReference Include="..\ShiftPlanner.Domain\ShiftPlanner.Domain.csproj" />
   </ItemGroup>
 
+  <!-- issue #115: lets ShiftPlanner.Tests unit-test ShiftSuggestionEngine's extracted internal
+       per-rule methods directly, without making them part of the public API surface. -->
+  <ItemGroup>
+    <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleTo">
+      <_Parameter1>ShiftPlanner.Tests</_Parameter1>
+    </AssemblyAttribute>
+  </ItemGroup>
+
 </Project>

@@ -41,6 +41,30 @@ public static class ShiftSuggestionEngine
     private const int MinRestHours = 11;
     private const int MaxConsecutiveDays = 6;
 
+    // issue #114: named scoring constants instead of inline magic numbers, matching the
+    // MinRestHours/MaxConsecutiveDays convention above.
+    private const decimal AlreadyAssignedPenalty = -3m;
+    private const decimal ShiftTypePreferredBonus = 2m;
+    private const decimal ShiftTypeAvoidPenalty = -2m;
+    private const decimal WeekdayPreferredBonus = 1m;
+    private const decimal WeekdayAvoidPenalty = -1m;
+    private const decimal UnderContractTargetBonus = 1m;
+
+    // issue #115: one rule's verdict — whether it excludes the candidate outright, the score
+    // delta it contributes (0 for a purely eligibility-gating rule), and the reason to surface
+    // to the caller (null when the rule has nothing to report, e.g. a contract-target check
+    // that isn't currently under target).
+    internal readonly record struct RuleOutcome(bool Eligible, decimal ScoreDelta, SuggestionReason? Reason)
+    {
+        internal static readonly RuleOutcome None = new(true, 0m, null);
+
+        internal static RuleOutcome Exclude(SuggestionReasonCode code, string message) =>
+            new(false, 0m, new SuggestionReason(code, message));
+
+        internal static RuleOutcome Scored(decimal delta, SuggestionReasonCode code, string message) =>
+            new(true, delta, new SuggestionReason(code, message));
+    }
+
     public static List<ShiftSuggestion> Suggest(
         DateOnly date,
         ShiftType shiftType,
@@ -62,113 +86,148 @@ public static class ShiftSuggestionEngine
 
         foreach (var employee in candidateEmployees)
         {
-            var reasons = new List<SuggestionReason>();
-            var eligible = true;
-            decimal score = 0;
-
-            if (employee.EligibleShiftTypes.Count > 0 && employee.EligibleShiftTypes.All(s => s.Id != shiftType.Id))
-            {
-                eligible = false;
-                reasons.Add(new(SuggestionReasonCode.NotEligible, "Nicht für diese Schichtart freigegeben."));
-            }
-
-            if (absences.Any(a => a.EmployeeId == employee.Id && a.From <= date && a.To >= date))
-            {
-                eligible = false;
-                reasons.Add(new(SuggestionReasonCode.Absent, "Abwesend an diesem Tag."));
-            }
-
             var employeeHistory = historyAssignments.Where(a => a.EmployeeId == employee.Id).ToList();
 
-            // issue #8 (RestTimeValidator): only the shifts immediately adjacent to the
-            // hypothetical one can violate the minimum rest — earlier/later pairs are already
-            // covered by the real ScheduleValidator run over the placed assignments.
-            var neighbours = employeeHistory
-                .Where(a => a.EndTime > a.StartTime) // cross-midnight shifts unsupported — issue #11
-                .Select(a => (Start: a.Date.ToDateTime(a.StartTime), End: a.Date.ToDateTime(a.EndTime)))
-                .Append((Start: hypotheticalStart, End: hypotheticalEnd))
-                .OrderBy(x => x.Start)
-                .ToList();
-            var hypotheticalIndex = neighbours.FindIndex(x => x.Start == hypotheticalStart && x.End == hypotheticalEnd);
-            var insufficientRest =
-                (hypotheticalIndex > 0 && neighbours[hypotheticalIndex].Start - neighbours[hypotheticalIndex - 1].End < TimeSpan.FromHours(MinRestHours))
-                || (hypotheticalIndex < neighbours.Count - 1 && neighbours[hypotheticalIndex + 1].Start - neighbours[hypotheticalIndex].End < TimeSpan.FromHours(MinRestHours));
-            if (insufficientRest)
+            // Each rule is independent of the others (issue #115) — evaluated in the same order
+            // the original inline checks ran, so reason ordering is unchanged.
+            var outcomes = new[]
             {
-                eligible = false;
-                reasons.Add(new(SuggestionReasonCode.InsufficientRest, $"Ruhezeit von {MinRestHours}h wäre unterschritten."));
-            }
+                EvaluateEligibility(employee, shiftType),
+                EvaluateAbsence(employee, date, absences),
+                EvaluateRestTime(employeeHistory, hypotheticalStart, hypotheticalEnd),
+                EvaluateConsecutiveDays(employeeHistory, date),
+                EvaluateSameDayOverlap(employeeHistory, date),
+                EvaluateShiftTypePreference(employee, shiftType, shiftTypePreferences),
+                EvaluateWeekdayPreference(employee, date, weekdayPreferences),
+                EvaluateContractTarget(employee, scheduleStart, scheduleEnd, scheduleDays, absences, contracts, scheduleAssignments),
+            };
 
-            // issue #9 (ConsecutiveDaysValidator): longest run of worked days containing `date`.
-            var workedDays = employeeHistory.Select(a => a.Date).Distinct().ToHashSet();
-            workedDays.Add(date);
-            var streakLength = 1;
-            for (var d = date.AddDays(-1); workedDays.Contains(d); d = d.AddDays(-1)) streakLength++;
-            for (var d = date.AddDays(1); workedDays.Contains(d); d = d.AddDays(1)) streakLength++;
-            if (streakLength > MaxConsecutiveDays)
+            var eligible = true;
+            decimal score = 0;
+            var reasons = new List<SuggestionReason>();
+            foreach (var outcome in outcomes)
             {
-                eligible = false;
-                reasons.Add(new(SuggestionReasonCode.TooManyConsecutiveDays, $"Mehr als {MaxConsecutiveDays} aufeinanderfolgende Arbeitstage."));
-            }
-
-            // ShiftOverlapValidator only Warns about a second shift the same day — scored, not excluding.
-            if (employeeHistory.Any(a => a.Date == date))
-            {
-                score -= 3;
-                reasons.Add(new(SuggestionReasonCode.AlreadyAssignedThatDay, "Hat an diesem Tag bereits eine Schicht."));
-            }
-
-            var shiftPref = shiftTypePreferences.FirstOrDefault(p => p.EmployeeId == employee.Id && p.ShiftTypeId == shiftType.Id);
-            if (shiftPref?.Level == PreferenceLevel.Preferred)
-            {
-                score += 2;
-                reasons.Add(new(SuggestionReasonCode.ShiftTypePreferred, "Bevorzugt diese Schichtart."));
-            }
-            else if (shiftPref?.Level == PreferenceLevel.Avoid)
-            {
-                score -= 2;
-                reasons.Add(new(SuggestionReasonCode.ShiftTypeAvoided, "Möchte diese Schichtart vermeiden."));
-            }
-
-            var weekdayPref = weekdayPreferences.FirstOrDefault(p => p.EmployeeId == employee.Id && p.DayOfWeek == date.DayOfWeek);
-            if (weekdayPref?.Level == PreferenceLevel.Preferred)
-            {
-                score += 1;
-                reasons.Add(new(SuggestionReasonCode.WeekdayPreferred, "Bevorzugt diesen Wochentag."));
-            }
-            else if (weekdayPref?.Level == PreferenceLevel.Avoid)
-            {
-                score -= 1;
-                reasons.Add(new(SuggestionReasonCode.WeekdayAvoided, "Möchte diesen Wochentag vermeiden."));
-            }
-
-            // Same expected-vs-actual math as ContractValidator, but as a small nudge toward
-            // whoever's furthest under their contracted hours for this Schedule rather than a
-            // hard check — the real over-hours enforcement still lives in ContractValidator.
-            var contract = contracts
-                .Where(c => c.EmployeeId == employee.Id && c.ValidFrom <= scheduleStart && (c.ValidTo is null || c.ValidTo >= scheduleStart))
-                .MaxBy(c => c.ValidFrom);
-            if (contract is not null)
-            {
-                var absenceDays = absences
-                    .Where(a => a.EmployeeId == employee.Id)
-                    .Sum(a => WorkingTimeCalculator.OverlapDays(a.From, a.To, scheduleStart, scheduleEnd));
-                var effectiveDays = Math.Max(0, scheduleDays - absenceDays);
-                var expectedHours = contract.WeeklyHours * effectiveDays / 7m;
-                var plannedHours = scheduleAssignments
-                    .Where(a => a.EmployeeId == employee.Id)
-                    .Sum(a => WorkingTimeCalculator.NetHours(a.StartTime, a.EndTime, a.BreakMinutes));
-                if (plannedHours < expectedHours)
-                {
-                    score += 1;
-                    reasons.Add(new(SuggestionReasonCode.UnderContractTarget, "Liegt aktuell unter der Vertrags-Sollstunden-Zahl."));
-                }
+                eligible &= outcome.Eligible;
+                score += outcome.ScoreDelta;
+                if (outcome.Reason is not null)
+                    reasons.Add(outcome.Reason);
             }
 
             results.Add(new ShiftSuggestion(employee.Id, eligible, score, reasons));
         }
 
         return results.OrderByDescending(r => r.Eligible).ThenByDescending(r => r.Score).ToList();
+    }
+
+    // EligibilityValidator mirror: an employee with a non-empty EligibleShiftTypes list that
+    // doesn't include this ShiftType is excluded outright.
+    internal static RuleOutcome EvaluateEligibility(Employee employee, ShiftType shiftType) =>
+        employee.EligibleShiftTypes.Count > 0 && employee.EligibleShiftTypes.All(s => s.Id != shiftType.Id)
+            ? RuleOutcome.Exclude(SuggestionReasonCode.NotEligible, "Nicht für diese Schichtart freigegeben.")
+            : RuleOutcome.None;
+
+    // AbsenceValidator mirror: an Absence spanning this date excludes the employee outright.
+    internal static RuleOutcome EvaluateAbsence(Employee employee, DateOnly date, IReadOnlyList<Absence> absences) =>
+        absences.Any(a => a.EmployeeId == employee.Id && a.From <= date && a.To >= date)
+            ? RuleOutcome.Exclude(SuggestionReasonCode.Absent, "Abwesend an diesem Tag.")
+            : RuleOutcome.None;
+
+    // RestTimeValidator mirror (issue #8): only the shifts immediately adjacent to the
+    // hypothetical one can violate the minimum rest — earlier/later pairs are already covered
+    // by the real ScheduleValidator run over the placed assignments.
+    internal static RuleOutcome EvaluateRestTime(
+        IReadOnlyList<ShiftAssignment> employeeHistory, DateTime hypotheticalStart, DateTime hypotheticalEnd)
+    {
+        var neighbours = employeeHistory
+            .Where(a => a.EndTime > a.StartTime) // cross-midnight shifts unsupported — issue #11
+            .Select(a => (Start: a.Date.ToDateTime(a.StartTime), End: a.Date.ToDateTime(a.EndTime)))
+            .Append((Start: hypotheticalStart, End: hypotheticalEnd))
+            .OrderBy(x => x.Start)
+            .ToList();
+        var hypotheticalIndex = neighbours.FindIndex(x => x.Start == hypotheticalStart && x.End == hypotheticalEnd);
+        var insufficientRest =
+            (hypotheticalIndex > 0 && neighbours[hypotheticalIndex].Start - neighbours[hypotheticalIndex - 1].End < TimeSpan.FromHours(MinRestHours))
+            || (hypotheticalIndex < neighbours.Count - 1 && neighbours[hypotheticalIndex + 1].Start - neighbours[hypotheticalIndex].End < TimeSpan.FromHours(MinRestHours));
+
+        return insufficientRest
+            ? RuleOutcome.Exclude(SuggestionReasonCode.InsufficientRest, $"Ruhezeit von {MinRestHours}h wäre unterschritten.")
+            : RuleOutcome.None;
+    }
+
+    // ConsecutiveDaysValidator mirror (issue #9): longest run of worked days containing `date`.
+    internal static RuleOutcome EvaluateConsecutiveDays(IReadOnlyList<ShiftAssignment> employeeHistory, DateOnly date)
+    {
+        var workedDays = employeeHistory.Select(a => a.Date).Distinct().ToHashSet();
+        workedDays.Add(date);
+        var streakLength = 1;
+        for (var d = date.AddDays(-1); workedDays.Contains(d); d = d.AddDays(-1)) streakLength++;
+        for (var d = date.AddDays(1); workedDays.Contains(d); d = d.AddDays(1)) streakLength++;
+
+        return streakLength > MaxConsecutiveDays
+            ? RuleOutcome.Exclude(SuggestionReasonCode.TooManyConsecutiveDays, $"Mehr als {MaxConsecutiveDays} aufeinanderfolgende Arbeitstage.")
+            : RuleOutcome.None;
+    }
+
+    // ShiftOverlapValidator only Warns about a second shift the same day — scored, not excluding.
+    internal static RuleOutcome EvaluateSameDayOverlap(IReadOnlyList<ShiftAssignment> employeeHistory, DateOnly date) =>
+        employeeHistory.Any(a => a.Date == date)
+            ? RuleOutcome.Scored(AlreadyAssignedPenalty, SuggestionReasonCode.AlreadyAssignedThatDay, "Hat an diesem Tag bereits eine Schicht.")
+            : RuleOutcome.None;
+
+    internal static RuleOutcome EvaluateShiftTypePreference(
+        Employee employee, ShiftType shiftType, IReadOnlyList<ShiftTypePreference> shiftTypePreferences)
+    {
+        var pref = shiftTypePreferences.FirstOrDefault(p => p.EmployeeId == employee.Id && p.ShiftTypeId == shiftType.Id);
+        return pref?.Level switch
+        {
+            PreferenceLevel.Preferred => RuleOutcome.Scored(ShiftTypePreferredBonus, SuggestionReasonCode.ShiftTypePreferred, "Bevorzugt diese Schichtart."),
+            PreferenceLevel.Avoid => RuleOutcome.Scored(ShiftTypeAvoidPenalty, SuggestionReasonCode.ShiftTypeAvoided, "Möchte diese Schichtart vermeiden."),
+            _ => RuleOutcome.None,
+        };
+    }
+
+    internal static RuleOutcome EvaluateWeekdayPreference(
+        Employee employee, DateOnly date, IReadOnlyList<WeekdayPreference> weekdayPreferences)
+    {
+        var pref = weekdayPreferences.FirstOrDefault(p => p.EmployeeId == employee.Id && p.DayOfWeek == date.DayOfWeek);
+        return pref?.Level switch
+        {
+            PreferenceLevel.Preferred => RuleOutcome.Scored(WeekdayPreferredBonus, SuggestionReasonCode.WeekdayPreferred, "Bevorzugt diesen Wochentag."),
+            PreferenceLevel.Avoid => RuleOutcome.Scored(WeekdayAvoidPenalty, SuggestionReasonCode.WeekdayAvoided, "Möchte diesen Wochentag vermeiden."),
+            _ => RuleOutcome.None,
+        };
+    }
+
+    // Same expected-vs-actual math as ContractValidator, but as a small nudge toward whoever's
+    // furthest under their contracted hours for this Schedule rather than a hard check — the
+    // real over-hours enforcement still lives in ContractValidator.
+    internal static RuleOutcome EvaluateContractTarget(
+        Employee employee,
+        DateOnly scheduleStart,
+        DateOnly scheduleEnd,
+        int scheduleDays,
+        IReadOnlyList<Absence> absences,
+        IReadOnlyList<Contract> contracts,
+        IReadOnlyList<ShiftAssignment> scheduleAssignments)
+    {
+        var contract = contracts
+            .Where(c => c.EmployeeId == employee.Id && c.ValidFrom <= scheduleStart && (c.ValidTo is null || c.ValidTo >= scheduleStart))
+            .MaxBy(c => c.ValidFrom);
+        if (contract is null)
+            return RuleOutcome.None;
+
+        var absenceDays = absences
+            .Where(a => a.EmployeeId == employee.Id)
+            .Sum(a => WorkingTimeCalculator.OverlapDays(a.From, a.To, scheduleStart, scheduleEnd));
+        var effectiveDays = Math.Max(0, scheduleDays - absenceDays);
+        var expectedHours = contract.WeeklyHours * effectiveDays / 7m;
+        var plannedHours = scheduleAssignments
+            .Where(a => a.EmployeeId == employee.Id)
+            .Sum(a => WorkingTimeCalculator.NetHours(a.StartTime, a.EndTime, a.BreakMinutes));
+
+        return plannedHours < expectedHours
+            ? RuleOutcome.Scored(UnderContractTargetBonus, SuggestionReasonCode.UnderContractTarget, "Liegt aktuell unter der Vertrags-Sollstunden-Zahl.")
+            : RuleOutcome.None;
     }
 
     // issue #63: bulk/auto-fill mode on top of the single-slot `Suggest` above — walks every
