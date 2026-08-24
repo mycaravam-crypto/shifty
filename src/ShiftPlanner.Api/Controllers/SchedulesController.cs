@@ -356,10 +356,10 @@ public class SchedulesController(ApplicationDbContext db) : ControllerBase
         var shiftTypePreferences = await db.ShiftTypePreferences.Where(p => employeeIds.Contains(p.EmployeeId)).ToListAsync();
         var weekdayPreferences = await db.WeekdayPreferences.Where(p => employeeIds.Contains(p.EmployeeId)).ToListAsync();
 
-        var suggestions = ShiftSuggestionEngine.Suggest(
-            date, shiftType, employees, historyAssignments, absences,
-            schedule.StartDate, schedule.EndDate, scheduleAssignments, contracts,
-            shiftTypePreferences, weekdayPreferences);
+        var context = new SchedulingContext(
+            schedule.StartDate, schedule.EndDate, employees, scheduleAssignments, historyAssignments,
+            absences, contracts, shiftTypePreferences, weekdayPreferences);
+        var suggestions = ShiftSuggestionEngine.Suggest(date, shiftType, context);
 
         var employeesById = employees.ToDictionary(e => e.Id);
         return Ok(suggestions.Select(s => new ShiftSuggestionDto(
@@ -404,10 +404,10 @@ public class SchedulesController(ApplicationDbContext db) : ControllerBase
         var shiftTypePreferences = await db.ShiftTypePreferences.Where(p => employeeIds.Contains(p.EmployeeId)).ToListAsync();
         var weekdayPreferences = await db.WeekdayPreferences.Where(p => employeeIds.Contains(p.EmployeeId)).ToListAsync();
 
-        var proposals = ShiftSuggestionEngine.AutoFill(
-            rangeStart, rangeEnd, shiftTypes, employees, historyAssignments, absences,
-            schedule.StartDate, schedule.EndDate, scheduleAssignments, contracts,
-            shiftTypePreferences, weekdayPreferences);
+        var context = new SchedulingContext(
+            schedule.StartDate, schedule.EndDate, employees, scheduleAssignments, historyAssignments,
+            absences, contracts, shiftTypePreferences, weekdayPreferences);
+        var proposals = ShiftSuggestionEngine.AutoFill(rangeStart, rangeEnd, shiftTypes, context);
 
         var employeesById = employees.ToDictionary(e => e.Id);
         var shiftTypesById = shiftTypes.ToDictionary(s => s.Id);

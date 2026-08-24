@@ -23,11 +23,11 @@ public class ShiftSuggestionEngineTests
         IReadOnlyList<ShiftTypePreference>? shiftTypePrefs = null,
         IReadOnlyList<WeekdayPreference>? weekdayPrefs = null) =>
         ShiftSuggestionEngine.Suggest(
-            date, shiftType, employees,
-            history ?? [], absences ?? [],
-            ScheduleStart, ScheduleEnd,
-            scheduleAssignments ?? [], contracts ?? [],
-            shiftTypePrefs ?? [], weekdayPrefs ?? []);
+            date, shiftType,
+            new SchedulingContext(
+                ScheduleStart, ScheduleEnd, employees,
+                scheduleAssignments ?? [], history ?? [], absences ?? [],
+                contracts ?? [], shiftTypePrefs ?? [], weekdayPrefs ?? []));
 
     [Fact]
     public void UnrestrictedEmployee_WithNoData_IsEligibleWithZeroScore()
