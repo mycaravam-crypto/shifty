@@ -34,6 +34,9 @@ interface Employee {
 interface Team {
   id: string
   name: string
+  // Backend serializes enums as their ordinal, not a string (same as AbsenceType elsewhere) —
+  // null = nationwide-only.
+  bundesland: number | null
 }
 interface ShiftType {
   id: string
@@ -205,6 +208,11 @@ function shiftTypeById(id: string) {
 function holidayFor(dateIso: string): PublicHoliday | undefined {
   return holidays.value.find((h) => h.date === dateIso)
 }
+// issue #57: the holiday-dot grid can only reflect one Bundesland at a time — when exactly
+// one team is selected via the filter and it has a Bundesland set, use that; with no filter
+// (or a filter that doesn't resolve to a single state) the dots stay nationwide-only. This is
+// a UI-only limitation — the wage-surcharge calculation (the more important half of this fix)
+// is resolved per-employee server-side via each assignment's own Team, independent of this.
 function isWeekend(date: Date): boolean {
   const day = date.getDay()
   return day === 0 || day === 6
@@ -214,9 +222,12 @@ function isCellHighlighted(employeeId: string, dateIso: string): boolean {
   return dragOverKey.value === key || highlightKey.value === key
 }
 async function loadHolidays() {
-  const res = await api.get('/public-holidays', {
-    params: { start: monthStartIso.value, end: monthEndIso.value },
-  })
+  const params: Record<string, string> = { start: monthStartIso.value, end: monthEndIso.value }
+  const team = teamFilter.value ? teams.value.find((t) => t.id === teamFilter.value) : null
+  if (team?.bundesland !== null && team?.bundesland !== undefined) {
+    params.bundesland = String(team.bundesland)
+  }
+  const res = await api.get('/public-holidays', { params })
   holidays.value = res.data
 }
 function assignmentsFor(employeeId: string, dateIso: string) {
@@ -437,6 +448,11 @@ watch(monthStartIso, () => {
     loadBalances()
     loadHolidays()
   }
+})
+// issue #57: re-resolve the (at most one) Bundesland the holiday dots use when the team
+// filter changes, independent of the month-nav watch above.
+watch(teamFilter, () => {
+  if (!loading.value) loadHolidays()
 })
 
 function prevMonth() {

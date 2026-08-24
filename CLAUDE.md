@@ -33,10 +33,11 @@ issue filed for either (same as the earlier PDF export): `Employee.PhoneNumber` 
 contact info alongside the pre-existing (and already-editable) Email field, and a first cut of
 readme.md §17's "später können hier Arbeitszeitpräferenzen ergänzt werden" — per-employee
 shift-type/weekday preferences plus a ShiftSuggestionEngine that ranks candidates for an open
-(date, ShiftType) slot, surfaced as a "Vorschlagen" action in the Wochenansicht. That engine has
-since been extended into a bulk/auto-fill mode (issue #63): a dry-run preview of proposed
-assignments for every understaffed slot in a Schedule, which a manager can trim before
-committing — see below.
+(date, ShiftType) slot, surfaced as a "Vorschlagen" action in the Wochenansicht. Issue #57 then
+closed the per-Bundesland public holiday gap the original issue #15 cut had left open, and that
+suggestion engine has since been extended into a bulk/auto-fill mode (issue #63): a dry-run
+preview of proposed assignments for every understaffed slot in a Schedule, which a manager can
+trim before committing — see below.
 What's built:
 
 - **Backend** (`src/`): 4-project skeleton (Domain → Application → Infrastructure → Api)
@@ -534,9 +535,9 @@ What's built:
     GermanPublicHolidays.cs` derives the 9 nationwide holidays for any year from Gauss's Easter
     algorithm plus fixed calendar dates, so there's no yearly seed job and no migration, matching
     the "no persisted derived state" pattern the codebase already uses for
-    `HoursBalanceCalculator`/`WorkingTimeCalculator`. First cut is nationwide-only — no
+    `HoursBalanceCalculator`/`WorkingTimeCalculator`. First cut was nationwide-only — no
     per-Bundesland holidays (e.g. Fronleichnam, Reformationstag) — since nothing consuming this
-    yet needs that precision; readme.md has no §-reference for holidays at all, this is a new
+    yet needed that precision; readme.md has no §-reference for holidays at all, this is a new
     Phase 5 feature. Verified: the Easter algorithm checked against four known Easter Sundays
     (2024–2027) by hand, `dotnet build` clean, `vue-tsc -b` clean, and round-tripped against a
     real local Postgres/API (August 2026 correctly returns no nationwide holiday, a
@@ -544,6 +545,58 @@ What's built:
     Year's, `end < start` 400s, unauthenticated 401s) — not yet clicked through in an actual
     browser (same Playwright-install gap as the rest of the Wochenansicht work). Issue #16
     (wage surcharges, backend-only, see above) builds on this and is now done.
+    **Per-Bundesland holidays** (issue #57) close that first-cut gap: `GermanPublicHolidays`
+    gets an optional `Bundesland?` parameter (default `null`, so every pre-existing caller
+    reproduces the original 9-nationwide-only behavior exactly — regression-tested) adding
+    Heilige Drei Könige (BW/BY/ST), Fronleichnam (Easter+60, only the six states where it's a
+    full state-wide holiday — BW/BY/HE/NW/RP/SL, deliberately excluding Sachsen/Thüringen where
+    it's only observed in specific Catholic municipalities, since a per-Bundesland model can't
+    represent that), Reformationstag (Oct 31, the nine states that observe it since 2018),
+    Allerheiligen (Nov 1, BW/BY/NW/RP/SL), Buß- und Bettag (Sachsen only — the Wednesday
+    strictly before Nov 23, unit-tested against both a normal year and the edge case where
+    Nov 23 itself falls on a Wednesday), and Internationaler Frauentag (Mar 8, Berlin only per
+    the issue's own conservative scoping — Mecklenburg-Vorpommern added it too from 2023 but
+    that's deliberately left out rather than guessing beyond what was asked). `Team` gets a new
+    nullable `Bundesland` field (migration `TeamBundesland`, generated via a real
+    `dotnet ef migrations add` — this session's Docker daemon could reach `mcr.microsoft.com`
+    for the SDK image and, with the agent proxy's CA installed into the container's trust store
+    plus `--network host`, `api.nuget.org` too) — Team rather than Employee, per the issue's own
+    framing ("wherever a team operates"); Employee already carries `TeamId` to key off of. Null
+    means nationwide-only, matching every existing Team's behavior unchanged. `TeamsController`
+    exposes it on both the list and create DTOs (Teams still have no `PUT`, matching every
+    other note about that in this file); `PublicHolidaysController` takes an optional
+    `bundesland` query param. The wage-surcharge holiday lookup in `SchedulesController`
+    (`GetById` and `CreateAssignment`) now resolves each assignment's own employee's Team's
+    Bundesland rather than a single nationwide `HashSet` shared across the whole schedule — a
+    schedule mixing employees from different Bundesländer gets the right holiday set per
+    employee, not just per date. The Wochenansicht's holiday-dot grid, by contrast, can only
+    show one visual state at a time: `ScheduleView.vue`'s `loadHolidays()` now passes a
+    Bundesland only when the team filter resolves to exactly one team with one set; with no
+    filter (or multiple teams in view) the dots stay nationwide-only — a known, intentionally
+    accepted UI limitation, since the wage-calculation correctness above is the more important
+    half of this fix. A Bundesland `<select>` was added to `StammdatenView.vue`'s Team create
+    form (still create-only — confirmed Teams still have no edit endpoint before assuming so)
+    plus a Bundesland column on the Teams table, both using a client-side German label array
+    keyed by the enum's ordinal (same pattern as `AbsenceType`'s labels elsewhere in this file,
+    since the backend serializes enums as numbers, not strings). 35 new
+    `GermanPublicHolidaysTests` cases (one date-appears-in-the-right-states check per new
+    holiday type, an absent-in-other-states check per type, the Buß- und Bettag Wednesday-math
+    edge case, and the null/omitted-parameter regression check) — 120 tests total now, all
+    passing. Verified: `dotnet build`/`dotnet test` clean (0 warnings — one `Dictionary<TKey,
+    TValue>`'s `notnull`-constraint nullable-analysis warning on the per-Bundesland holiday
+    cache, CS8714, is deliberately suppressed rather than worked around with an artificial
+    sentinel type, since `Bundesland?` is a perfectly valid runtime dictionary key), all new
+    date/state assignments cross-checked against real calendars (Buß- und Bettag additionally
+    checked against two known real-world dates: 2022 where Nov 23 itself falls on a Wednesday,
+    confirming the "strictly before" edge case lands a full week earlier rather than same-day;
+    2023 as an ordinary case), and `dotnet ef migrations script` confirms the exact expected
+    `ALTER TABLE "Teams" ADD "Bundesland" integer;`. `npm run lint`/`npm run build` (`vue-tsc
+    -b` + `vite build`) both clean. **Not verified against a live Postgres/API or in an actual
+    browser** — per this task's own instructions, no live stack was started this session
+    (other agents may have been running concurrently on this host), so the wage-surcharge
+    per-employee-Bundesland resolution and the Stammdaten Bundesland `<select>`/Wochenansicht
+    holiday-dot behavior are unverified beyond build/test/lint level, same caveat class as
+    several other Phase 5 entries in this file.
     Saturday/Sunday day columns ([issue #64](https://github.com/mycaravam-crypto/shifty/issues/64))
     now get a subtle `bg-white/[0.03]` shade on both the header `<th>` and each employee's `<td>`
     — a plain `Date.getDay()` check (`isWeekend`), same `data-date`-driving `Date` objects the
