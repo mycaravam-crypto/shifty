@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
-import { Trash2 } from '@lucide/vue'
+import { computed, onMounted, ref } from 'vue'
+import { Pencil, Trash2 } from '@lucide/vue'
 import axios from 'axios'
 import api from '@/services/api'
 import { useToastStore } from '@/stores/toast'
@@ -200,39 +200,78 @@ const contractForm = ref({
 })
 const savingContract = ref(false)
 const contractError = ref('')
+// Set while editing an existing Contract (mirrors ShiftTypeDetailModal's click-to-edit,
+// PUT-only-no-PATCH pattern) — null means the form is in create mode.
+const editingContractId = ref<string | null>(null)
+const contractSubmitLabel = computed(() => {
+  if (editingContractId.value) return savingContract.value ? 'Speichern…' : 'Speichern'
+  return savingContract.value ? 'Anlegen…' : 'Anlegen'
+})
 
 async function loadContracts() {
   const res = await api.get(`/employees/${props.employee.id}/contracts`)
   contracts.value = res.data
 }
 
-async function onCreateContract() {
+function resetContractForm() {
+  contractForm.value = {
+    validFrom: '',
+    validTo: '',
+    weeklyHours: 40,
+    workingDaysPerWeek: 5,
+    dailyTargetHours: 8,
+    hourlyRate: null,
+  }
+}
+
+function onEditContract(c: Contract) {
+  editingContractId.value = c.id
+  contractError.value = ''
+  contractForm.value = {
+    validFrom: c.validFrom,
+    validTo: c.validTo ?? '',
+    weeklyHours: c.weeklyHours,
+    workingDaysPerWeek: c.workingDaysPerWeek,
+    dailyTargetHours: c.dailyTargetHours,
+    hourlyRate: c.hourlyRate,
+  }
+}
+
+function onCancelEditContract() {
+  editingContractId.value = null
+  contractError.value = ''
+  resetContractForm()
+}
+
+async function onSubmitContract() {
   savingContract.value = true
   contractError.value = ''
+  const payload = {
+    validFrom: contractForm.value.validFrom,
+    validTo: contractForm.value.validTo || null,
+    weeklyHours: contractForm.value.weeklyHours,
+    workingDaysPerWeek: contractForm.value.workingDaysPerWeek,
+    dailyTargetHours: contractForm.value.dailyTargetHours,
+    hourlyRate: contractForm.value.hourlyRate || null,
+  }
+  const isEdit = !!editingContractId.value
+  const fallbackError = isEdit
+    ? 'Vertrag konnte nicht gespeichert werden.'
+    : 'Vertrag konnte nicht angelegt werden.'
   try {
-    await api.post(`/employees/${props.employee.id}/contracts`, {
-      validFrom: contractForm.value.validFrom,
-      validTo: contractForm.value.validTo || null,
-      weeklyHours: contractForm.value.weeklyHours,
-      workingDaysPerWeek: contractForm.value.workingDaysPerWeek,
-      dailyTargetHours: contractForm.value.dailyTargetHours,
-      hourlyRate: contractForm.value.hourlyRate || null,
-    })
-    contractForm.value = {
-      validFrom: '',
-      validTo: '',
-      weeklyHours: 40,
-      workingDaysPerWeek: 5,
-      dailyTargetHours: 8,
-      hourlyRate: null,
+    if (editingContractId.value) {
+      await api.put(`/contracts/${editingContractId.value}`, payload)
+      toast.success('Vertrag gespeichert.')
+      editingContractId.value = null
+    } else {
+      await api.post(`/employees/${props.employee.id}/contracts`, payload)
+      toast.success('Vertrag angelegt.')
     }
-    toast.success('Vertrag angelegt.')
+    resetContractForm()
     await loadContracts()
   } catch (e) {
     contractError.value =
-      axios.isAxiosError(e) && e.response?.data
-        ? e.response.data
-        : 'Vertrag konnte nicht angelegt werden.'
+      axios.isAxiosError(e) && e.response?.data ? e.response.data : fallbackError
     toast.error(contractError.value)
   } finally {
     savingContract.value = false
@@ -246,6 +285,7 @@ async function onDeleteContractConfirmed() {
   try {
     await api.delete(`/contracts/${contractToDelete.value.id}`)
     toast.success('Vertrag gelöscht.')
+    if (editingContractId.value === contractToDelete.value.id) onCancelEditContract()
     contractToDelete.value = null
     await loadContracts()
   } catch {
@@ -472,16 +512,29 @@ onMounted(() => {
               </tr>
             </thead>
             <tbody>
-              <tr v-for="c in contracts" :key="c.id" class="border-b border-white/5 last:border-0">
+              <tr
+                v-for="c in contracts"
+                :key="c.id"
+                class="border-b border-white/5 last:border-0"
+                :class="{ 'bg-indigo-500/10': editingContractId === c.id }"
+              >
                 <td class="px-3 py-2">{{ formatDate(c.validFrom) }}</td>
                 <td class="px-3 py-2 text-slate-400">{{ formatDate(c.validTo) }}</td>
                 <td class="px-3 py-2 font-mono">{{ c.weeklyHours }}</td>
                 <td class="px-3 py-2">{{ c.workingDaysPerWeek }}</td>
                 <td class="px-3 py-2 font-mono">{{ c.dailyTargetHours }}</td>
                 <td class="px-3 py-2 font-mono">{{ c.hourlyRate ?? '—' }}</td>
-                <td class="px-3 py-2 text-right">
+                <td class="px-3 py-2 text-right whitespace-nowrap">
+                  <button
+                    class="text-slate-500 hover:text-indigo-400 transition-colors mr-2"
+                    title="Bearbeiten"
+                    @click="onEditContract(c)"
+                  >
+                    <Pencil :size="14" />
+                  </button>
                   <button
                     class="text-slate-500 hover:text-rose-400 transition-colors"
+                    title="Löschen"
                     @click="contractToDelete = c"
                   >
                     <Trash2 :size="14" />
@@ -494,8 +547,10 @@ onMounted(() => {
             </tbody>
           </table>
         </div>
-        <form class="grid grid-cols-2 sm:grid-cols-3 gap-2" @submit.prevent="onCreateContract">
-          <label class="text-xs text-slate-500 col-span-2 sm:col-span-3 -mb-1">Neuer Vertrag</label>
+        <form class="grid grid-cols-2 sm:grid-cols-3 gap-2" @submit.prevent="onSubmitContract">
+          <label class="text-xs text-slate-500 col-span-2 sm:col-span-3 -mb-1">
+            {{ editingContractId ? 'Vertrag bearbeiten' : 'Neuer Vertrag' }}
+          </label>
           <!-- lang="de-DE" is a no-op in Chromium (picker format is OS-locale-driven, not page-lang) -->
           <input
             v-model="contractForm.validFrom"
@@ -549,13 +604,23 @@ onMounted(() => {
             placeholder="€/Std (optional)"
             :class="inputClass"
           />
-          <button
-            type="submit"
-            :disabled="savingContract"
-            class="col-span-2 sm:col-span-3 rounded-lg bg-white/10 hover:bg-white/15 transition-colors py-2 text-sm font-medium disabled:opacity-50"
-          >
-            {{ savingContract ? 'Anlegen…' : 'Anlegen' }}
-          </button>
+          <div class="col-span-2 sm:col-span-3 flex gap-2">
+            <button
+              type="submit"
+              :disabled="savingContract"
+              class="flex-1 rounded-lg bg-white/10 hover:bg-white/15 transition-colors py-2 text-sm font-medium disabled:opacity-50"
+            >
+              {{ contractSubmitLabel }}
+            </button>
+            <button
+              v-if="editingContractId"
+              type="button"
+              class="rounded-lg bg-white/5 hover:bg-white/10 transition-colors px-4 py-2 text-sm font-medium text-slate-400"
+              @click="onCancelEditContract"
+            >
+              Abbrechen
+            </button>
+          </div>
           <p v-if="contractError" class="col-span-2 sm:col-span-3 text-sm text-rose-400">
             {{ contractError }}
           </p>
