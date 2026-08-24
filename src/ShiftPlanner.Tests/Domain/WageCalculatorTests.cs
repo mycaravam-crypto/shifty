@@ -89,4 +89,57 @@ public class WageCalculatorTests
         // 04:00-06:00 falls in the 00:00-06:00 night tail: 2h overlap.
         Assert.Equal(45m, cost); // base 40 + 2h*10*0.25 = 5
     }
+
+    // issue #58: BreakStartTime is optional — when it's null (the default, and the only case
+    // that existed before issue #58), the night-surcharge overload must behave EXACTLY as it did
+    // before, regardless of BreakMinutes. Regression-proofs that existing/unset data's computed
+    // cost doesn't change.
+    [Fact]
+    public void LaborCost_BreakStartTimeUnset_MatchesOldApproximation()
+    {
+        // Same 18:00-22:00 shift as LaborCost_NightOverlap_AddsPartialSurcharge, now also passing
+        // a BreakMinutes but no BreakStartTime — the raw 2h night overlap must stay unadjusted.
+        var cost = WageCalculator.LaborCost(
+            new TimeOnly(18, 0), new TimeOnly(22, 0), DayOfWeek.Wednesday, isHoliday: false, netHours: 4m, hourlyRate: 10m,
+            breakMinutes: 30, breakStartTime: null);
+        Assert.Equal(45m, cost); // base 40 + 2h*10*0.25 = 5, identical to the no-break-args case
+    }
+
+    [Fact]
+    public void LaborCost_BreakEntirelyInsideNightWindow_ReducesNightSurcharge()
+    {
+        // 18:00-22:00 shift, 30min break 21:00-21:30 — entirely inside the 20:00-06:00 night
+        // window and entirely inside the shift's own 2h night overlap.
+        var cost = WageCalculator.LaborCost(
+            new TimeOnly(18, 0), new TimeOnly(22, 0), DayOfWeek.Wednesday, isHoliday: false, netHours: 3.5m, hourlyRate: 10m,
+            breakMinutes: 30, breakStartTime: new TimeOnly(21, 0));
+        // raw night overlap 2h, minus the 30min break entirely inside it, leaves 1.5h.
+        // base: 3.5h * 10 = 35; night surcharge: 1.5h * 10 * 0.25 = 3.75
+        Assert.Equal(38.75m, cost);
+    }
+
+    [Fact]
+    public void LaborCost_BreakEntirelyOutsideNightWindow_NoReduction()
+    {
+        // Same shift, 30min break 18:00-18:30 — before the 20:00 night-window start entirely.
+        var cost = WageCalculator.LaborCost(
+            new TimeOnly(18, 0), new TimeOnly(22, 0), DayOfWeek.Wednesday, isHoliday: false, netHours: 3.5m, hourlyRate: 10m,
+            breakMinutes: 30, breakStartTime: new TimeOnly(18, 0));
+        // raw night overlap 2h stays unreduced — the break doesn't touch it.
+        // base: 3.5h * 10 = 35; night surcharge: 2h * 10 * 0.25 = 5
+        Assert.Equal(40m, cost);
+    }
+
+    [Fact]
+    public void LaborCost_BreakStraddlesNightWindowBoundary_PartialReduction()
+    {
+        // Same shift, 30min break 19:45-20:15 — straddles the 20:00 night-window start, so only
+        // the 19:45-20:00 slice... actually the 20:00-20:15 slice (15min) falls inside the window.
+        var cost = WageCalculator.LaborCost(
+            new TimeOnly(18, 0), new TimeOnly(22, 0), DayOfWeek.Wednesday, isHoliday: false, netHours: 3.5m, hourlyRate: 10m,
+            breakMinutes: 30, breakStartTime: new TimeOnly(19, 45));
+        // raw night overlap 2h, minus the 15min of the break that falls inside it, leaves 1h45m.
+        // base: 3.5h * 10 = 35; night surcharge: 1.75h * 10 * 0.25 = 4.375
+        Assert.Equal(39.375m, cost);
+    }
 }

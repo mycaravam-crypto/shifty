@@ -1,13 +1,25 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
+import axios from 'axios'
 import { useRoute, useRouter } from 'vue-router'
-import { ChevronLeft, ChevronRight, Copy, Search, Printer, HelpCircle, Sparkles } from '@lucide/vue'
+import {
+  ChevronLeft,
+  ChevronRight,
+  ChevronDown,
+  Copy,
+  Search,
+  Printer,
+  HelpCircle,
+  Sparkles,
+  Wand2,
+} from '@lucide/vue'
 import api from '@/services/api'
 import { useToastStore } from '@/stores/toast'
 import { useSettingsStore } from '@/stores/settings'
 import ModalShell from '@/components/ModalShell.vue'
 import ShiftAssignmentModal from './ShiftAssignmentModal.vue'
 import ShiftSuggestionModal from './ShiftSuggestionModal.vue'
+import AutoFillModal from './AutoFillModal.vue'
 
 const toast = useToastStore()
 const settings = useSettingsStore()
@@ -22,6 +34,9 @@ interface Employee {
 interface Team {
   id: string
   name: string
+  // Backend serializes enums as their ordinal, not a string (same as AbsenceType elsewhere) —
+  // null = nationwide-only.
+  bundesland: number | null
 }
 interface ShiftType {
   id: string
@@ -48,6 +63,7 @@ interface Assignment {
   startTime: string
   endTime: string
   breakMinutes: number
+  breakStartTime: string | null
   netHours: number
   laborCost: number | null
 }
@@ -76,6 +92,26 @@ interface ValidationResult {
   errors: ValidationIssue[]
   warnings: ValidationIssue[]
   isValid: boolean
+}
+interface ValidationIssueGroup {
+  type: string
+  label: string
+  severity: 'error' | 'warning'
+  issues: ValidationIssue[]
+}
+
+// issue #78: German labels for ScheduleValidator's rule types (Application/Validation/*.cs),
+// used to group the validation panel by rule instead of a flat list.
+const ISSUE_TYPE_LABELS: Record<string, string> = {
+  AssignedDuringAbsence: 'Einsatz während Abwesenheit',
+  InsufficientBreak: 'Pause unterschritten',
+  TooManyConsecutiveDays: 'Zu viele Arbeitstage in Folge',
+  ContractHoursExceeded: 'Vertragsstunden überschritten',
+  ShiftTypeNotEligible: 'Nicht freigegebene Schichtart',
+  InsufficientRest: 'Ruhezeit unterschritten',
+  ShiftOverlap: 'Überlappende Schichten',
+  Understaffed: 'Unterbesetzung',
+  Overstaffed: 'Überbesetzung',
 }
 
 function firstOfMonth(date: Date): Date {
@@ -119,6 +155,7 @@ const balanceByEmployee = ref<Map<string, number>>(new Map())
 const holidays = ref<PublicHoliday[]>([])
 const assignments = ref<Assignment[]>([])
 const validation = ref<ValidationResult | null>(null)
+const expandedIssueGroups = ref<Set<string>>(new Set())
 const selectedAssignment = ref<Assignment | null>(null)
 const anchorDate = ref(new Date())
 const loading = ref(true)
@@ -134,6 +171,7 @@ const tableWrapRef = ref<HTMLElement | null>(null)
 const showShortcuts = ref(false)
 const highlightKey = ref<string | null>(null)
 const suggestingShiftType = ref<ShiftType | null>(null)
+const showAutoFill = ref(false)
 
 const monthStart = computed(() => firstOfMonth(anchorDate.value))
 const monthEnd = computed(() => lastOfMonth(anchorDate.value))
@@ -170,10 +208,26 @@ function shiftTypeById(id: string) {
 function holidayFor(dateIso: string): PublicHoliday | undefined {
   return holidays.value.find((h) => h.date === dateIso)
 }
+// issue #57: the holiday-dot grid can only reflect one Bundesland at a time — when exactly
+// one team is selected via the filter and it has a Bundesland set, use that; with no filter
+// (or a filter that doesn't resolve to a single state) the dots stay nationwide-only. This is
+// a UI-only limitation — the wage-surcharge calculation (the more important half of this fix)
+// is resolved per-employee server-side via each assignment's own Team, independent of this.
+function isWeekend(date: Date): boolean {
+  const day = date.getDay()
+  return day === 0 || day === 6
+}
+function isCellHighlighted(employeeId: string, dateIso: string): boolean {
+  const key = `${employeeId}|${dateIso}`
+  return dragOverKey.value === key || highlightKey.value === key
+}
 async function loadHolidays() {
-  const res = await api.get('/public-holidays', {
-    params: { start: monthStartIso.value, end: monthEndIso.value },
-  })
+  const params: Record<string, string> = { start: monthStartIso.value, end: monthEndIso.value }
+  const team = teamFilter.value ? teams.value.find((t) => t.id === teamFilter.value) : null
+  if (team?.bundesland !== null && team?.bundesland !== undefined) {
+    params.bundesland = String(team.bundesland)
+  }
+  const res = await api.get('/public-holidays', { params })
   holidays.value = res.data
 }
 function assignmentsFor(employeeId: string, dateIso: string) {
@@ -334,6 +388,39 @@ function onKeydown(e: KeyboardEvent) {
   }
 }
 
+// issue #78: group the flat errors/warnings lists by rule type for the panel's collapsible
+// sections, sorted errors-before-warnings then by group size — ScheduleValidator's output
+// shape itself is unchanged, this is purely a frontend presentation grouping.
+const validationGroups = computed<ValidationIssueGroup[]>(() => {
+  if (!validation.value) return []
+  const groups = new Map<string, ValidationIssueGroup>()
+  const addAll = (issues: ValidationIssue[], severity: 'error' | 'warning') => {
+    for (const issue of issues) {
+      const existing = groups.get(issue.type)
+      if (existing) existing.issues.push(issue)
+      else
+        groups.set(issue.type, {
+          type: issue.type,
+          label: ISSUE_TYPE_LABELS[issue.type] ?? issue.type,
+          severity,
+          issues: [issue],
+        })
+    }
+  }
+  addAll(validation.value.errors, 'error')
+  addAll(validation.value.warnings, 'warning')
+  return [...groups.values()].sort((a, b) => {
+    if (a.severity !== b.severity) return a.severity === 'error' ? -1 : 1
+    return b.issues.length - a.issues.length
+  })
+})
+function toggleIssueGroup(type: string) {
+  const next = new Set(expandedIssueGroups.value)
+  if (next.has(type)) next.delete(type)
+  else next.add(type)
+  expandedIssueGroups.value = next
+}
+
 // issue #39: jump to and briefly highlight the row/cell a validation issue is about.
 function focusIssue(issue: ValidationIssue) {
   if (!issue.employeeId) return
@@ -361,6 +448,11 @@ watch(monthStartIso, () => {
     loadBalances()
     loadHolidays()
   }
+})
+// issue #57: re-resolve the (at most one) Bundesland the holiday dots use when the team
+// filter changes, independent of the month-nav watch above.
+watch(teamFilter, () => {
+  if (!loading.value) loadHolidays()
 })
 
 function prevMonth() {
@@ -392,43 +484,26 @@ async function onCopyMonth() {
   copyingMonth.value = true
   try {
     const nextStart = addMonths(anchorDate.value, 1)
-    const nextStartIso = toIso(nextStart)
-    const nextMonthDays = lastOfMonth(nextStart).getDate()
-    let target = schedules.value.find((s) => s.startDate === nextStartIso)
-
-    if (!target) {
-      const created = await api.post('/schedules', {
-        name: monthFmt.format(nextStart),
-        startDate: nextStartIso,
-        endDate: toIso(lastOfMonth(nextStart)),
-      })
-      target = created.data
-      schedules.value.push(target!)
-    } else {
-      const existing = await api.get(`/schedules/${target.id}`)
-      if (existing.data.assignments.length) {
-        error.value = 'Nächster Monat hat bereits Schichten — Kopieren abgebrochen.'
-        toast.error(error.value)
-        return
-      }
-    }
-
-    for (const a of assignments.value) {
-      // Same day-of-month next month; clamped into shorter months (e.g. 31 → 28/29/30).
-      const day = Math.min(parseIso(a.date).getDate(), nextMonthDays)
-      await api.post(`/schedules/${target!.id}/assignments`, {
-        employeeId: a.employeeId,
-        shiftTypeId: a.shiftTypeId,
-        date: toIso(new Date(nextStart.getFullYear(), nextStart.getMonth(), day)),
-        startTime: a.startTime,
-        endTime: a.endTime,
-        breakMinutes: a.breakMinutes,
-      })
+    // issue #82: the whole copy (target-schedule creation + every assignment) is computed and
+    // applied atomically server-side in one request, instead of a per-assignment POST loop that
+    // could leave a partial copy behind if one request in the middle failed.
+    const res = await api.post(`/schedules/${currentSchedule.value.id}/copy`, {
+      targetName: monthFmt.format(nextStart),
+      targetStartDate: toIso(nextStart),
+      targetEndDate: toIso(lastOfMonth(nextStart)),
+    })
+    if (!schedules.value.some((s) => s.id === res.data.target.id)) {
+      schedules.value.push(res.data.target)
     }
     toast.success('Monat kopiert.')
     nextMonth()
-  } catch {
-    toast.error('Monat konnte nicht kopiert werden.')
+  } catch (err) {
+    if (axios.isAxiosError(err) && err.response?.status === 409) {
+      error.value = 'Nächster Monat hat bereits Schichten — Kopieren abgebrochen.'
+      toast.error(error.value)
+    } else {
+      toast.error('Monat konnte nicht kopiert werden.')
+    }
   } finally {
     copyingMonth.value = false
   }
@@ -591,6 +666,7 @@ async function performDrop(payload: DragPayload, employeeId: string, dateIso: st
         startTime: assignment.startTime,
         endTime: assignment.endTime,
         breakMinutes: assignment.breakMinutes,
+        breakStartTime: assignment.breakStartTime,
       })
     }
     await loadDetail()
@@ -696,26 +772,58 @@ window.addEventListener('afterprint', () => {
       <template v-else>
         <div
           v-if="validation && (validation.errors.length || validation.warnings.length)"
-          class="glass rounded-xl p-4 mb-4 text-sm space-y-1 print:hidden"
+          class="glass rounded-xl mb-4 text-sm print:hidden"
         >
-          <p
-            v-for="(issue, i) in validation.errors"
-            :key="'e' + i"
-            class="text-rose-400"
-            :class="{ 'cursor-pointer hover:underline': issue.employeeId }"
-            @click="focusIssue(issue)"
-          >
-            ❌ {{ issue.message }}
-          </p>
-          <p
-            v-for="(issue, i) in validation.warnings"
-            :key="'w' + i"
-            class="text-amber-400"
-            :class="{ 'cursor-pointer hover:underline': issue.employeeId }"
-            @click="focusIssue(issue)"
-          >
-            ⚠ {{ issue.message }}
-          </p>
+          <div class="flex flex-wrap items-center gap-4 px-4 py-3 border-b border-white/8">
+            <span
+              v-if="validation.errors.length"
+              class="flex items-center gap-1.5 font-semibold text-rose-400"
+            >
+              <span class="w-2 h-2 rounded-full bg-rose-400 shrink-0"></span>
+              {{ validation.errors.length }} Fehler
+            </span>
+            <span
+              v-if="validation.warnings.length"
+              class="flex items-center gap-1.5 font-semibold text-amber-400"
+            >
+              ▲ {{ validation.warnings.length }} Warnungen
+            </span>
+          </div>
+          <div class="divide-y divide-white/5">
+            <div v-for="group in validationGroups" :key="group.type">
+              <button
+                class="w-full flex items-center justify-between gap-2 px-4 py-2 text-left hover:bg-white/5 transition-colors"
+                @click="toggleIssueGroup(group.type)"
+              >
+                <span
+                  class="flex items-center gap-2"
+                  :class="group.severity === 'error' ? 'text-rose-400' : 'text-amber-400'"
+                >
+                  {{ group.severity === 'error' ? '❌' : '⚠' }} {{ group.label }}
+                  <span class="text-slate-500 font-mono text-xs">({{ group.issues.length }})</span>
+                </span>
+                <ChevronDown
+                  :size="14"
+                  class="text-slate-500 transition-transform shrink-0"
+                  :class="{ 'rotate-180': expandedIssueGroups.has(group.type) }"
+                />
+              </button>
+              <div v-if="expandedIssueGroups.has(group.type)" class="pb-2">
+                <p
+                  v-for="(issue, i) in group.issues"
+                  :key="i"
+                  class="px-4 py-1 text-xs"
+                  :class="[
+                    group.severity === 'error' ? 'text-rose-400/90' : 'text-amber-400/90',
+                    { 'cursor-pointer hover:underline': issue.employeeId },
+                  ]"
+                  @click="focusIssue(issue)"
+                >
+                  {{ issue.message }}
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
 
         <div class="flex flex-wrap items-center gap-2 mb-4 print:hidden">
@@ -727,6 +835,14 @@ window.addEventListener('afterprint', () => {
           >
             <Copy :size="14" />
             {{ copyingMonth ? 'Kopiere…' : 'Monat kopieren' }}
+          </button>
+          <button
+            v-if="activeShiftTypes.length"
+            class="flex items-center gap-1.5 rounded-lg bg-white/5 border border-white/10 px-3 py-1.5 text-sm hover:bg-white/10 transition-colors"
+            @click="showAutoFill = true"
+          >
+            <Wand2 :size="14" />
+            Automatisch füllen
           </button>
           <div
             v-for="s in activeShiftTypes"
@@ -780,18 +896,28 @@ window.addEventListener('afterprint', () => {
           </select>
         </div>
 
-        <div ref="tableWrapRef" class="glass rounded-xl overflow-x-auto print:overflow-visible">
+        <div
+          ref="tableWrapRef"
+          class="glass rounded-xl overflow-auto max-h-[70vh] print:overflow-visible print:max-h-none"
+        >
           <table class="w-full text-sm">
             <thead>
               <tr
-                class="text-left text-[10px] uppercase tracking-wider font-bold text-slate-500 border-b border-white/8"
+                class="text-left text-[10px] uppercase tracking-wider font-bold text-slate-500 border-b border-white/8 sticky top-0 z-20 bg-[#11141c] shadow-[0_4px_8px_-4px_rgba(0,0,0,0.5)] print:static print:shadow-none"
               >
-                <th class="px-4 py-3">Mitarbeiter</th>
+                <th
+                  class="px-4 py-3 sticky left-0 z-30 bg-[#11141c] shadow-[4px_0_8px_-4px_rgba(0,0,0,0.5)] print:static print:shadow-none"
+                >
+                  Mitarbeiter
+                </th>
                 <th
                   v-for="d in days"
                   :key="toIso(d)"
                   class="px-3 py-3 min-w-[130px]"
-                  :class="{ 'text-amber-400': holidayFor(toIso(d)) }"
+                  :class="{
+                    'text-amber-400': holidayFor(toIso(d)),
+                    'bg-white/[0.03]': isWeekend(d),
+                  }"
                   :title="holidayFor(toIso(d))?.name"
                 >
                   <span class="inline-flex items-center gap-1">
@@ -814,7 +940,10 @@ window.addEventListener('afterprint', () => {
                   'bg-blue-500/10': highlightKey === e.id,
                 }"
               >
-                <td class="px-4 py-3 align-top">
+                <td
+                  class="px-4 py-3 align-top sticky left-0 z-10 shadow-[4px_0_8px_-4px_rgba(0,0,0,0.5)] print:static print:shadow-none"
+                  :style="{ backgroundColor: highlightKey === e.id ? '#161d2f' : '#11141c' }"
+                >
                   <div class="flex items-center gap-1.5">
                     {{ e.lastName }}, {{ e.firstName }}
                     <button
@@ -863,9 +992,11 @@ window.addEventListener('afterprint', () => {
                   :key="toIso(d)"
                   class="px-2 py-2 align-top transition-colors"
                   :class="{
-                    'bg-blue-500/10 ring-1 ring-inset ring-blue-500/50':
-                      dragOverKey === `${e.id}|${toIso(d)}` ||
-                      highlightKey === `${e.id}|${toIso(d)}`,
+                    'bg-blue-500/10 ring-1 ring-inset ring-blue-500/50': isCellHighlighted(
+                      e.id,
+                      toIso(d),
+                    ),
+                    'bg-white/[0.03]': isWeekend(d) && !isCellHighlighted(e.id, toIso(d)),
                   }"
                   :data-employee-id="e.id"
                   :data-date="toIso(d)"
@@ -923,6 +1054,16 @@ window.addEventListener('afterprint', () => {
       :max-date="monthEndIso"
       @close="suggestingShiftType = null"
       @assigned="loadDetail"
+    />
+
+    <AutoFillModal
+      v-if="showAutoFill && currentSchedule"
+      :schedule-id="currentSchedule.id"
+      :month-start="monthStartIso"
+      :month-end="monthEndIso"
+      :shift-types="shiftTypes"
+      @close="showAutoFill = false"
+      @committed="loadDetail"
     />
 
     <ModalShell v-if="showShortcuts" title="Tastenkürzel" @close="showShortcuts = false">
