@@ -88,7 +88,7 @@ async function onSave() {
       <input
         v-model="form.color"
         type="color"
-        class="h-10 w-full rounded-lg bg-white/5 border border-white/10"
+        class="h-10 w-full rounded-lg bg-white/5 border border-white/10 outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
       />
       <input
         v-model="form.minStaffing"
