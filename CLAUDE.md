@@ -666,6 +666,55 @@ What's built:
     confirmed the refresh-cookie token used as `Authorization: Bearer` on that same endpoint now
     returns `401` (previously `200`), and confirmed `POST /v1/auth/refresh` (which reads the
     refresh token from its httpOnly cookie, not as a Bearer header) still works normally.
+- **Dienstplan grid: sticky employee column and sticky date header** (issue #76, frontend-only)
+    — `ScheduleView.vue`'s month grid previously had no sticky positioning at all, so scrolling
+    right past a month's ~28–31 day columns lost the employee-name column, and scrolling down
+    past a long employee roster lost the date header. `sticky left-0` on the employee-name
+    `<th>`/`<td>` cells, `sticky top-0` on the header `<tr>`, and both (`sticky left-0` inside
+    the already-`sticky top-0` row) on the corner cell — each with its own opaque `#11141c`
+    background (else the underlying cells show through, since sticky cells paint over whatever
+    scrolls beneath them) and a subtle drop shadow on the pinned edges. The employee-column cell
+    also keeps the existing row-highlight tint (`highlightKey === e.id`, issue #39's click-to-
+    scroll) via an inline `:style` background swap rather than a second Tailwind `bg-*` class,
+    since two classes both setting `background-color` race on cascade order rather than actually
+    layering. Getting this working exposed (and required fixing) two real CSS bugs the sticky
+    positioning would otherwise silently no-op against, neither previously visible because
+    nothing in the app used `position: sticky` before this:
+    - The grid's `overflow-x-auto` wrapper looked horizontal-only, but CSS's own overflow rules
+      force `overflow-y` to compute as `auto` too whenever the two axes disagree on
+      visible-vs-not (there's no way to specify one axis as `auto` and the other `visible` and
+      have the browser respect it) — so the wrapper was already an unconditional scroll
+      container on *both* axes, just one that (with no height constraint) never actually
+      needed to scroll internally, since it grew to fit its content and the whole page scrolled
+      past it instead. `position: sticky` binds to the *nearest* such container regardless of
+      whether that container ever actually scrolls — so the header/column were binding to this
+      always-static wrapper and just riding along with the page scroll, never appearing to
+      stick. Fix: given the ~30-employee-row grids this is meant for, embrace a bounded,
+      genuinely-scrolling panel instead of fighting the CSS rule — `max-h-[70vh]` +
+      `overflow-auto` (both axes explicitly, matching what the browser was already forcing) on
+      the wrapper, so it becomes the real 2D scrollport the sticky cells correctly bind to
+      (`print:max-h-none` alongside the pre-existing `print:overflow-visible` keeps printing
+      unclipped). A short employee list just never grows tall enough to trigger the internal
+      scrollbar, same visual result as before.
+    - Confirming the above also surfaced that `AppShell.vue`'s `<main class="overflow-y-auto">`
+      has been dead CSS since it was written: `<div class="flex min-h-screen">`'s `min-h-screen`
+      (a floor, not a cap) lets the flex row grow past 100vh to fit tall content, so `<main>`
+      (a `flex-1` child) never ends up shorter than its own content and its `overflow-y-auto`
+      never actually clips anything — confirmed empirically (`main.scrollHeight ===
+      main.clientHeight` even with far more content than the viewport) rather than just reasoned
+      from the CSS. The page has always scrolled at the document/`<body>` level, on every view,
+      not inside `<main>` — harmless before now since nothing needed a real scroll boundary to
+      bind sticky positioning to, but left as-is here (not touched) since the Dienstplan fix
+      above no longer depends on it and changing shared shell behavior for every other view is
+      outside this issue's scope.
+    Verified with a scratch Playwright script (same technique prior sessions used for this app
+    when no live backend was available) driving the real dev server with `/api/*` mocked at the
+    network layer and a synthetic 20-employee/31-day dataset sized to force both scroll axes:
+    screenshots confirm the header row and employee column both stay visually pinned through
+    independent horizontal-only, vertical-only, and combined scrolling, with the corner cell
+    correctly layered above both (z-index), and a separate empty-state load produced no console
+    errors or warnings. `npm run lint` (0 errors) and `npm run build` (`vue-tsc -b` + `vite
+    build`) both clean.
 - **Docker/deploy**: `docker-compose.yml` (db/api/web) validated with `docker compose config`,
   never actually deployed. No `.env` exists anywhere yet (only `.env.example`).
 - **Versioning**: same scheme as vanspace3d. `frontend/package.json`'s `version` is shown
