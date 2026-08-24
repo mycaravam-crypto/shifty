@@ -48,7 +48,7 @@ public class ShiftSuggestionEngineTests
     {
         var otherShiftType = ShiftType();
         var employee = Employee();
-        employee.EligibleShiftTypes.Add(otherShiftType);
+        employee.AddEligibleShiftType(otherShiftType);
         var shiftType = ShiftType();
 
         var result = Suggest(new DateOnly(2026, 8, 10), shiftType, [employee]);
@@ -201,7 +201,7 @@ public class ShiftSuggestionEngineTests
     {
         var ineligible = Employee("Ina", "Eligible");
         var otherShiftType = ShiftType();
-        ineligible.EligibleShiftTypes.Add(otherShiftType);
+        ineligible.AddEligibleShiftType(otherShiftType);
         var lowScore = Employee("Lena", "LowScore");
         var highScore = Employee("Hana", "HighScore");
         var shiftType = ShiftType();
