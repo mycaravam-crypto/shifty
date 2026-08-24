@@ -780,13 +780,20 @@ window.addEventListener('afterprint', () => {
           </select>
         </div>
 
-        <div ref="tableWrapRef" class="glass rounded-xl overflow-x-auto print:overflow-visible">
+        <div
+          ref="tableWrapRef"
+          class="glass rounded-xl overflow-auto max-h-[70vh] print:overflow-visible print:max-h-none"
+        >
           <table class="w-full text-sm">
             <thead>
               <tr
-                class="text-left text-[10px] uppercase tracking-wider font-bold text-slate-500 border-b border-white/8"
+                class="text-left text-[10px] uppercase tracking-wider font-bold text-slate-500 border-b border-white/8 sticky top-0 z-20 bg-[#11141c] shadow-[0_4px_8px_-4px_rgba(0,0,0,0.5)] print:static print:shadow-none"
               >
-                <th class="px-4 py-3">Mitarbeiter</th>
+                <th
+                  class="px-4 py-3 sticky left-0 z-30 bg-[#11141c] shadow-[4px_0_8px_-4px_rgba(0,0,0,0.5)] print:static print:shadow-none"
+                >
+                  Mitarbeiter
+                </th>
                 <th
                   v-for="d in days"
                   :key="toIso(d)"
@@ -814,7 +821,10 @@ window.addEventListener('afterprint', () => {
                   'bg-blue-500/10': highlightKey === e.id,
                 }"
               >
-                <td class="px-4 py-3 align-top">
+                <td
+                  class="px-4 py-3 align-top sticky left-0 z-10 shadow-[4px_0_8px_-4px_rgba(0,0,0,0.5)] print:static print:shadow-none"
+                  :style="{ backgroundColor: highlightKey === e.id ? '#161d2f' : '#11141c' }"
+                >
                   <div class="flex items-center gap-1.5">
                     {{ e.lastName }}, {{ e.firstName }}
                     <button
