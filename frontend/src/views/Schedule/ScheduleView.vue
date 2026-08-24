@@ -10,6 +10,7 @@ import {
   Printer,
   HelpCircle,
   Sparkles,
+  Wand2,
 } from '@lucide/vue'
 import api from '@/services/api'
 import { useToastStore } from '@/stores/toast'
@@ -17,6 +18,7 @@ import { useSettingsStore } from '@/stores/settings'
 import ModalShell from '@/components/ModalShell.vue'
 import ShiftAssignmentModal from './ShiftAssignmentModal.vue'
 import ShiftSuggestionModal from './ShiftSuggestionModal.vue'
+import AutoFillModal from './AutoFillModal.vue'
 
 const toast = useToastStore()
 const settings = useSettingsStore()
@@ -165,6 +167,7 @@ const tableWrapRef = ref<HTMLElement | null>(null)
 const showShortcuts = ref(false)
 const highlightKey = ref<string | null>(null)
 const suggestingShiftType = ref<ShiftType | null>(null)
+const showAutoFill = ref(false)
 
 const monthStart = computed(() => firstOfMonth(anchorDate.value))
 const monthEnd = computed(() => lastOfMonth(anchorDate.value))
@@ -834,6 +837,14 @@ window.addEventListener('afterprint', () => {
             <Copy :size="14" />
             {{ copyingMonth ? 'Kopiere…' : 'Monat kopieren' }}
           </button>
+          <button
+            v-if="activeShiftTypes.length"
+            class="flex items-center gap-1.5 rounded-lg bg-white/5 border border-white/10 px-3 py-1.5 text-sm hover:bg-white/10 transition-colors"
+            @click="showAutoFill = true"
+          >
+            <Wand2 :size="14" />
+            Automatisch füllen
+          </button>
           <div
             v-for="s in activeShiftTypes"
             :key="s.id"
@@ -1044,6 +1055,16 @@ window.addEventListener('afterprint', () => {
       :max-date="monthEndIso"
       @close="suggestingShiftType = null"
       @assigned="loadDetail"
+    />
+
+    <AutoFillModal
+      v-if="showAutoFill && currentSchedule"
+      :schedule-id="currentSchedule.id"
+      :month-start="monthStartIso"
+      :month-end="monthEndIso"
+      :shift-types="shiftTypes"
+      @close="showAutoFill = false"
+      @committed="loadDetail"
     />
 
     <ModalShell v-if="showShortcuts" title="Tastenkürzel" @close="showShortcuts = false">
