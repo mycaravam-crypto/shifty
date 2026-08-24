@@ -33,15 +33,23 @@ issue filed for either (same as the earlier PDF export): `Employee.PhoneNumber` 
 contact info alongside the pre-existing (and already-editable) Email field, and a first cut of
 readme.md §17's "später können hier Arbeitszeitpräferenzen ergänzt werden" — per-employee
 shift-type/weekday preferences plus a ShiftSuggestionEngine that ranks candidates for an open
-(date, ShiftType) slot, surfaced as a "Vorschlagen" action in the Wochenansicht. That engine has
-since been extended into a bulk/auto-fill mode (issue #63): a dry-run preview of proposed
-assignments for every understaffed slot in a Schedule, which a manager can trim before
-committing — see below. A fresh batch of 25 issues (#55–#82) came in from an external code
-review of the whole codebase; several have landed since (issue #71's refresh-token-as-Bearer
-fix, issue #82's atomic month-copy, issues #76/#78 on the Dienstplan grid — see below for all
-of these), and issue #68 (enforcing the Schedule Draft/Published/Archived lifecycle
-server-side, flagged by that review as the single most impactful integrity gap in the app) is
-now built too.
+(date, ShiftType) slot, surfaced as a "Vorschlagen" action in the Wochenansicht. Issue #57 then
+closed the per-Bundesland public holiday gap the original issue #15 cut had left open, and that
+suggestion engine has since been extended into a bulk/auto-fill mode (issue #63): a dry-run
+preview of proposed assignments for every understaffed slot in a Schedule, which a manager can
+trim before committing — see below. Server-side refresh-token revocation (issue #55, the
+original ask behind issue #3 that never got built) is now also done — see below. Issue #56 then
+followed up on the dashboard's own trimmed scope (issue #27/#29): three of the four deferred
+items came back (cost breakdown by regular/night/Sunday/holiday, a per-employee utilization
+table, and the exact ±6-day `historyAssignments` lookback `/validate` already had) — the
+Location filter and a budget comparison are still deliberately out, both needing a new domain
+concept (a `Location` entity; a stored budget figure) that nothing else in the app needs yet.
+See below. A fresh batch of 25 issues (#55–#82) came in from an external code review of the
+whole codebase; several have landed since (issues #55/#57/#56 above, issue #71's
+refresh-token-as-Bearer fix, issue #82's atomic month-copy, issues #76/#78 on the Dienstplan
+grid — see below for all of these), and issue #68 (enforcing the Schedule Draft/Published/
+Archived lifecycle server-side, flagged by that review as the single most impactful integrity
+gap in the app) is now built too.
 What's built:
 
 - **Backend** (`src/`): 4-project skeleton (Domain → Application → Infrastructure → Api)
@@ -79,11 +87,48 @@ What's built:
     otherwise. Three roles (Admin/Manager/Employee) are seeded by `--migrate`; since there's
     no Benutzer-management endpoint yet, `--seed-user` (env vars `SeedUser:Email/Password/Role`)
     bootstraps the first Staff accounts. Refresh tokens are self-contained JWTs (`token_use`
-    claim distinguishes them from access tokens), not DB-backed — no server-side revocation
-    yet (issue #3's original ask; login/refresh + seeding were an unplanned but necessary
-    add-on — [issue #3](https://github.com/mycaravam-crypto/shifty/issues/3)). Verified
+    claim distinguishes them from access tokens) — login/refresh + seeding were an unplanned
+    but necessary add-on to the original ask
+    ([issue #3](https://github.com/mycaravam-crypto/shifty/issues/3)). Verified
     end-to-end (login, role-gated writes, refresh, tampered/wrong-purpose-token rejection)
     against a real local Postgres.
+  - **Server-side refresh-token revocation** ([issue #55](https://github.com/mycaravam-crypto/shifty/issues/55),
+    issue #3's deferred original ask) — a refresh token is still a self-contained JWT (that
+    check still runs first), but each one issued is now *also* tracked as a `RefreshToken` row
+    (`Domain/Common/RefreshToken.cs`, same folder/shape as `ApiKey`/`AuditLog`: `Id`, `UserId`
+    as a plain string FK — not a navigation property, Domain can't reference Infrastructure's
+    `ApplicationUser` — `TokenHash` (SHA-256 hex, same `Convert.ToHexString(SHA256.HashData(...))`
+    pattern `ApiKeyAuthenticationHandler` already used, raw token never stored), `IssuedAt`,
+    `ExpiresAt`, nullable `RevokedAt`, `IsActive` computed from the latter two). Migration
+    `AddRefreshTokens` (unique index on `TokenHash`, cascade FK to `AspNetUsers`) — generated
+    for real via `dotnet ef migrations add` (Docker reachable, proxy CA installed into the SDK
+    container + `--network host`, same approach prior sessions documented). `JwtTokenFactory`
+    gets `CreateRefreshTokenRecord` (builds the row for a just-issued token) and
+    `ValidateRefreshTokenAsync` (requires BOTH the JWT check and a matching active DB row —
+    exists, not revoked, not expired). **Rotation decision: refresh tokens rotate on use** —
+    `AuthController.Refresh` revokes the presented token's DB row and issues a brand-new
+    token/row on every refresh, rather than reusing one long-lived row until natural expiry;
+    this caps a stolen refresh token to one silent exchange before the next refresh attempt
+    (by either party) fails loudly. New endpoints, both `[Authorize(Policy = "Staff")]`:
+    `POST /v1/auth/logout` (revokes just the DB row behind the caller's own refresh cookie —
+    matched by `TokenHash` *and* the access token's `UserId`, so it can't be used to revoke
+    someone else's session) and `POST /v1/auth/logout-all` ("log out other sessions" from the
+    issue — revokes every non-revoked row for the current user, including this one). Both clear
+    the refresh cookie via `Set-Cookie` with an epoch expiry. `ShiftPlanner.Tests`: the DB-lookup
+    half of validation needs a live `ApplicationDbContext` and isn't unit-tested, but the pure
+    logic around it (`RefreshToken.Hash`, `IsActive`'s revoked/expired states) is — 9 new tests,
+    94 total, all passing. Verified: `dotnet build`/`dotnet test` clean (Debug and Release), and
+    `dotnet ef migrations script` confirms the exact expected `CREATE TABLE "RefreshTokens"`
+    DDL — **not exercised against a live Postgres** (no live DB used this session, matching
+    prior sessions' own precedent when one wasn't available; only build/test/migration-script
+    level). Frontend: `stores/auth.ts`'s `logout()` now calls the new endpoint (best-effort —
+    still clears local state if the call fails, e.g. an already-expired access token) instead
+    of the old `document.cookie` write, which never actually worked anyway (an httpOnly cookie
+    can't be cleared from JS at all — only the real fix, a `Set-Cookie` from the server, does).
+    A new `logoutAll()` action + a "Alle Sitzungen abmelden" button in `SettingsView.vue` cover
+    the issue's optional "log out other sessions" UI ask. `npm run lint`/`npm run build` clean —
+    not clicked through in an actual browser (same Playwright-install gap noted elsewhere in
+    this file).
   - `Employee.EligibleShiftTypes` (EF many-to-many, join table `EmployeeShiftType`) models
     "mögliche Schichten" (readme.md §3) — GET/PUT `/api/employees/{id}/eligible-shift-types`,
     enforced by `EligibilityValidator` (below) — closes
@@ -291,11 +336,11 @@ What's built:
     Draft/Published/Conflict counts instead of the mockup's Draft/Published/Incomplete/Conflicts
     (`Schedule.Status` has no "Incomplete" concept), Cost Overview is total + delta vs previous
     period only (no regular/overtime/premium/weekend breakdown or budget comparison — no such
-    concepts exist in `WageCalculator` or anywhere else), no per-employee utilization table.
-    `historyAssignments` is omitted when calling `ScheduleValidator` here (cross-schedule-
-    boundary rest-time/consecutive-day precision is lost at the edges of the period) — acceptable
-    for an overview; exact enforcement still lives on the pre-existing
-    `GET /schedules/{id}/validate`, unchanged by this work. Team/ShiftType filters narrow the
+    concepts exist in `WageCalculator` or anywhere else), no per-employee utilization table, and
+    `historyAssignments` was omitted when calling `ScheduleValidator` here (cross-schedule-
+    boundary rest-time/consecutive-day precision was lost at the edges of the period) — three of
+    these four gaps were later closed by issue #56, see below; only the Location filter and the
+    budget comparison are still deliberately out. Team/ShiftType filters narrow the
     KPI/coverage/cost/utilization numbers; Pain Points are only filtered by team (via each
     issue's `EmployeeId`, when set — issues like `Understaffed` that aren't employee-specific are
     always included) since `ValidationIssue` has no structured `ShiftTypeId` to filter by.
@@ -419,6 +464,48 @@ What's built:
     the kept proposal — no console errors throughout. Not exercised against a real backend/
     Postgres, so the actual `ShiftSuggestionEngine.AutoFill` orchestration logic is verified only
     by the new unit tests above, not end-to-end.
+  - **Dashboard scope restore, backend** (issue #56, follow-up on #27/#29) — three of the four
+    items the original dashboard mockup trimmed: a cost breakdown, a per-employee utilization
+    table, and the exact ±6-day `historyAssignments` lookback. The other two (a Location filter,
+    a budget comparison) are still explicitly out, same reasoning as before — both need a new
+    domain concept (`Location` entity; a stored budget figure) nothing else in the app needs yet,
+    so adding either speculatively for a dashboard-only feature isn't worth it. `WageCalculator`
+    gained a `Breakdown(...)` overload returning a new `LaborCostBreakdown` (Regular/Night/
+    Sunday/Holiday, `Total` computed) — the existing `LaborCost(...)` overload is now a one-line
+    wrapper (`Breakdown(...)?.Total`) instead of its own surcharge arithmetic, so there's exactly
+    one place the night/Sunday/holiday math lives. "Overtime" is deliberately *not* a cost bucket
+    here (unlike the mockup's literal "regular/overtime/premium/weekend" wording) — there's no
+    separate overtime pay rate anywhere in this codebase, every hour is charged at the same
+    `HourlyRate`, so an overtime-cost line would just be a redundant subset of Regular; the
+    existing `OvertimeHours` KPI already covers overtime as an hours figure.
+    `DashboardController.BuildCostBreakdown` reuses `WageCalculator.Breakdown` per assignment and
+    sums each component — `CostOverviewDto` gained a `Breakdown` field
+    (`CostBreakdownDto.Regular/Night/Sunday/Holiday`). Per-employee utilization
+    (`EmployeeUtilizationDto[]` on `UtilizationDto.ByEmployee`) reuses `ContractValidator`'s
+    exact expected-vs-actual formula, grouped by employee instead of summed — which meant
+    extracting that formula for real: it was independently duplicated inline in
+    `ContractValidator`, `HoursBalanceCalculator`, *and* `DashboardController`'s own private
+    `ExpectedHours` (three copies of `WeeklyHours × effectiveDays / 7` with the same absence-day
+    subtraction), so it's now one public `WorkingTimeCalculator.ExpectedHours` (Domain layer,
+    same place `OverlapDays` — which it calls — already lives), with all three call sites updated
+    to use it; behavior is unchanged, this is extraction only, same reasoning `OverlapDays`
+    itself was extracted for when it hit a 3rd caller. The schedule-wide `Utilization`/
+    `OvertimeHours` KPIs are now aggregates over the per-employee list rather than their own
+    separate pass over the same assignments. `historyAssignments` is fetched once per dashboard
+    load as a pool spanning every schedule's combined ±6-day window, then sliced back down
+    per-schedule inside `BuildPainPoints` to exactly the window `SchedulesController`'s
+    `/validate` endpoint would use for that one schedule — a single query instead of one per
+    schedule, same result. `ShiftPlanner.Tests`: `WageCalculatorTests` gained `Breakdown` cases
+    (including a theory asserting `Breakdown(...).Total` always equals `LaborCost(...)` across
+    every surcharge combination) and `WorkingTimeCalculatorTests` gained `ExpectedHours` cases
+    (null contract, span-scaling, absence-exclusion, cross-employee isolation) — 100 tests total
+    now, all passing; `DashboardController`'s own aggregation (looping/DTO-shaping) stays covered
+    only indirectly, matching how `BuildCoverage`/`BuildPlanningStatus` already were before this
+    issue, since the substantive logic now lives in the two testable Domain methods it calls.
+    Verified via `dotnet build`/`dotnet test` (Docker `mcr.microsoft.com/dotnet/sdk:10.0`, both
+    clean, 100/100 passing) — no live Postgres attempted this time, per this task's own
+    instructions (other agents may be running concurrently on this host; build+test level matches
+    this codebase's established precedent). Frontend below.
 - **Frontend** (`frontend/`): Vite + Vue 3 + TS + Tailwind v4 + Pinia + Vue Router + Axios +
   ESLint/Prettier + `@lucide/vue` (the `lucide-vue-next` package readme.md/issue #5 named is
   deprecated upstream in favor of this). `services/api.ts`'s JWT-attach + 401-refresh now
@@ -539,9 +626,9 @@ What's built:
     GermanPublicHolidays.cs` derives the 9 nationwide holidays for any year from Gauss's Easter
     algorithm plus fixed calendar dates, so there's no yearly seed job and no migration, matching
     the "no persisted derived state" pattern the codebase already uses for
-    `HoursBalanceCalculator`/`WorkingTimeCalculator`. First cut is nationwide-only — no
+    `HoursBalanceCalculator`/`WorkingTimeCalculator`. First cut was nationwide-only — no
     per-Bundesland holidays (e.g. Fronleichnam, Reformationstag) — since nothing consuming this
-    yet needs that precision; readme.md has no §-reference for holidays at all, this is a new
+    yet needed that precision; readme.md has no §-reference for holidays at all, this is a new
     Phase 5 feature. Verified: the Easter algorithm checked against four known Easter Sundays
     (2024–2027) by hand, `dotnet build` clean, `vue-tsc -b` clean, and round-tripped against a
     real local Postgres/API (August 2026 correctly returns no nationwide holiday, a
@@ -549,6 +636,58 @@ What's built:
     Year's, `end < start` 400s, unauthenticated 401s) — not yet clicked through in an actual
     browser (same Playwright-install gap as the rest of the Wochenansicht work). Issue #16
     (wage surcharges, backend-only, see above) builds on this and is now done.
+    **Per-Bundesland holidays** (issue #57) close that first-cut gap: `GermanPublicHolidays`
+    gets an optional `Bundesland?` parameter (default `null`, so every pre-existing caller
+    reproduces the original 9-nationwide-only behavior exactly — regression-tested) adding
+    Heilige Drei Könige (BW/BY/ST), Fronleichnam (Easter+60, only the six states where it's a
+    full state-wide holiday — BW/BY/HE/NW/RP/SL, deliberately excluding Sachsen/Thüringen where
+    it's only observed in specific Catholic municipalities, since a per-Bundesland model can't
+    represent that), Reformationstag (Oct 31, the nine states that observe it since 2018),
+    Allerheiligen (Nov 1, BW/BY/NW/RP/SL), Buß- und Bettag (Sachsen only — the Wednesday
+    strictly before Nov 23, unit-tested against both a normal year and the edge case where
+    Nov 23 itself falls on a Wednesday), and Internationaler Frauentag (Mar 8, Berlin only per
+    the issue's own conservative scoping — Mecklenburg-Vorpommern added it too from 2023 but
+    that's deliberately left out rather than guessing beyond what was asked). `Team` gets a new
+    nullable `Bundesland` field (migration `TeamBundesland`, generated via a real
+    `dotnet ef migrations add` — this session's Docker daemon could reach `mcr.microsoft.com`
+    for the SDK image and, with the agent proxy's CA installed into the container's trust store
+    plus `--network host`, `api.nuget.org` too) — Team rather than Employee, per the issue's own
+    framing ("wherever a team operates"); Employee already carries `TeamId` to key off of. Null
+    means nationwide-only, matching every existing Team's behavior unchanged. `TeamsController`
+    exposes it on both the list and create DTOs (Teams still have no `PUT`, matching every
+    other note about that in this file); `PublicHolidaysController` takes an optional
+    `bundesland` query param. The wage-surcharge holiday lookup in `SchedulesController`
+    (`GetById` and `CreateAssignment`) now resolves each assignment's own employee's Team's
+    Bundesland rather than a single nationwide `HashSet` shared across the whole schedule — a
+    schedule mixing employees from different Bundesländer gets the right holiday set per
+    employee, not just per date. The Wochenansicht's holiday-dot grid, by contrast, can only
+    show one visual state at a time: `ScheduleView.vue`'s `loadHolidays()` now passes a
+    Bundesland only when the team filter resolves to exactly one team with one set; with no
+    filter (or multiple teams in view) the dots stay nationwide-only — a known, intentionally
+    accepted UI limitation, since the wage-calculation correctness above is the more important
+    half of this fix. A Bundesland `<select>` was added to `StammdatenView.vue`'s Team create
+    form (still create-only — confirmed Teams still have no edit endpoint before assuming so)
+    plus a Bundesland column on the Teams table, both using a client-side German label array
+    keyed by the enum's ordinal (same pattern as `AbsenceType`'s labels elsewhere in this file,
+    since the backend serializes enums as numbers, not strings). 35 new
+    `GermanPublicHolidaysTests` cases (one date-appears-in-the-right-states check per new
+    holiday type, an absent-in-other-states check per type, the Buß- und Bettag Wednesday-math
+    edge case, and the null/omitted-parameter regression check) — 120 tests total now, all
+    passing. Verified: `dotnet build`/`dotnet test` clean (0 warnings — one `Dictionary<TKey,
+    TValue>`'s `notnull`-constraint nullable-analysis warning on the per-Bundesland holiday
+    cache, CS8714, is deliberately suppressed rather than worked around with an artificial
+    sentinel type, since `Bundesland?` is a perfectly valid runtime dictionary key), all new
+    date/state assignments cross-checked against real calendars (Buß- und Bettag additionally
+    checked against two known real-world dates: 2022 where Nov 23 itself falls on a Wednesday,
+    confirming the "strictly before" edge case lands a full week earlier rather than same-day;
+    2023 as an ordinary case), and `dotnet ef migrations script` confirms the exact expected
+    `ALTER TABLE "Teams" ADD "Bundesland" integer;`. `npm run lint`/`npm run build` (`vue-tsc
+    -b` + `vite build`) both clean. **Not verified against a live Postgres/API or in an actual
+    browser** — per this task's own instructions, no live stack was started this session
+    (other agents may have been running concurrently on this host), so the wage-surcharge
+    per-employee-Bundesland resolution and the Stammdaten Bundesland `<select>`/Wochenansicht
+    holiday-dot behavior are unverified beyond build/test/lint level, same caveat class as
+    several other Phase 5 entries in this file.
     Saturday/Sunday day columns ([issue #64](https://github.com/mycaravam-crypto/shifty/issues/64))
     now get a subtle `bg-white/[0.03]` shade on both the header `<th>` and each employee's `<td>`
     — a plain `Date.getDay()` check (`isWeekend`), same `data-date`-driving `Date` objects the
@@ -799,6 +938,21 @@ What's built:
     (0 errors) and `npm run build` (`vue-tsc -b` + `vite build`, clean) — not clicked through in
     an actual browser (same Playwright-install gap noted elsewhere in this file). Issue #43 (a
     real `SettingsView`) is the one issue from this batch left open.
+  - **Dashboard scope restore, frontend** (issue #56, backend above) — `DashboardView.vue`'s
+    Lohnkosten KPI card gained a small stacked-bar + legend for the four cost segments (Regulär/
+    Nachtzuschlag/Sonntagszuschlag/Feiertagszuschlag, only non-zero segments shown, widths as
+    shares of the total so the bar always fills regardless of the absolute cost), and a new
+    "Auslastung nach Mitarbeiter" table panel (Soll/Ist/Auslastung/Überstunden per employee) sits
+    below the existing Besetzungsgrad/Planungsstatus panels — both plain and matching the app's
+    existing `.glass rounded-xl` panel style, no new components, no over-engineering (no sorting,
+    no drill-down, per the issue's own "keep it simple" framing). Verified via `npm run lint`/
+    `npm run build` clean, and — unlike several earlier frontend-only sessions in this file, no
+    Playwright-install gap this time — actually clicked through in a real headless Chromium:
+    logged in against a `/api/*`-mocked dev server, navigated to Übersicht client-side (not
+    `page.goto`, since the access token is memory-only and a full page load would drop it), and
+    confirmed both the cost-breakdown bar (all four labeled segments, correct proportions) and
+    the per-employee utilization table (correct Soll/Ist/Auslastung/Überstunden figures for two
+    mocked employees) render with no console/page errors.
 - **Reject a refresh token used as a Bearer access token** (issue #71) — a genuine security gap
     from a fresh batch of 25 issues an external code review filed against the whole codebase
     (issues #55–#82): access and refresh JWTs (`JwtTokenFactory`) are both self-contained tokens

@@ -54,10 +54,34 @@ interface PainPoint {
   employeeId: string | null
   employeeName: string | null
 }
+interface EmployeeUtilization {
+  employeeId: string
+  employeeName: string
+  contractCapacityHours: number
+  plannedHours: number
+  utilizationPercent: number
+  overtimeHours: number
+}
 interface Utilization {
   contractCapacityHours: number
   plannedHours: number
   utilizationPercent: number
+  byEmployee: EmployeeUtilization[]
+}
+// issue #56: regular/night/Sunday/holiday cost breakdown restored from the dashboard mockup's
+// trimmed scope — mapped onto WageCalculator's actual surcharge types rather than a literal
+// "overtime" cost bucket, since there's no separate overtime pay rate anywhere in this app.
+interface CostBreakdown {
+  regular: number
+  night: number
+  sunday: number
+  holiday: number
+}
+interface CostOverview {
+  currentTotal: number
+  previousTotal: number
+  deltaPercent: number | null
+  breakdown: CostBreakdown
 }
 interface Dashboard {
   from: string
@@ -66,6 +90,7 @@ interface Dashboard {
   coverage: CoverageDay[]
   planningStatus: PlanningStatus
   painPoints: PainPoint[]
+  cost: CostOverview
   utilization: Utilization
 }
 
@@ -181,6 +206,35 @@ function deltaColor(pct: number | null, positiveIsGood: boolean): string {
   return isGood ? 'text-emerald-400' : 'text-rose-400'
 }
 
+// issue #56: mini stacked-bar segments for the cost breakdown — widths are shares of the total,
+// not raw amounts, so the bar always fills 0-100% regardless of the absolute cost.
+const costSegmentColors: Record<keyof CostBreakdown, string> = {
+  regular: 'bg-blue-500',
+  night: 'bg-indigo-400',
+  sunday: 'bg-violet-400',
+  holiday: 'bg-fuchsia-400',
+}
+const costSegmentLabels: Record<keyof CostBreakdown, string> = {
+  regular: 'Regulär',
+  night: 'Nachtzuschlag',
+  sunday: 'Sonntagszuschlag',
+  holiday: 'Feiertagszuschlag',
+}
+const costSegments = computed(() => {
+  const b = dashboard.value?.cost.breakdown
+  if (!b) return []
+  const total = b.regular + b.night + b.sunday + b.holiday
+  return (Object.keys(b) as (keyof CostBreakdown)[])
+    .map((key) => ({
+      key,
+      label: costSegmentLabels[key],
+      color: costSegmentColors[key],
+      amount: b[key],
+      percent: total === 0 ? 0 : (b[key] / total) * 100,
+    }))
+    .filter((s) => s.amount > 0)
+})
+
 // issue #31: no per-shift date on PainPointDto, so severity is the only sort key available
 // without a new backend field — ties keep the backend's own ordering.
 const actionFeed = computed(() =>
@@ -285,6 +339,30 @@ function openSchedule(scheduleId: string) {
           >
             {{ delta(dashboard.kpis.laborCostDeltaPercent) || '—' }}
           </div>
+          <!-- issue #56: regular/night/Sunday/holiday cost breakdown, restored from the
+               dashboard mockup's originally-trimmed scope. -->
+          <div
+            v-if="costSegments.length"
+            class="flex h-1.5 rounded-full overflow-hidden mt-2 bg-white/10"
+          >
+            <div
+              v-for="s in costSegments"
+              :key="s.key"
+              :class="s.color"
+              :style="{ width: s.percent + '%' }"
+              :title="`${s.label}: ${currencyFmt.format(s.amount)}`"
+            ></div>
+          </div>
+          <div v-if="costSegments.length > 1" class="flex flex-wrap gap-x-2 gap-y-0.5 mt-1.5">
+            <span
+              v-for="s in costSegments"
+              :key="s.key"
+              class="flex items-center gap-1 text-[10px] text-slate-500"
+            >
+              <span class="w-1.5 h-1.5 rounded-full shrink-0" :class="s.color"></span>
+              {{ s.label }}
+            </span>
+          </div>
         </div>
         <div class="glass rounded-xl p-4">
           <div class="text-[10px] uppercase tracking-wider font-bold text-slate-500 mb-1">
@@ -380,6 +458,64 @@ function openSchedule(scheduleId: string) {
           >
             ❌ {{ s.name }}
           </button>
+        </div>
+      </div>
+
+      <!-- issue #56: per-employee utilization table restored from the dashboard mockup's
+           originally-trimmed scope. Same numbers the schedule-wide Auslastung KPI card
+           above already sums, just broken out per employee. -->
+      <div class="glass rounded-xl p-4 mb-6">
+        <div class="text-[10px] uppercase tracking-wider font-bold text-slate-500 mb-3">
+          Auslastung nach Mitarbeiter
+        </div>
+        <div v-if="!dashboard.utilization.byEmployee.length" class="text-sm text-slate-500">
+          Keine Daten im Zeitraum.
+        </div>
+        <div v-else class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead>
+              <tr
+                class="text-[10px] uppercase tracking-wider font-bold text-slate-500 border-b border-white/10"
+              >
+                <th class="text-left font-bold py-1.5 pr-3">Mitarbeiter</th>
+                <th class="text-right font-bold py-1.5 px-3">Soll</th>
+                <th class="text-right font-bold py-1.5 px-3">Ist</th>
+                <th class="text-right font-bold py-1.5 px-3">Auslastung</th>
+                <th class="text-right font-bold py-1.5 pl-3">Überstunden</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr
+                v-for="u in dashboard.utilization.byEmployee"
+                :key="u.employeeId"
+                class="border-b border-white/5 last:border-0"
+              >
+                <td class="py-1.5 pr-3">{{ u.employeeName }}</td>
+                <td class="text-right font-mono py-1.5 px-3">{{ u.contractCapacityHours }}h</td>
+                <td class="text-right font-mono py-1.5 px-3">{{ u.plannedHours }}h</td>
+                <td
+                  class="text-right font-mono py-1.5 px-3"
+                  :class="
+                    statusColor(
+                      u.utilizationPercent >= 95 && u.utilizationPercent <= 110
+                        ? 'Green'
+                        : u.utilizationPercent >= 85
+                          ? 'Yellow'
+                          : 'Red',
+                    )
+                  "
+                >
+                  {{ u.utilizationPercent }}%
+                </td>
+                <td
+                  class="text-right font-mono py-1.5 pl-3"
+                  :class="u.overtimeHours > 0 ? 'text-amber-400' : 'text-slate-500'"
+                >
+                  {{ u.overtimeHours > 0 ? `+${u.overtimeHours}h` : '—' }}
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
 

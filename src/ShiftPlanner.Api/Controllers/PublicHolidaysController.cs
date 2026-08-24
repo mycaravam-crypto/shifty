@@ -11,12 +11,14 @@ namespace ShiftPlanner.Api.Controllers;
 [Authorize(Policy = "ApiRead")]
 public class PublicHolidaysController : ControllerBase
 {
+    // issue #57: optional Bundesland query param — omitted keeps the original
+    // nationwide-only behavior exactly.
     [HttpGet]
-    public ActionResult<IEnumerable<PublicHoliday>> GetInRange(DateOnly start, DateOnly end)
+    public ActionResult<IEnumerable<PublicHoliday>> GetInRange(DateOnly start, DateOnly end, Bundesland? bundesland = null)
     {
         if (end < start)
             return BadRequest("'end' must not be before 'start'.");
 
-        return Ok(GermanPublicHolidays.InRange(start, end));
+        return Ok(GermanPublicHolidays.InRange(start, end, bundesland));
     }
 }

@@ -29,13 +29,8 @@ public static class HoursBalanceCalculator
 
             // issue #17: days on Absence within this Schedule's span don't count toward the
             // expected hours, same exclusion ContractValidator applies per-schedule.
-            var scheduleDays = schedule.EndDate.DayNumber - schedule.StartDate.DayNumber + 1;
-            var absenceDays = (absences ?? [])
-                .Where(a => a.EmployeeId == employeeId)
-                .Sum(a => WorkingTimeCalculator.OverlapDays(a.From, a.To, schedule.StartDate, schedule.EndDate));
-            var effectiveDays = Math.Max(0, scheduleDays - absenceDays);
-
-            var expected = contract.WeeklyHours * effectiveDays / 7m;
+            var expected = WorkingTimeCalculator.ExpectedHours(
+                contract, absences ?? [], employeeId, schedule.StartDate, schedule.EndDate);
             var actual = assignments
                 .Where(a => a.ScheduleId == schedule.Id && a.EmployeeId == employeeId)
                 .Sum(a => WorkingTimeCalculator.NetHours(a.StartTime, a.EndTime, a.BreakMinutes));

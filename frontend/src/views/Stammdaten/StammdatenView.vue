@@ -12,7 +12,31 @@ interface Team {
   id: string
   name: string
   active: boolean
+  // Backend serializes enums as their ordinal, not a string (same as AbsenceType elsewhere) —
+  // null = nationwide-only holidays for this team (issue #57).
+  bundesland: number | null
 }
+
+// issue #57: German labels for the Bundesland enum, indexed by its backend ordinal
+// (Domain/Scheduling/Bundesland.cs) — mirrors AbsenceType's client-side label mapping.
+const bundeslandLabels = [
+  'Baden-Württemberg',
+  'Bayern',
+  'Berlin',
+  'Brandenburg',
+  'Bremen',
+  'Hamburg',
+  'Hessen',
+  'Mecklenburg-Vorpommern',
+  'Niedersachsen',
+  'Nordrhein-Westfalen',
+  'Rheinland-Pfalz',
+  'Saarland',
+  'Sachsen',
+  'Sachsen-Anhalt',
+  'Schleswig-Holstein',
+  'Thüringen',
+]
 interface ShiftType {
   id: string
   name: string
@@ -34,7 +58,7 @@ const loading = ref(true)
 const error = ref('')
 
 const showTeamForm = ref(false)
-const teamForm = ref({ name: '' })
+const teamForm = ref({ name: '', bundesland: '' })
 const savingTeam = ref(false)
 
 const showShiftTypeForm = ref(false)
@@ -70,8 +94,11 @@ async function load() {
 async function onCreateTeam() {
   savingTeam.value = true
   try {
-    await api.post('/teams', { name: teamForm.value.name })
-    teamForm.value = { name: '' }
+    await api.post('/teams', {
+      name: teamForm.value.name,
+      bundesland: teamForm.value.bundesland === '' ? null : Number(teamForm.value.bundesland),
+    })
+    teamForm.value = { name: '', bundesland: '' }
     showTeamForm.value = false
     toast.success('Team angelegt.')
     await load()
@@ -159,7 +186,7 @@ onMounted(load)
 
       <form
         v-if="showTeamForm"
-        class="glass rounded-xl p-5 mb-4 flex gap-3"
+        class="glass rounded-xl p-5 mb-4 flex flex-col sm:flex-row gap-3"
         @submit.prevent="onCreateTeam"
       >
         <input
@@ -169,6 +196,10 @@ onMounted(load)
           class="flex-1"
           :class="inputClass"
         />
+        <select v-model="teamForm.bundesland" class="sm:w-56" :class="inputClass">
+          <option value="">Bundesland (optional)</option>
+          <option v-for="(label, i) in bundeslandLabels" :key="i" :value="i">{{ label }}</option>
+        </select>
         <button
           type="submit"
           :disabled="savingTeam"
@@ -181,7 +212,12 @@ onMounted(load)
       <div class="glass rounded-xl overflow-hidden">
         <div class="md:hidden divide-y divide-white/5">
           <div v-for="t in teams" :key="t.id" class="p-4 flex items-center justify-between gap-3">
-            <div class="min-w-0 text-sm truncate">{{ t.name }}</div>
+            <div class="min-w-0 text-sm">
+              <div class="truncate">{{ t.name }}</div>
+              <div class="text-xs text-slate-500 truncate">
+                {{ t.bundesland !== null ? bundeslandLabels[t.bundesland] : '–' }}
+              </div>
+            </div>
             <span
               class="rounded-full px-2 py-0.5 text-xs shrink-0"
               :class="
@@ -203,12 +239,16 @@ onMounted(load)
                 class="text-left text-[10px] uppercase tracking-wider font-bold text-slate-500 border-b border-white/8"
               >
                 <th class="px-4 py-3">Name</th>
+                <th class="px-4 py-3">Bundesland</th>
                 <th class="px-4 py-3">Status</th>
               </tr>
             </thead>
             <tbody>
               <tr v-for="t in teams" :key="t.id" class="border-b border-white/5 last:border-0">
                 <td class="px-4 py-3">{{ t.name }}</td>
+                <td class="px-4 py-3 text-slate-400">
+                  {{ t.bundesland !== null ? bundeslandLabels[t.bundesland] : '–' }}
+                </td>
                 <td class="px-4 py-3">
                   <span
                     class="rounded-full px-2 py-0.5 text-xs"
@@ -223,7 +263,7 @@ onMounted(load)
                 </td>
               </tr>
               <tr v-if="!teams.length">
-                <td colspan="2" class="px-4 py-8 text-center text-slate-500">Keine Teams.</td>
+                <td colspan="3" class="px-4 py-8 text-center text-slate-500">Keine Teams.</td>
               </tr>
             </tbody>
           </table>

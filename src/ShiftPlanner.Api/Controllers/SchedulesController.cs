@@ -103,12 +103,28 @@ public class SchedulesController(ApplicationDbContext db) : ControllerBase
 
         var employeeIds = assignments.Select(a => a.EmployeeId).Distinct().ToList();
         var contracts = await db.Contracts.Where(c => employeeIds.Contains(c.EmployeeId)).ToListAsync();
-        var holidays = GermanPublicHolidays.InRange(schedule.StartDate, schedule.EndDate)
-            .Select(h => h.Date).ToHashSet();
+
+        // issue #57: which nationwide-vs-Bundesland holiday set applies depends on each
+        // assignment's employee's Team, so this resolves a HashSet per distinct Bundesland
+        // actually in play (including null = nationwide-only) rather than one shared set.
+        var bundeslandByEmployee = await db.Employees.Include(e => e.Team)
+            .Where(e => employeeIds.Contains(e.Id))
+            .ToDictionaryAsync(e => e.Id, e => e.Team?.Bundesland);
+        // Dictionary<TKey,TValue>'s `notnull` constraint is a compiler-only nullable-analysis
+        // warning (CS8714), not a hard constraint violation — Bundesland? (null =
+        // nationwide-only) is a perfectly valid runtime key here, so this is suppressed
+        // deliberately rather than worked around with an artificial sentinel/wrapper type.
+#pragma warning disable CS8714
+        var holidaysByBundesland = new Dictionary<Bundesland?, HashSet<DateOnly>>();
+#pragma warning restore CS8714
+        foreach (var land in bundeslandByEmployee.Values.Distinct())
+            holidaysByBundesland[land] = GermanPublicHolidays.InRange(schedule.StartDate, schedule.EndDate, land)
+                .Select(h => h.Date).ToHashSet();
 
         return Ok(new ScheduleDetailDto(schedule.Id, schedule.Name, schedule.StartDate, schedule.EndDate,
             schedule.Status, schedule.PublishedAt, schedule.PublishedBy,
-            assignments.Select(a => ToAssignmentDto(a, HourlyRateOn(contracts, a.EmployeeId, a.Date), holidays.Contains(a.Date))).ToList()));
+            assignments.Select(a => ToAssignmentDto(a, HourlyRateOn(contracts, a.EmployeeId, a.Date),
+                holidaysByBundesland[bundeslandByEmployee.GetValueOrDefault(a.EmployeeId)].Contains(a.Date))).ToList()));
     }
 
     [HttpPost("schedules")]
@@ -465,7 +481,10 @@ public class SchedulesController(ApplicationDbContext db) : ControllerBase
         if (request.Date < schedule.StartDate || request.Date > schedule.EndDate)
             return BadRequest("Date is outside the schedule's range.");
 
-        if (!await db.Employees.AnyAsync(e => e.Id == request.EmployeeId))
+        // issue #57: loaded (not just checked with AnyAsync) so its Team's Bundesland is on
+        // hand below for the holiday/wage-surcharge lookup.
+        var employee = await db.Employees.Include(e => e.Team).FirstOrDefaultAsync(e => e.Id == request.EmployeeId);
+        if (employee is null)
             return BadRequest($"Employee '{request.EmployeeId}' does not exist.");
 
         if (!await db.ShiftTypes.AnyAsync(s => s.Id == request.ShiftTypeId))
@@ -495,7 +514,7 @@ public class SchedulesController(ApplicationDbContext db) : ControllerBase
             .OrderByDescending(c => c.ValidFrom)
             .FirstOrDefaultAsync();
 
-        var isHoliday = GermanPublicHolidays.InRange(assignment.Date, assignment.Date).Count > 0;
+        var isHoliday = GermanPublicHolidays.InRange(assignment.Date, assignment.Date, employee.Team?.Bundesland).Count > 0;
         return CreatedAtAction(nameof(GetById), new { id }, ToAssignmentDto(assignment, contract?.HourlyRate, isHoliday));
     }
 
