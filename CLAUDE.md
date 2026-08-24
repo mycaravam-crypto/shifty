@@ -38,7 +38,13 @@ closed the per-Bundesland public holiday gap the original issue #15 cut had left
 suggestion engine has since been extended into a bulk/auto-fill mode (issue #63): a dry-run
 preview of proposed assignments for every understaffed slot in a Schedule, which a manager can
 trim before committing — see below. Server-side refresh-token revocation (issue #55, the
-original ask behind issue #3 that never got built) is now also done — see below.
+original ask behind issue #3 that never got built) is now also done — see below. Issue #56 then
+followed up on the dashboard's own trimmed scope (issue #27/#29): three of the four deferred
+items came back (cost breakdown by regular/night/Sunday/holiday, a per-employee utilization
+table, and the exact ±6-day `historyAssignments` lookback `/validate` already had) — the
+Location filter and a budget comparison are still deliberately out, both needing a new domain
+concept (a `Location` entity; a stored budget figure) that nothing else in the app needs yet.
+See below.
 What's built:
 
 - **Backend** (`src/`): 4-project skeleton (Domain → Application → Infrastructure → Api)
@@ -325,11 +331,11 @@ What's built:
     Draft/Published/Conflict counts instead of the mockup's Draft/Published/Incomplete/Conflicts
     (`Schedule.Status` has no "Incomplete" concept), Cost Overview is total + delta vs previous
     period only (no regular/overtime/premium/weekend breakdown or budget comparison — no such
-    concepts exist in `WageCalculator` or anywhere else), no per-employee utilization table.
-    `historyAssignments` is omitted when calling `ScheduleValidator` here (cross-schedule-
-    boundary rest-time/consecutive-day precision is lost at the edges of the period) — acceptable
-    for an overview; exact enforcement still lives on the pre-existing
-    `GET /schedules/{id}/validate`, unchanged by this work. Team/ShiftType filters narrow the
+    concepts exist in `WageCalculator` or anywhere else), no per-employee utilization table, and
+    `historyAssignments` was omitted when calling `ScheduleValidator` here (cross-schedule-
+    boundary rest-time/consecutive-day precision was lost at the edges of the period) — three of
+    these four gaps were later closed by issue #56, see below; only the Location filter and the
+    budget comparison are still deliberately out. Team/ShiftType filters narrow the
     KPI/coverage/cost/utilization numbers; Pain Points are only filtered by team (via each
     issue's `EmployeeId`, when set — issues like `Understaffed` that aren't employee-specific are
     always included) since `ValidationIssue` has no structured `ShiftTypeId` to filter by.
@@ -453,6 +459,48 @@ What's built:
     the kept proposal — no console errors throughout. Not exercised against a real backend/
     Postgres, so the actual `ShiftSuggestionEngine.AutoFill` orchestration logic is verified only
     by the new unit tests above, not end-to-end.
+  - **Dashboard scope restore, backend** (issue #56, follow-up on #27/#29) — three of the four
+    items the original dashboard mockup trimmed: a cost breakdown, a per-employee utilization
+    table, and the exact ±6-day `historyAssignments` lookback. The other two (a Location filter,
+    a budget comparison) are still explicitly out, same reasoning as before — both need a new
+    domain concept (`Location` entity; a stored budget figure) nothing else in the app needs yet,
+    so adding either speculatively for a dashboard-only feature isn't worth it. `WageCalculator`
+    gained a `Breakdown(...)` overload returning a new `LaborCostBreakdown` (Regular/Night/
+    Sunday/Holiday, `Total` computed) — the existing `LaborCost(...)` overload is now a one-line
+    wrapper (`Breakdown(...)?.Total`) instead of its own surcharge arithmetic, so there's exactly
+    one place the night/Sunday/holiday math lives. "Overtime" is deliberately *not* a cost bucket
+    here (unlike the mockup's literal "regular/overtime/premium/weekend" wording) — there's no
+    separate overtime pay rate anywhere in this codebase, every hour is charged at the same
+    `HourlyRate`, so an overtime-cost line would just be a redundant subset of Regular; the
+    existing `OvertimeHours` KPI already covers overtime as an hours figure.
+    `DashboardController.BuildCostBreakdown` reuses `WageCalculator.Breakdown` per assignment and
+    sums each component — `CostOverviewDto` gained a `Breakdown` field
+    (`CostBreakdownDto.Regular/Night/Sunday/Holiday`). Per-employee utilization
+    (`EmployeeUtilizationDto[]` on `UtilizationDto.ByEmployee`) reuses `ContractValidator`'s
+    exact expected-vs-actual formula, grouped by employee instead of summed — which meant
+    extracting that formula for real: it was independently duplicated inline in
+    `ContractValidator`, `HoursBalanceCalculator`, *and* `DashboardController`'s own private
+    `ExpectedHours` (three copies of `WeeklyHours × effectiveDays / 7` with the same absence-day
+    subtraction), so it's now one public `WorkingTimeCalculator.ExpectedHours` (Domain layer,
+    same place `OverlapDays` — which it calls — already lives), with all three call sites updated
+    to use it; behavior is unchanged, this is extraction only, same reasoning `OverlapDays`
+    itself was extracted for when it hit a 3rd caller. The schedule-wide `Utilization`/
+    `OvertimeHours` KPIs are now aggregates over the per-employee list rather than their own
+    separate pass over the same assignments. `historyAssignments` is fetched once per dashboard
+    load as a pool spanning every schedule's combined ±6-day window, then sliced back down
+    per-schedule inside `BuildPainPoints` to exactly the window `SchedulesController`'s
+    `/validate` endpoint would use for that one schedule — a single query instead of one per
+    schedule, same result. `ShiftPlanner.Tests`: `WageCalculatorTests` gained `Breakdown` cases
+    (including a theory asserting `Breakdown(...).Total` always equals `LaborCost(...)` across
+    every surcharge combination) and `WorkingTimeCalculatorTests` gained `ExpectedHours` cases
+    (null contract, span-scaling, absence-exclusion, cross-employee isolation) — 100 tests total
+    now, all passing; `DashboardController`'s own aggregation (looping/DTO-shaping) stays covered
+    only indirectly, matching how `BuildCoverage`/`BuildPlanningStatus` already were before this
+    issue, since the substantive logic now lives in the two testable Domain methods it calls.
+    Verified via `dotnet build`/`dotnet test` (Docker `mcr.microsoft.com/dotnet/sdk:10.0`, both
+    clean, 100/100 passing) — no live Postgres attempted this time, per this task's own
+    instructions (other agents may be running concurrently on this host; build+test level matches
+    this codebase's established precedent). Frontend below.
 - **Frontend** (`frontend/`): Vite + Vue 3 + TS + Tailwind v4 + Pinia + Vue Router + Axios +
   ESLint/Prettier + `@lucide/vue` (the `lucide-vue-next` package readme.md/issue #5 named is
   deprecated upstream in favor of this). `services/api.ts`'s JWT-attach + 401-refresh now
@@ -885,6 +933,21 @@ What's built:
     (0 errors) and `npm run build` (`vue-tsc -b` + `vite build`, clean) — not clicked through in
     an actual browser (same Playwright-install gap noted elsewhere in this file). Issue #43 (a
     real `SettingsView`) is the one issue from this batch left open.
+  - **Dashboard scope restore, frontend** (issue #56, backend above) — `DashboardView.vue`'s
+    Lohnkosten KPI card gained a small stacked-bar + legend for the four cost segments (Regulär/
+    Nachtzuschlag/Sonntagszuschlag/Feiertagszuschlag, only non-zero segments shown, widths as
+    shares of the total so the bar always fills regardless of the absolute cost), and a new
+    "Auslastung nach Mitarbeiter" table panel (Soll/Ist/Auslastung/Überstunden per employee) sits
+    below the existing Besetzungsgrad/Planungsstatus panels — both plain and matching the app's
+    existing `.glass rounded-xl` panel style, no new components, no over-engineering (no sorting,
+    no drill-down, per the issue's own "keep it simple" framing). Verified via `npm run lint`/
+    `npm run build` clean, and — unlike several earlier frontend-only sessions in this file, no
+    Playwright-install gap this time — actually clicked through in a real headless Chromium:
+    logged in against a `/api/*`-mocked dev server, navigated to Übersicht client-side (not
+    `page.goto`, since the access token is memory-only and a full page load would drop it), and
+    confirmed both the cost-breakdown bar (all four labeled segments, correct proportions) and
+    the per-employee utilization table (correct Soll/Ist/Auslastung/Überstunden figures for two
+    mocked employees) render with no console/page errors.
 - **Reject a refresh token used as a Bearer access token** (issue #71) — a genuine security gap
     from a fresh batch of 25 issues an external code review filed against the whole codebase
     (issues #55–#82): access and refresh JWTs (`JwtTokenFactory`) are both self-contained tokens
