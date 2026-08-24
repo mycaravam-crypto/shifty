@@ -33,7 +33,12 @@ issue filed for either (same as the earlier PDF export): `Employee.PhoneNumber` 
 contact info alongside the pre-existing (and already-editable) Email field, and a first cut of
 readme.md §17's "später können hier Arbeitszeitpräferenzen ergänzt werden" — per-employee
 shift-type/weekday preferences plus a ShiftSuggestionEngine that ranks candidates for an open
-(date, ShiftType) slot, surfaced as a "Vorschlagen" action in the Wochenansicht. Issue #56 then
+(date, ShiftType) slot, surfaced as a "Vorschlagen" action in the Wochenansicht. Issue #57 then
+closed the per-Bundesland public holiday gap the original issue #15 cut had left open, and that
+suggestion engine has since been extended into a bulk/auto-fill mode (issue #63): a dry-run
+preview of proposed assignments for every understaffed slot in a Schedule, which a manager can
+trim before committing — see below. Server-side refresh-token revocation (issue #55, the
+original ask behind issue #3 that never got built) is now also done — see below. Issue #56 then
 followed up on the dashboard's own trimmed scope (issue #27/#29): three of the four deferred
 items came back (cost breakdown by regular/night/Sunday/holiday, a per-employee utilization
 table, and the exact ±6-day `historyAssignments` lookback `/validate` already had) — the
@@ -77,11 +82,48 @@ What's built:
     otherwise. Three roles (Admin/Manager/Employee) are seeded by `--migrate`; since there's
     no Benutzer-management endpoint yet, `--seed-user` (env vars `SeedUser:Email/Password/Role`)
     bootstraps the first Staff accounts. Refresh tokens are self-contained JWTs (`token_use`
-    claim distinguishes them from access tokens), not DB-backed — no server-side revocation
-    yet (issue #3's original ask; login/refresh + seeding were an unplanned but necessary
-    add-on — [issue #3](https://github.com/mycaravam-crypto/shifty/issues/3)). Verified
+    claim distinguishes them from access tokens) — login/refresh + seeding were an unplanned
+    but necessary add-on to the original ask
+    ([issue #3](https://github.com/mycaravam-crypto/shifty/issues/3)). Verified
     end-to-end (login, role-gated writes, refresh, tampered/wrong-purpose-token rejection)
     against a real local Postgres.
+  - **Server-side refresh-token revocation** ([issue #55](https://github.com/mycaravam-crypto/shifty/issues/55),
+    issue #3's deferred original ask) — a refresh token is still a self-contained JWT (that
+    check still runs first), but each one issued is now *also* tracked as a `RefreshToken` row
+    (`Domain/Common/RefreshToken.cs`, same folder/shape as `ApiKey`/`AuditLog`: `Id`, `UserId`
+    as a plain string FK — not a navigation property, Domain can't reference Infrastructure's
+    `ApplicationUser` — `TokenHash` (SHA-256 hex, same `Convert.ToHexString(SHA256.HashData(...))`
+    pattern `ApiKeyAuthenticationHandler` already used, raw token never stored), `IssuedAt`,
+    `ExpiresAt`, nullable `RevokedAt`, `IsActive` computed from the latter two). Migration
+    `AddRefreshTokens` (unique index on `TokenHash`, cascade FK to `AspNetUsers`) — generated
+    for real via `dotnet ef migrations add` (Docker reachable, proxy CA installed into the SDK
+    container + `--network host`, same approach prior sessions documented). `JwtTokenFactory`
+    gets `CreateRefreshTokenRecord` (builds the row for a just-issued token) and
+    `ValidateRefreshTokenAsync` (requires BOTH the JWT check and a matching active DB row —
+    exists, not revoked, not expired). **Rotation decision: refresh tokens rotate on use** —
+    `AuthController.Refresh` revokes the presented token's DB row and issues a brand-new
+    token/row on every refresh, rather than reusing one long-lived row until natural expiry;
+    this caps a stolen refresh token to one silent exchange before the next refresh attempt
+    (by either party) fails loudly. New endpoints, both `[Authorize(Policy = "Staff")]`:
+    `POST /v1/auth/logout` (revokes just the DB row behind the caller's own refresh cookie —
+    matched by `TokenHash` *and* the access token's `UserId`, so it can't be used to revoke
+    someone else's session) and `POST /v1/auth/logout-all` ("log out other sessions" from the
+    issue — revokes every non-revoked row for the current user, including this one). Both clear
+    the refresh cookie via `Set-Cookie` with an epoch expiry. `ShiftPlanner.Tests`: the DB-lookup
+    half of validation needs a live `ApplicationDbContext` and isn't unit-tested, but the pure
+    logic around it (`RefreshToken.Hash`, `IsActive`'s revoked/expired states) is — 9 new tests,
+    94 total, all passing. Verified: `dotnet build`/`dotnet test` clean (Debug and Release), and
+    `dotnet ef migrations script` confirms the exact expected `CREATE TABLE "RefreshTokens"`
+    DDL — **not exercised against a live Postgres** (no live DB used this session, matching
+    prior sessions' own precedent when one wasn't available; only build/test/migration-script
+    level). Frontend: `stores/auth.ts`'s `logout()` now calls the new endpoint (best-effort —
+    still clears local state if the call fails, e.g. an already-expired access token) instead
+    of the old `document.cookie` write, which never actually worked anyway (an httpOnly cookie
+    can't be cleared from JS at all — only the real fix, a `Set-Cookie` from the server, does).
+    A new `logoutAll()` action + a "Alle Sitzungen abmelden" button in `SettingsView.vue` cover
+    the issue's optional "log out other sessions" UI ask. `npm run lint`/`npm run build` clean —
+    not clicked through in an actual browser (same Playwright-install gap noted elsewhere in
+    this file).
   - `Employee.EligibleShiftTypes` (EF many-to-many, join table `EmployeeShiftType`) models
     "mögliche Schichten" (readme.md §3) — GET/PUT `/api/employees/{id}/eligible-shift-types`,
     enforced by `EligibilityValidator` (below) — closes
@@ -189,10 +231,9 @@ What's built:
     tax-free-allowance thresholds, so these are a starting point, not a compliance claim),
     night window 20:00–06:00. Night stacks additively with Sunday or holiday (works a
     different axis — time-of-day vs. day-type); Sunday and holiday don't stack with each
-    other, holiday wins when a holiday lands on a Sunday. Night hours are the raw shift-time
-    overlap with the night window, not break-adjusted — `BreakMinutes` has no specific time
-    slot to subtract from, so a large break inside a shift's night-window overlap will
-    over-count slightly (`ponytail:` comment in the code names this). `isHoliday` comes from
+    other, holiday wins when a holiday lands on a Sunday. Night hours were originally the raw
+    shift-time overlap with the night window, not break-adjusted — see issue #58 below, which
+    closed that gap when a break's timing is known. `isHoliday` comes from
     the existing `GermanPublicHolidays` (issue #15) — `SchedulesController` builds one
     `HashSet<DateOnly>` per schedule load and reuses it across all assignments; `CreateAssignment`
     checks the single date directly. No frontend change needed — the Wochenansicht's existing
@@ -203,6 +244,33 @@ What's built:
     (no surcharge), an 18:00–22:00 shift (2h night overlap → correct partial surcharge), a
     Sunday shift (+50%), and 1. Weihnachtstag (+125%) — each matched hand-computed expected
     `laborCost` exactly.
+  - **Break-adjusted night hours** (issue #58, on top of issue #16 above) — the night-surcharge
+    overlap used to be the shift's raw `StartTime`–`EndTime` overlap with 20:00–06:00, with no
+    way to subtract a break that itself fell inside that window (flagged inline by a `ponytail:`
+    comment). Rather than reworking `BreakMinutes` into a real time range, this adds a single
+    nullable `ShiftAssignment.BreakStartTime` (`TimeOnly?`, migration `BreakStartTime`) —
+    unset/null means "unknown/unspecified break timing" and `WageCalculator`'s night-surcharge
+    overload falls back to the EXACT pre-issue-#58 approximation for that case (no behavior
+    change for existing/unset data, regression-proofed by a dedicated test). When it IS set,
+    `WageCalculator.NightOverlapHours` computes the break's own `[BreakStartTime,
+    BreakStartTime+BreakMinutes]` overlap with the night window (same same-day assumption as the
+    shift's own times — issue #11 already rejects cross-midnight shifts, so a break within one
+    never wraps past midnight either) and subtracts it from the raw shift/night-window overlap.
+    `SchedulesController`'s assignment DTOs/create/update and `DashboardController`'s cost
+    aggregation both thread the new field through. Frontend: `ShiftAssignmentModal.vue` gets an
+    optional "Pausenbeginn" time input next to the existing break-minutes field (blank = null,
+    same "unknown" meaning as the backend), and `ScheduleView.vue`'s month-copy/drag-move flows
+    now carry `breakStartTime` along with the rest of an assignment's fields instead of dropping
+    it. The migration was generated via a real `dotnet ef migrations add` (Docker was reachable
+    this session, same CA-trust-plus-`--network host` approach documented elsewhere in this
+    file) — `dotnet build`/`dotnet test` (Release, matching CI) are clean at 89 tests (4 new:
+    break unset matches the old approximation exactly, break entirely inside/outside the night
+    window, and a break straddling the window's 20:00 boundary), and `dotnet ef migrations
+    script` confirms the exact expected `ALTER TABLE "ShiftAssignments" ADD "BreakStartTime"
+    time without time zone;`. `npm run lint`/`npm run build` (`vue-tsc -b` + `vite build`) clean.
+    No live Postgres/Docker-compose stack was spun up this session (by design, to avoid
+    conflicting with other concurrent sessions on this host) — build/test/migration-script level
+    only, not round-tripped via curl or clicked through in a browser.
   - **Absence tracking** (issue #17, readme.md §8) — the `Absence` entity readme.md always
     defined but nothing had ever built: `Domain/Employees/Absence.cs` (EmployeeId/From/To/
     `AbsenceType` enum Vacation/Sick/Training/Other/Comment), same "doesn't live on Employee
@@ -344,6 +412,53 @@ What's built:
     an Absence on the target date does too, an adjacent shift with <11h gap correctly trips
     `InsufficientRest`, and six consecutive prior days correctly trips `TooManyConsecutiveDays`
     on the would-be 7th. Test data deleted again afterward to leave the dev DB clean.
+  - **Bulk auto-fill** (issue #63) — extends `ShiftSuggestionEngine`'s single-slot `Suggest`
+    into a new `AutoFill(...)` method on the same class rather than a separate service: walks
+    every open `(date, ShiftType)` slot in a date range (a `ShiftType` with `MinStaffing` set
+    whose currently-assigned count for that date is below it — `StaffingValidator`'s own
+    grouping), and for each one calls `Suggest` and takes the top-ranked *eligible* candidate,
+    same as one "Zuweisen" click in `ShiftSuggestionModal`. Slots are visited date-then-
+    ShiftType-name order for determinism. Each pick is folded into working copies of
+    `scheduleAssignments`/`historyAssignments` before the next `Suggest` call — no separate
+    double-booking check was needed, reusing `Suggest` on updated data already makes a
+    just-picked employee show up as already-assigned-that-day (scored down, not excluded,
+    matching `ShiftOverlapValidator`) and, if relevant, rest-time/consecutive-day-excluded for
+    a later slot the same run. A slot with no eligible candidate left is skipped, and so are any
+    further not-yet-filled instances of that same slot (the candidate pool for it only shrinks).
+    Per the issue's own "wants a dry-run/preview step" framing, this is exposed as two
+    `SchedulesController` endpoints rather than one: `GET /schedules/{id}/auto-fill-preview
+    ?from=&to=` (defaults to the Schedule's own range, `ApiRead` like `/suggestions`) loads the
+    same shape of data `/suggestions` already does and returns every proposal
+    (employee/ShiftType/date/score/reasons) without persisting anything; `POST
+    /schedules/{id}/auto-fill` (`ManagerWrite`) commits a given, possibly manager-trimmed, list
+    of `{employeeId, shiftTypeId, date}` items exactly as given — it does not recompute, so what
+    the manager reviewed in the preview is exactly what gets written, built from each ShiftType's
+    template times the same way `CreateAssignment`/`ShiftSuggestionModal`'s existing "Zuweisen"
+    already do. `ShiftPlanner.Tests`: 8 new orchestration-focused tests (one open slot fills,
+    a slot with no eligible candidate is skipped, `MinStaffing=2` picks two *different*
+    employees rather than double-booking one, an already-fully-staffed slot produces no
+    proposal, a ShiftType with no `MinStaffing` has no open slots, a pick for an earlier slot
+    the same day correctly shows up as `AlreadyAssignedThatDay` scoring on a later same-day
+    slot, and open slots spanning multiple days are all filled) — 93 tests total now, all
+    passing. Frontend: a "Automatisch füllen" toolbar button next to "Monat kopieren" in
+    `ScheduleView.vue` opens a new `AutoFillModal.vue` (mirrors `ShiftSuggestionModal.vue`'s
+    `ModalShell` pattern) that loads the preview for the visible month, lists every proposal
+    with a per-row "discard" button (dropped rows stay visible but dimmed, rather than being
+    spliced out, so the "N von M werden übernommen" summary reads clearly), and a "Bestätigen"
+    button that POSTs only the kept rows to `/auto-fill` and refreshes the grid — toast
+    notifications on both success and failure, same pattern as every other write flow in this
+    file. Verified with `dotnet build`/`dotnet test` (Docker `mcr.microsoft.com/dotnet/sdk:10.0`,
+    93/93 passing) and `vue-tsc -b`/`vite build`/`npm run lint` all clean, no live Postgres was
+    spun up (deliberately, to avoid conflicting with other concurrent sessions on this host) —
+    and, unlike several other frontend features logged in this file, **was** clicked through in
+    a real headless Chromium this session (Playwright's browser install worked fine here): a
+    scratch script drove the actual dev server with `/api/*` mocked at the network layer (same
+    technique prior sessions used for the same reason, e.g. issue #19/#43) — opened the modal,
+    confirmed both mocked proposals rendered with their scores, discarded one row, confirmed the
+    "1 von 2" summary updated, clicked "Bestätigen", and confirmed the POST body contained only
+    the kept proposal — no console errors throughout. Not exercised against a real backend/
+    Postgres, so the actual `ShiftSuggestionEngine.AutoFill` orchestration logic is verified only
+    by the new unit tests above, not end-to-end.
   - **Dashboard scope restore, backend** (issue #56, follow-up on #27/#29) — three of the four
     items the original dashboard mockup trimmed: a cost breakdown, a per-employee utilization
     table, and the exact ±6-day `historyAssignments` lookback. The other two (a Location filter,
@@ -401,10 +516,19 @@ What's built:
     ([issue #2](https://github.com/mycaravam-crypto/shifty/issues/2)). Clicking a row opens
     `EmployeeDetailModal.vue` (in a reusable `components/ModalShell.vue`, pm-tool2-style):
     edit/team-assignment, eligible-shift-types checkboxes (`GET`/`PUT
-    /employees/{id}/eligible-shift-types`), and Contract list/create/delete
+    /employees/{id}/eligible-shift-types`), and Contract list/create/edit/delete
     (`/employees/{id}/contracts`, `/contracts/{id}`) — the Contract form/table now also
-    carries the optional `HourlyRate` (issue #14, "€/Std", blank means untracked). A new
-    Abwesenheiten section (issue #17) below Verträge, same list/create/delete table pattern —
+    carries the optional `HourlyRate` (issue #14, "€/Std", blank means untracked). Editing an
+    existing Contract (issue #62) reuses that same create form rather than a second one: a
+    Pencil icon per row (mirroring `ShiftTypeDetailModal.vue`'s click-to-edit for the other
+    PUT-only-no-PATCH entity) pre-fills it and an `editingContractId` ref switches the one
+    submit handler from `POST` to `PUT /contracts/{id}`, with an "Abbrechen" button back to
+    create mode — previously the only way to fix a mistyped field was delete+recreate, which
+    lost the id and showed up in `AuditLog` as Delete+Create instead of a single Update.
+    Frontend-only (`ContractsController`'s `PUT` already existed, unchanged); verified via
+    `npm run lint`/`npm run build` (`vue-tsc -b` + `vite build`, both clean) — not clicked
+    through in an actual browser (same Playwright-install gap noted elsewhere in this file). A
+    new Abwesenheiten section (issue #17) below Verträge, same list/create/delete table pattern —
     `AbsenceType`'s numeric enum values are mapped to German labels client-side
     (Urlaub/Krankheit/Fortbildung/Sonstiges) since the backend serializes enums as their
     ordinal, not a string.
@@ -413,7 +537,20 @@ What's built:
     `views/Stammdaten/ShiftTypeDetailModal.vue`, since `ShiftTypesController` does have a
     `PUT`) on one page, mirroring `EmployeesView.vue`'s list/create pattern. Reachable at
     `/stammdaten` in the sidebar nav — previously this data was only reachable via
-    Swagger/API key.
+    Swagger/API key. **Component-level parity pass** ([issue #60](https://github.com/mycaravam-crypto/shifty/issues/60))
+    — the Teams table was the one concrete gap found against `EmployeesView.vue`: the
+    ShiftTypes table already got issue #40's `md:hidden` stacked-card / `hidden md:block`
+    table split, but the Teams table next to it in the same file never did (still an
+    unscrollable table below `md`), so it now gets the identical split. The color `<input>`
+    in both `StammdatenView.vue`'s create form and `ShiftTypeDetailModal.vue` was also missing
+    the `outline-none focus-visible:ring-2 focus-visible:ring-indigo-500` every other input in
+    the app carries — added to both for consistency. Everything else audited against
+    `EmployeesView.vue`/`EmployeeDetailModal.vue` (skeleton loading, toast/`ConfirmDialog`
+    usage, gradient/`bg-white/10` button split, `inputClass`, glass panels, chip styling,
+    hover/`cursor-pointer` on clickable rows) was already at parity from earlier work, so
+    nothing else changed. `npm run lint`/`npm run build` (`vue-tsc -b` + `vite build`) clean;
+    not clicked through in an actual browser (same Playwright-install gap noted elsewhere in
+    this file).
   - `views/Schedule/ScheduleView.vue` — the Wochenansicht (readme.md §15/§16), no longer a
     placeholder. In practice a Schichtplan is always created for a full calendar month (not a
     week — an earlier cut used Mon–Sun `Schedule`s, but that didn't match how the user actually
@@ -484,9 +621,9 @@ What's built:
     GermanPublicHolidays.cs` derives the 9 nationwide holidays for any year from Gauss's Easter
     algorithm plus fixed calendar dates, so there's no yearly seed job and no migration, matching
     the "no persisted derived state" pattern the codebase already uses for
-    `HoursBalanceCalculator`/`WorkingTimeCalculator`. First cut is nationwide-only — no
+    `HoursBalanceCalculator`/`WorkingTimeCalculator`. First cut was nationwide-only — no
     per-Bundesland holidays (e.g. Fronleichnam, Reformationstag) — since nothing consuming this
-    yet needs that precision; readme.md has no §-reference for holidays at all, this is a new
+    yet needed that precision; readme.md has no §-reference for holidays at all, this is a new
     Phase 5 feature. Verified: the Easter algorithm checked against four known Easter Sundays
     (2024–2027) by hand, `dotnet build` clean, `vue-tsc -b` clean, and round-tripped against a
     real local Postgres/API (August 2026 correctly returns no nationwide holiday, a
@@ -494,6 +631,69 @@ What's built:
     Year's, `end < start` 400s, unauthenticated 401s) — not yet clicked through in an actual
     browser (same Playwright-install gap as the rest of the Wochenansicht work). Issue #16
     (wage surcharges, backend-only, see above) builds on this and is now done.
+    **Per-Bundesland holidays** (issue #57) close that first-cut gap: `GermanPublicHolidays`
+    gets an optional `Bundesland?` parameter (default `null`, so every pre-existing caller
+    reproduces the original 9-nationwide-only behavior exactly — regression-tested) adding
+    Heilige Drei Könige (BW/BY/ST), Fronleichnam (Easter+60, only the six states where it's a
+    full state-wide holiday — BW/BY/HE/NW/RP/SL, deliberately excluding Sachsen/Thüringen where
+    it's only observed in specific Catholic municipalities, since a per-Bundesland model can't
+    represent that), Reformationstag (Oct 31, the nine states that observe it since 2018),
+    Allerheiligen (Nov 1, BW/BY/NW/RP/SL), Buß- und Bettag (Sachsen only — the Wednesday
+    strictly before Nov 23, unit-tested against both a normal year and the edge case where
+    Nov 23 itself falls on a Wednesday), and Internationaler Frauentag (Mar 8, Berlin only per
+    the issue's own conservative scoping — Mecklenburg-Vorpommern added it too from 2023 but
+    that's deliberately left out rather than guessing beyond what was asked). `Team` gets a new
+    nullable `Bundesland` field (migration `TeamBundesland`, generated via a real
+    `dotnet ef migrations add` — this session's Docker daemon could reach `mcr.microsoft.com`
+    for the SDK image and, with the agent proxy's CA installed into the container's trust store
+    plus `--network host`, `api.nuget.org` too) — Team rather than Employee, per the issue's own
+    framing ("wherever a team operates"); Employee already carries `TeamId` to key off of. Null
+    means nationwide-only, matching every existing Team's behavior unchanged. `TeamsController`
+    exposes it on both the list and create DTOs (Teams still have no `PUT`, matching every
+    other note about that in this file); `PublicHolidaysController` takes an optional
+    `bundesland` query param. The wage-surcharge holiday lookup in `SchedulesController`
+    (`GetById` and `CreateAssignment`) now resolves each assignment's own employee's Team's
+    Bundesland rather than a single nationwide `HashSet` shared across the whole schedule — a
+    schedule mixing employees from different Bundesländer gets the right holiday set per
+    employee, not just per date. The Wochenansicht's holiday-dot grid, by contrast, can only
+    show one visual state at a time: `ScheduleView.vue`'s `loadHolidays()` now passes a
+    Bundesland only when the team filter resolves to exactly one team with one set; with no
+    filter (or multiple teams in view) the dots stay nationwide-only — a known, intentionally
+    accepted UI limitation, since the wage-calculation correctness above is the more important
+    half of this fix. A Bundesland `<select>` was added to `StammdatenView.vue`'s Team create
+    form (still create-only — confirmed Teams still have no edit endpoint before assuming so)
+    plus a Bundesland column on the Teams table, both using a client-side German label array
+    keyed by the enum's ordinal (same pattern as `AbsenceType`'s labels elsewhere in this file,
+    since the backend serializes enums as numbers, not strings). 35 new
+    `GermanPublicHolidaysTests` cases (one date-appears-in-the-right-states check per new
+    holiday type, an absent-in-other-states check per type, the Buß- und Bettag Wednesday-math
+    edge case, and the null/omitted-parameter regression check) — 120 tests total now, all
+    passing. Verified: `dotnet build`/`dotnet test` clean (0 warnings — one `Dictionary<TKey,
+    TValue>`'s `notnull`-constraint nullable-analysis warning on the per-Bundesland holiday
+    cache, CS8714, is deliberately suppressed rather than worked around with an artificial
+    sentinel type, since `Bundesland?` is a perfectly valid runtime dictionary key), all new
+    date/state assignments cross-checked against real calendars (Buß- und Bettag additionally
+    checked against two known real-world dates: 2022 where Nov 23 itself falls on a Wednesday,
+    confirming the "strictly before" edge case lands a full week earlier rather than same-day;
+    2023 as an ordinary case), and `dotnet ef migrations script` confirms the exact expected
+    `ALTER TABLE "Teams" ADD "Bundesland" integer;`. `npm run lint`/`npm run build` (`vue-tsc
+    -b` + `vite build`) both clean. **Not verified against a live Postgres/API or in an actual
+    browser** — per this task's own instructions, no live stack was started this session
+    (other agents may have been running concurrently on this host), so the wage-surcharge
+    per-employee-Bundesland resolution and the Stammdaten Bundesland `<select>`/Wochenansicht
+    holiday-dot behavior are unverified beyond build/test/lint level, same caveat class as
+    several other Phase 5 entries in this file.
+    Saturday/Sunday day columns ([issue #64](https://github.com/mycaravam-crypto/shifty/issues/64))
+    now get a subtle `bg-white/[0.03]` shade on both the header `<th>` and each employee's `<td>`
+    — a plain `Date.getDay()` check (`isWeekend`), same `data-date`-driving `Date` objects the
+    grid already builds for drag-and-drop, no backend change. Composes alongside the holiday dot
+    rather than replacing it (a weekend holiday shows both), and is skipped on drag-over/highlighted
+    cells so it never fights the existing blue highlight tint. Frontend-only. Verified via
+    `npm run lint`/`npm run build` clean, and — Playwright's browser install worked in this
+    session — actually clicked through in real headless Chromium against the dev server with
+    `/api/*` mocked at the network layer: the Dienstplan grid for August 2026 (1st a Saturday)
+    loads with no console errors and the Sat/Sun columns are visibly shaded darker than the
+    weekday columns in both the header and body rows.
     A glass panel above the palette lists every issue from `GET
     /schedules/{id}/validate` (❌ red for Errors, ⚠ amber for Warnings), refetched alongside
     the assignments on every load/move/create — the existing per-employee "Xh / Yh ⚠" bar is
@@ -583,9 +783,10 @@ What's built:
     to persist it server-side, and none of Phase 5 needed one badly enough to add it here).
     The other two candidates the issue named were both dead ends right now: notification
     preferences need something non-transient to configure first (the toast system, issue #36,
-    is still purely live/session-only — no digest concept exists anywhere), and a light/dark
-    toggle is explicitly out of scope per this file's own "Visual design" section (dark-only by
-    design). `ScheduleView.vue`'s `load()` now applies the stored default as the initial
+    is still purely live/session-only — no digest concept exists anywhere; issue #59, below,
+    later builds that "something non-transient" client-side and lands the setting), and a
+    light/dark toggle is explicitly out of scope per this file's own "Visual design" section
+    (dark-only by design). `ScheduleView.vue`'s `load()` now applies the stored default as the initial
     `teamFilter` — but only when the URL has no `?team=` of its own, so issue #41's existing
     URL-query-string filter persistence (a bookmarked/shared link, or the dashboard's
     `?scheduleId=` deep link) always wins over the user's own default; the two coexist rather
@@ -598,6 +799,43 @@ What's built:
     `?team=`), an explicit `?team=` in the URL is left untouched (overrides the default), and
     resetting to "Alle Teams" clears `localStorage` and a subsequent fresh load carries no team
     param — no console/page errors throughout.
+  - **Notification preferences** ([issue #59](https://github.com/mycaravam-crypto/shifty/issues/59))
+    — unblocks the "notification preferences" candidate `SettingsView` (issue #43) deferred
+    above, by first implementing the issue's own suggested concept: a client-side "new since
+    last visit" digest of the Dashboard's existing Pain Points feed (issue #31), not an
+    email/push digest — that would need a mail-sending integration this codebase has nothing
+    like today (no SMTP/mail-provider client anywhere in `src/`), so it's explicitly out of
+    scope here, same as this file's other "not this yet" calls (e.g. per-Bundesland holidays
+    under issue #15). Entirely frontend-only, no backend/DB change and no persisted
+    notification log, per the issue's own framing. `stores/settings.ts` gains
+    `notificationsEnabled` (bool, default on) plus `lastSeenAt`/`seenPainPointKeys`
+    (`markDashboardSeen(keys)` action), all `localStorage`-persisted like the existing
+    default-team-filter setting. `PainPointDto` carries no per-issue timestamp (same
+    limitation `DashboardView.vue`'s `actionFeed` sort already documents for issue #31), so
+    there's no real "since `<lastSeenAt>`" check possible — `DashboardView.vue`'s new
+    `painPointKey()` approximates an issue's identity instead (`type` + `scheduleId` +
+    `employeeId` + `message`), and "new" means "that identity wasn't in the previous visit's
+    snapshot", not "created after a real timestamp" (documented inline in
+    `DashboardView.vue`, in the same spirit as `WageCalculator`'s `ponytail:` comment for its
+    own night-hours approximation — a resolved-then-recreated identical issue won't re-flag as
+    new, for instance). The very first-ever Dashboard visit (`lastSeenAt` still null) is
+    special-cased to show no badges rather than flagging every pre-existing issue as new. The
+    snapshot updates on every `load()` (including a filter change), so "new" is scoped to
+    "since the last time this data was fetched", not literally "since the user last had the
+    tab open" — a coarser but simpler rule, also documented inline. Pain Points panel rows and
+    the Handlungsbedarf feed both get a small blue "Neu" badge; `SettingsView.vue` gets a
+    second panel with a "Benachrichtigungen für neue Probleme" checkbox wired to
+    `notificationsEnabled` via the same toast-confirmation pattern the default-team-filter
+    select already uses, with inline copy stating plainly that this is the client-side
+    highlighting described above, not a real digest/email. Verified via `npm run lint`
+    (0 errors) and `npm run build` (`vue-tsc -b` + `vite build`, clean); this session's
+    Playwright browser install worked (no repeat of the `onExit is not a function` gap noted
+    elsewhere in this file) — a scratch script drove the real dev server with `/api/*` mocked
+    (same technique issue #43's session used): a first Dashboard visit with two mocked Pain
+    Points shows zero "Neu" badges, a second visit with a third Pain Point added shows exactly
+    two badges (Pain Points panel + Handlungsbedarf feed) for that one issue, a third visit
+    with the same data again shows zero new badges, and the Settings checkbox toggles,
+    persists to `localStorage`, and shows the save toast — no console/page errors throughout.
   - **Contact info + Arbeitszeitpräferenzen / shift suggestions** (backend above, no issue
     filed) — `EmployeeDetailModal.vue` gets a "Telefon" input next to the existing E-Mail one
     (`EmployeesView.vue`'s create form too), and a new "Präferenzen" section below "Mögliche
@@ -729,6 +967,97 @@ What's built:
     confirmed the refresh-cookie token used as `Authorization: Bearer` on that same endpoint now
     returns `401` (previously `200`), and confirmed `POST /v1/auth/refresh` (which reads the
     refresh token from its httpOnly cookie, not as a Bearer header) still works normally.
+- **Dienstplan grid: sticky employee column and sticky date header** (issue #76, frontend-only)
+    — `ScheduleView.vue`'s month grid previously had no sticky positioning at all, so scrolling
+    right past a month's ~28–31 day columns lost the employee-name column, and scrolling down
+    past a long employee roster lost the date header. `sticky left-0` on the employee-name
+    `<th>`/`<td>` cells, `sticky top-0` on the header `<tr>`, and both (`sticky left-0` inside
+    the already-`sticky top-0` row) on the corner cell — each with its own opaque `#11141c`
+    background (else the underlying cells show through, since sticky cells paint over whatever
+    scrolls beneath them) and a subtle drop shadow on the pinned edges. The employee-column cell
+    also keeps the existing row-highlight tint (`highlightKey === e.id`, issue #39's click-to-
+    scroll) via an inline `:style` background swap rather than a second Tailwind `bg-*` class,
+    since two classes both setting `background-color` race on cascade order rather than actually
+    layering. Getting this working exposed (and required fixing) two real CSS bugs the sticky
+    positioning would otherwise silently no-op against, neither previously visible because
+    nothing in the app used `position: sticky` before this:
+    - The grid's `overflow-x-auto` wrapper looked horizontal-only, but CSS's own overflow rules
+      force `overflow-y` to compute as `auto` too whenever the two axes disagree on
+      visible-vs-not (there's no way to specify one axis as `auto` and the other `visible` and
+      have the browser respect it) — so the wrapper was already an unconditional scroll
+      container on *both* axes, just one that (with no height constraint) never actually
+      needed to scroll internally, since it grew to fit its content and the whole page scrolled
+      past it instead. `position: sticky` binds to the *nearest* such container regardless of
+      whether that container ever actually scrolls — so the header/column were binding to this
+      always-static wrapper and just riding along with the page scroll, never appearing to
+      stick. Fix: given the ~30-employee-row grids this is meant for, embrace a bounded,
+      genuinely-scrolling panel instead of fighting the CSS rule — `max-h-[70vh]` +
+      `overflow-auto` (both axes explicitly, matching what the browser was already forcing) on
+      the wrapper, so it becomes the real 2D scrollport the sticky cells correctly bind to
+      (`print:max-h-none` alongside the pre-existing `print:overflow-visible` keeps printing
+      unclipped). A short employee list just never grows tall enough to trigger the internal
+      scrollbar, same visual result as before.
+    - Confirming the above also surfaced that `AppShell.vue`'s `<main class="overflow-y-auto">`
+      has been dead CSS since it was written: `<div class="flex min-h-screen">`'s `min-h-screen`
+      (a floor, not a cap) lets the flex row grow past 100vh to fit tall content, so `<main>`
+      (a `flex-1` child) never ends up shorter than its own content and its `overflow-y-auto`
+      never actually clips anything — confirmed empirically (`main.scrollHeight ===
+      main.clientHeight` even with far more content than the viewport) rather than just reasoned
+      from the CSS. The page has always scrolled at the document/`<body>` level, on every view,
+      not inside `<main>` — harmless before now since nothing needed a real scroll boundary to
+      bind sticky positioning to, but left as-is here (not touched) since the Dienstplan fix
+      above no longer depends on it and changing shared shell behavior for every other view is
+      outside this issue's scope.
+    Verified with a scratch Playwright script (same technique prior sessions used for this app
+    when no live backend was available) driving the real dev server with `/api/*` mocked at the
+    network layer and a synthetic 20-employee/31-day dataset sized to force both scroll axes:
+    screenshots confirm the header row and employee column both stay visually pinned through
+    independent horizontal-only, vertical-only, and combined scrolling, with the corner cell
+    correctly layered above both (z-index), and a separate empty-state load produced no console
+    errors or warnings. `npm run lint` (0 errors) and `npm run build` (`vue-tsc -b` + `vite
+    build`) both clean.
+- **Redesign the Dienstplan validation panel as a grouped summary** (issue #78, frontend-only,
+    `ScheduleValidator`'s output shape untouched) — the panel used to render every
+    error/warning as one flat list of `<p>` rows, which didn't scale past a handful of issues.
+    Now: a compact header ("● 4 Fehler ▲ 3 Warnungen", per the issue's own example) followed by
+    one collapsible row per rule *type* (`ValidationIssue.type`, e.g. `ContractHoursExceeded`,
+    `InsufficientRest`, `Understaffed`), each showing a German label + count and expanding to the
+    individual messages underneath — still clickable per issue #39's existing click-to-scroll
+    (that handler, `focusIssue`, was untouched, just relocated into the new nested template).
+    Groups sort errors-before-warnings then by size. `ISSUE_TYPE_LABELS` is a small hardcoded
+    map from the 9 `type` strings the 7 backend validators actually emit (grepped from
+    `Application/Validation/*.cs` rather than guessed) to German labels — falls back to the raw
+    type string for anything unmapped, so a future validator doesn't silently disappear from the
+    panel. Verified with a scratch Playwright script (mocked `/api/*`, a hand-built
+    `ValidationResult` covering 5 of the 9 rule types across both severities): screenshots
+    confirm the header counts, the five grouped rows with correct counts/labels, and that
+    expanding two of them reveals the right individual messages with the chevron rotated — no
+    console errors. `npm run lint` (0 errors) and `npm run build` clean.
+- **Make "Monat kopieren" an atomic, transactional backend operation** (issue #82) —
+    previously `ScheduleView.vue` created each copied assignment via its own
+    `POST /schedules/{id}/assignments` call in a per-assignment loop; a failure partway through
+    a ~30-assignment month left a partial copy behind with no rollback. New
+    `POST /api/schedules/{id}/copy` (`SchedulesController`, `ManagerWrite`) computes the whole
+    change set — the target `Schedule` (created if it doesn't exist yet) plus every copied
+    `ShiftAssignment` — and applies it in one `SaveChangesAsync` call, which EF Core already
+    wraps in a single DB transaction; no explicit `BeginTransactionAsync` needed since it's one
+    `SaveChanges` call, not several. Returns `409 Conflict` (not partially applying anything) if
+    the target month already has assignments, matching the frontend's existing abort-with-message
+    behavior exactly. The day-of-month clamping logic (31st → 28th/29th/30th in a shorter target
+    month) moved server-side unchanged from the old frontend loop. `ScheduleView.vue`'s
+    `onCopyMonth` now makes one API call instead of N+1, and only pushes the returned `target`
+    Schedule into local state when it wasn't already known (avoids a duplicate list entry when
+    copying into an existing empty month). Also copies the new `BreakStartTime` field (issue #58,
+    merged mid-session — this work rebased onto it, since the copy endpoint otherwise would've
+    silently dropped it on every copied assignment). Verified against a real local Postgres
+    (this machine's `postgresql-16` install): `dotnet build`/`dotnet test` clean (97 tests,
+    unaffected), `npm run lint`/`npm run build` clean, then curl round-tripped the full scenario
+    — a two-assignment August schedule (one on the 3rd, one on the 31st) copied into September
+    (30 days) correctly landed on the 3rd and the 30th (clamped) with `copiedCount: 2`; retrying
+    the same copy correctly returned `409` with the target's assignment count unchanged at 2
+    (confirming the conflict check runs before any writes, not a partial-then-rollback); copying
+    from a schedule with zero assignments still atomically creates the (empty) target; and
+    401/404 on unauthenticated/nonexistent-source requests.
 - **Docker/deploy**: `docker-compose.yml` (db/api/web) validated with `docker compose config`,
   never actually deployed. No `.env` exists anywhere yet (only `.env.example`).
 - **Versioning**: same scheme as vanspace3d. `frontend/package.json`'s `version` is shown

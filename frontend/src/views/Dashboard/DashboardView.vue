@@ -2,6 +2,7 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '@/services/api'
+import { useSettingsStore } from '@/stores/settings'
 
 interface Team {
   id: string
@@ -94,6 +95,7 @@ interface Dashboard {
 }
 
 const router = useRouter()
+const settings = useSettingsStore()
 const weekdayFmt = new Intl.DateTimeFormat('de-DE', {
   weekday: 'short',
   day: '2-digit',
@@ -113,6 +115,23 @@ const teamFilter = ref('')
 const shiftTypeFilter = ref('')
 const ready = ref(false)
 
+// issue #59: "new since last visit" digest for Pain Points, computed entirely client-side
+// (no backend/DB change, no persisted notification log — per the issue's own framing this
+// should NOT need one). `PainPointDto` carries no per-issue timestamp (same limitation
+// `actionFeed`'s sort below already documents), so a real "since <lastSeenAt>" check isn't
+// possible. Instead a Pain Point's identity is approximated as this composite key, and
+// "new" means "not present in the identity set captured at the previous Dashboard visit" —
+// a coarser signal than a true creation timestamp would give (e.g. a resolved-then-recreated
+// identical issue won't re-flag as new), documented here the same way the WageCalculator's
+// `ponytail:` comment documents its own break-adjustment approximation.
+function painPointKey(p: PainPoint): string {
+  return [p.type, p.scheduleId, p.employeeId ?? '', p.message].join('|')
+}
+const newPainPointKeys = ref<Set<string>>(new Set())
+function isNewPainPoint(p: PainPoint): boolean {
+  return newPainPointKeys.value.has(painPointKey(p))
+}
+
 async function load() {
   loading.value = true
   error.value = ''
@@ -128,6 +147,18 @@ async function load() {
     dashboard.value = res.data
     fromDate.value = res.data.from
     toDate.value = res.data.to
+
+    const currentKeys: string[] = (res.data.painPoints ?? []).map(painPointKey)
+    if (settings.notificationsEnabled && settings.lastSeenAt) {
+      const previouslySeen = new Set(settings.seenPainPointKeys)
+      newPainPointKeys.value = new Set(currentKeys.filter((k) => !previouslySeen.has(k)))
+    } else {
+      // Notifications off, or this is the very first Dashboard visit ever (no prior
+      // snapshot to diff against) — treat everything already there as the baseline, not
+      // as "new", so a first-time user isn't shown a wall of "Neu" badges.
+      newPainPointKeys.value = new Set()
+    }
+    settings.markDashboardSeen(currentKeys)
   } catch {
     error.value = 'Übersicht konnte nicht geladen werden.'
   } finally {
@@ -501,6 +532,11 @@ function openSchedule(scheduleId: string) {
           class="text-sm text-rose-400 py-0.5"
         >
           ❌ {{ p.message }}
+          <span
+            v-if="isNewPainPoint(p)"
+            class="ml-1 rounded bg-blue-500/20 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-blue-300"
+            >Neu</span
+          >
           <button class="text-slate-500 hover:underline" @click="openSchedule(p.scheduleId)">
             ({{ p.scheduleName }})
           </button>
@@ -511,6 +547,11 @@ function openSchedule(scheduleId: string) {
           class="text-sm text-amber-400 py-0.5"
         >
           ⚠ {{ p.message }}
+          <span
+            v-if="isNewPainPoint(p)"
+            class="ml-1 rounded bg-blue-500/20 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-blue-300"
+            >Neu</span
+          >
           <button class="text-slate-500 hover:underline" @click="openSchedule(p.scheduleId)">
             ({{ p.scheduleName }})
           </button>
@@ -532,6 +573,11 @@ function openSchedule(scheduleId: string) {
             :class="p.severity === 'Error' ? 'text-rose-400' : 'text-amber-400'"
           >
             {{ p.severity === 'Error' ? '❌' : '⚠' }} {{ p.message }}
+            <span
+              v-if="isNewPainPoint(p)"
+              class="ml-1 rounded bg-blue-500/20 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-blue-300"
+              >Neu</span
+            >
             <span class="text-slate-500">— {{ p.scheduleName }}</span>
           </span>
           <button

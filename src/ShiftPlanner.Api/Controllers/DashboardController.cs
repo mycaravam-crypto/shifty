@@ -255,7 +255,11 @@ public class DashboardController(ApplicationDbContext db) : ControllerBase
         {
             var contract = ActiveContract(contracts, a.EmployeeId, a.Date);
             var netHours = WorkingTimeCalculator.NetHours(a.StartTime, a.EndTime, a.BreakMinutes);
-            var breakdown = WageCalculator.Breakdown(a.StartTime, a.EndTime, a.Date.DayOfWeek, holidays.Contains(a.Date), netHours, contract?.HourlyRate);
+            // issue #58: BreakMinutes/BreakStartTime threaded through so the night-surcharge
+            // portion of the breakdown gets the same break-adjusted precision LaborCost's other
+            // call sites already have.
+            var breakdown = WageCalculator.Breakdown(a.StartTime, a.EndTime, a.Date.DayOfWeek, holidays.Contains(a.Date), netHours, contract?.HourlyRate,
+                a.BreakMinutes, a.BreakStartTime);
             if (breakdown is not { } b)
                 continue;
             regular += b.Regular;

@@ -25,7 +25,8 @@ export default defineConfigWithVueTs(
           patterns: [
             {
               group: ['../*'],
-              message: "Use the '@/' alias instead of a relative parent import, e.g. '@/services/api'.",
+              message:
+                "Use the '@/' alias instead of a relative parent import, e.g. '@/services/api'.",
             },
           ],
         },

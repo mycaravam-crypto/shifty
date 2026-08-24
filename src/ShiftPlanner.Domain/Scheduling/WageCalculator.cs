@@ -19,12 +19,14 @@ public static class WageCalculator
 
     // Adds night/Sunday/holiday surcharges on top of the base rate. Sunday and holiday don't
     // stack (holiday wins when a holiday falls on a Sunday) but night stacks with either, matching
-    // common German practice. Night hours are the raw StartTime–EndTime overlap with 20:00–06:00,
-    // not break-adjusted (BreakMinutes has no specific time slot to subtract from) —
-    // ponytail: approximation, revisit if a shift's break is large relative to its night overlap.
+    // common German practice. Night hours are the raw StartTime–EndTime overlap with 20:00–06:00.
+    // issue #58: when BreakStartTime is known, the break's own overlap with the night window is
+    // subtracted from that raw figure for a precise count; when it's null (unknown/unspecified
+    // break timing — the only case before issue #58 existed), this keeps the original
+    // approximation exactly as before, so existing data's computed cost doesn't change.
     public static decimal? LaborCost(TimeOnly startTime, TimeOnly endTime, DayOfWeek dayOfWeek,
-        bool isHoliday, decimal netHours, decimal? hourlyRate) =>
-        Breakdown(startTime, endTime, dayOfWeek, isHoliday, netHours, hourlyRate)?.Total;
+        bool isHoliday, decimal netHours, decimal? hourlyRate, int breakMinutes = 0, TimeOnly? breakStartTime = null) =>
+        Breakdown(startTime, endTime, dayOfWeek, isHoliday, netHours, hourlyRate, breakMinutes, breakStartTime)?.Total;
 
     // issue #56: the per-surcharge-type split behind the total LaborCost above — the dashboard's
     // cost-breakdown KPI (regular/night/Sunday/holiday) reuses this instead of re-deriving the
@@ -32,13 +34,13 @@ public static class WageCalculator
     // what the LaborCost overload above returns (Sunday/Holiday are mutually exclusive per the
     // same "holiday wins" rule, so at most one of them is non-zero for a given shift).
     public static LaborCostBreakdown? Breakdown(TimeOnly startTime, TimeOnly endTime, DayOfWeek dayOfWeek,
-        bool isHoliday, decimal netHours, decimal? hourlyRate)
+        bool isHoliday, decimal netHours, decimal? hourlyRate, int breakMinutes = 0, TimeOnly? breakStartTime = null)
     {
         if (hourlyRate is null)
             return null;
 
         var regular = netHours * hourlyRate.Value;
-        var nightHours = NightOverlapHours(startTime, endTime);
+        var nightHours = NightOverlapHours(startTime, endTime, breakMinutes, breakStartTime);
         var night = nightHours * hourlyRate.Value * NightSurchargeRate;
         var holiday = isHoliday ? regular * HolidaySurchargeRate : 0m;
         var sunday = !isHoliday && dayOfWeek == DayOfWeek.Sunday ? regular * SundaySurchargeRate : 0m;
@@ -46,13 +48,26 @@ public static class WageCalculator
         return new LaborCostBreakdown(regular, night, sunday, holiday);
     }
 
-    private static decimal NightOverlapHours(TimeOnly start, TimeOnly end)
+    private static decimal NightOverlapHours(TimeOnly start, TimeOnly end, int breakMinutes, TimeOnly? breakStartTime)
     {
         var startMinute = start.Hour * 60 + start.Minute;
         var endMinute = end.Hour * 60 + end.Minute;
-        var minutes = OverlapMinutes(startMinute, endMinute, NightStartMinute, 24 * 60)
+        var shiftNightMinutes = OverlapMinutes(startMinute, endMinute, NightStartMinute, 24 * 60)
             + OverlapMinutes(startMinute, endMinute, 0, NightEndMinute);
-        return minutes / 60m;
+
+        if (breakStartTime is null)
+            return shiftNightMinutes / 60m;
+
+        // Precise path: subtract the break's own overlap with the night window from the raw
+        // shift/night-window overlap, rather than leaving it folded into shiftNightMinutes above.
+        // Same same-day assumption as the shift's own StartTime/EndTime (issue #11 already
+        // rejects cross-midnight shifts, so a break within one never wraps past midnight either).
+        var breakStartMinute = breakStartTime.Value.Hour * 60 + breakStartTime.Value.Minute;
+        var breakEndMinute = Math.Min(breakStartMinute + breakMinutes, 24 * 60);
+        var breakNightMinutes = OverlapMinutes(breakStartMinute, breakEndMinute, NightStartMinute, 24 * 60)
+            + OverlapMinutes(breakStartMinute, breakEndMinute, 0, NightEndMinute);
+
+        return Math.Max(0, shiftNightMinutes - breakNightMinutes) / 60m;
     }
 
     private static int OverlapMinutes(int aStart, int aEnd, int bStart, int bEnd) =>

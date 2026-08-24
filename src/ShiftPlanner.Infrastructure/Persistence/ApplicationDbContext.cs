@@ -24,6 +24,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
 
     public DbSet<ApiKey> ApiKeys => Set<ApiKey>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
+    public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
 
     public DbSet<Team> Teams => Set<Team>();
     public DbSet<Employee> Employees => Set<Employee>();
@@ -71,6 +72,19 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
 
         builder.Entity<ShiftType>()
             .HasIndex(s => s.Name).IsUnique();
+
+        // issue #55: server-side refresh-token revocation. UserId is a plain string FK to
+        // Identity's ApplicationUser (Infrastructure layer) — Domain can't reference it via a
+        // navigation property, same reason as AuditLog.UserId above, but the FK constraint
+        // itself is still enforced here.
+        builder.Entity<RefreshToken>(r =>
+        {
+            r.HasIndex(x => x.TokenHash).IsUnique();
+            r.HasOne<ApplicationUser>()
+                .WithMany()
+                .HasForeignKey(x => x.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
 
         builder.Entity<ShiftTypePreference>(p =>
         {
