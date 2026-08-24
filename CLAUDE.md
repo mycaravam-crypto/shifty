@@ -535,9 +535,10 @@ What's built:
     to persist it server-side, and none of Phase 5 needed one badly enough to add it here).
     The other two candidates the issue named were both dead ends right now: notification
     preferences need something non-transient to configure first (the toast system, issue #36,
-    is still purely live/session-only — no digest concept exists anywhere), and a light/dark
-    toggle is explicitly out of scope per this file's own "Visual design" section (dark-only by
-    design). `ScheduleView.vue`'s `load()` now applies the stored default as the initial
+    is still purely live/session-only — no digest concept exists anywhere; issue #59, below,
+    later builds that "something non-transient" client-side and lands the setting), and a
+    light/dark toggle is explicitly out of scope per this file's own "Visual design" section
+    (dark-only by design). `ScheduleView.vue`'s `load()` now applies the stored default as the initial
     `teamFilter` — but only when the URL has no `?team=` of its own, so issue #41's existing
     URL-query-string filter persistence (a bookmarked/shared link, or the dashboard's
     `?scheduleId=` deep link) always wins over the user's own default; the two coexist rather
@@ -550,6 +551,43 @@ What's built:
     `?team=`), an explicit `?team=` in the URL is left untouched (overrides the default), and
     resetting to "Alle Teams" clears `localStorage` and a subsequent fresh load carries no team
     param — no console/page errors throughout.
+  - **Notification preferences** ([issue #59](https://github.com/mycaravam-crypto/shifty/issues/59))
+    — unblocks the "notification preferences" candidate `SettingsView` (issue #43) deferred
+    above, by first implementing the issue's own suggested concept: a client-side "new since
+    last visit" digest of the Dashboard's existing Pain Points feed (issue #31), not an
+    email/push digest — that would need a mail-sending integration this codebase has nothing
+    like today (no SMTP/mail-provider client anywhere in `src/`), so it's explicitly out of
+    scope here, same as this file's other "not this yet" calls (e.g. per-Bundesland holidays
+    under issue #15). Entirely frontend-only, no backend/DB change and no persisted
+    notification log, per the issue's own framing. `stores/settings.ts` gains
+    `notificationsEnabled` (bool, default on) plus `lastSeenAt`/`seenPainPointKeys`
+    (`markDashboardSeen(keys)` action), all `localStorage`-persisted like the existing
+    default-team-filter setting. `PainPointDto` carries no per-issue timestamp (same
+    limitation `DashboardView.vue`'s `actionFeed` sort already documents for issue #31), so
+    there's no real "since `<lastSeenAt>`" check possible — `DashboardView.vue`'s new
+    `painPointKey()` approximates an issue's identity instead (`type` + `scheduleId` +
+    `employeeId` + `message`), and "new" means "that identity wasn't in the previous visit's
+    snapshot", not "created after a real timestamp" (documented inline in
+    `DashboardView.vue`, in the same spirit as `WageCalculator`'s `ponytail:` comment for its
+    own night-hours approximation — a resolved-then-recreated identical issue won't re-flag as
+    new, for instance). The very first-ever Dashboard visit (`lastSeenAt` still null) is
+    special-cased to show no badges rather than flagging every pre-existing issue as new. The
+    snapshot updates on every `load()` (including a filter change), so "new" is scoped to
+    "since the last time this data was fetched", not literally "since the user last had the
+    tab open" — a coarser but simpler rule, also documented inline. Pain Points panel rows and
+    the Handlungsbedarf feed both get a small blue "Neu" badge; `SettingsView.vue` gets a
+    second panel with a "Benachrichtigungen für neue Probleme" checkbox wired to
+    `notificationsEnabled` via the same toast-confirmation pattern the default-team-filter
+    select already uses, with inline copy stating plainly that this is the client-side
+    highlighting described above, not a real digest/email. Verified via `npm run lint`
+    (0 errors) and `npm run build` (`vue-tsc -b` + `vite build`, clean); this session's
+    Playwright browser install worked (no repeat of the `onExit is not a function` gap noted
+    elsewhere in this file) — a scratch script drove the real dev server with `/api/*` mocked
+    (same technique issue #43's session used): a first Dashboard visit with two mocked Pain
+    Points shows zero "Neu" badges, a second visit with a third Pain Point added shows exactly
+    two badges (Pain Points panel + Handlungsbedarf feed) for that one issue, a third visit
+    with the same data again shows zero new badges, and the Settings checkbox toggles,
+    persists to `localStorage`, and shows the save toast — no console/page errors throughout.
   - **Contact info + Arbeitszeitpräferenzen / shift suggestions** (backend above, no issue
     filed) — `EmployeeDetailModal.vue` gets a "Telefon" input next to the existing E-Mail one
     (`EmployeesView.vue`'s create form too), and a new "Präferenzen" section below "Mögliche
