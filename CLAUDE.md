@@ -879,6 +879,31 @@ What's built:
     confirm the header counts, the five grouped rows with correct counts/labels, and that
     expanding two of them reveals the right individual messages with the chevron rotated — no
     console errors. `npm run lint` (0 errors) and `npm run build` clean.
+- **Make "Monat kopieren" an atomic, transactional backend operation** (issue #82) —
+    previously `ScheduleView.vue` created each copied assignment via its own
+    `POST /schedules/{id}/assignments` call in a per-assignment loop; a failure partway through
+    a ~30-assignment month left a partial copy behind with no rollback. New
+    `POST /api/schedules/{id}/copy` (`SchedulesController`, `ManagerWrite`) computes the whole
+    change set — the target `Schedule` (created if it doesn't exist yet) plus every copied
+    `ShiftAssignment` — and applies it in one `SaveChangesAsync` call, which EF Core already
+    wraps in a single DB transaction; no explicit `BeginTransactionAsync` needed since it's one
+    `SaveChanges` call, not several. Returns `409 Conflict` (not partially applying anything) if
+    the target month already has assignments, matching the frontend's existing abort-with-message
+    behavior exactly. The day-of-month clamping logic (31st → 28th/29th/30th in a shorter target
+    month) moved server-side unchanged from the old frontend loop. `ScheduleView.vue`'s
+    `onCopyMonth` now makes one API call instead of N+1, and only pushes the returned `target`
+    Schedule into local state when it wasn't already known (avoids a duplicate list entry when
+    copying into an existing empty month). Also copies the new `BreakStartTime` field (issue #58,
+    merged mid-session — this work rebased onto it, since the copy endpoint otherwise would've
+    silently dropped it on every copied assignment). Verified against a real local Postgres
+    (this machine's `postgresql-16` install): `dotnet build`/`dotnet test` clean (97 tests,
+    unaffected), `npm run lint`/`npm run build` clean, then curl round-tripped the full scenario
+    — a two-assignment August schedule (one on the 3rd, one on the 31st) copied into September
+    (30 days) correctly landed on the 3rd and the 30th (clamped) with `copiedCount: 2`; retrying
+    the same copy correctly returned `409` with the target's assignment count unchanged at 2
+    (confirming the conflict check runs before any writes, not a partial-then-rollback); copying
+    from a schedule with zero assignments still atomically creates the (empty) target; and
+    401/404 on unauthenticated/nonexistent-source requests.
 - **Docker/deploy**: `docker-compose.yml` (db/api/web) validated with `docker compose config`,
   never actually deployed. No `.env` exists anywhere yet (only `.env.example`).
 - **Versioning**: same scheme as vanspace3d. `frontend/package.json`'s `version` is shown
