@@ -16,7 +16,7 @@ public static class ShiftOverlapValidator
                 if (ordered[i].StartTime < ordered[i - 1].EndTime)
                 {
                     result.Warnings.Add(new ValidationIssue(
-                        "ShiftOverlap",
+                        ValidationIssueCode.ShiftOverlap,
                         $"Überlappende Schichten am {group.Key.Date:yyyy-MM-dd}.",
                         group.Key.EmployeeId, ordered[i].Id));
                 }

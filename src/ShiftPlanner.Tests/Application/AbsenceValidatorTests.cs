@@ -19,7 +19,7 @@ public class AbsenceValidatorTests
         AbsenceValidator.Validate([assignment], [absence], new Dictionary<Guid, Employee> { [employee.Id] = employee }, result);
 
         var error = Assert.Single(result.Errors);
-        Assert.Equal("AssignedDuringAbsence", error.Type);
+        Assert.Equal(ValidationIssueCode.AssignedDuringAbsence, error.Type);
     }
 
     [Fact]

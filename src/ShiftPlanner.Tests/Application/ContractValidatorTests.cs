@@ -44,7 +44,7 @@ public class ContractValidatorTests
         ContractValidator.Validate(schedule, assignments, [contract], null, result);
 
         var error = Assert.Single(result.Errors);
-        Assert.Equal("ContractHoursExceeded", error.Type);
+        Assert.Equal(ValidationIssueCode.ContractHoursExceeded, error.Type);
     }
 
     [Fact]

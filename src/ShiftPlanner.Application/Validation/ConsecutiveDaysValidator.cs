@@ -26,7 +26,7 @@ public static class ConsecutiveDaysValidator
                     var overflowDay = days[streakStart + MaxConsecutiveDays];
                     var assignment = group.First(a => a.Date == overflowDay);
                     result.Errors.Add(new ValidationIssue(
-                        "TooManyConsecutiveDays",
+                        ValidationIssueCode.TooManyConsecutiveDays,
                         $"Mehr als {MaxConsecutiveDays} aufeinanderfolgende Arbeitstage.",
                         group.Key, assignment.Id));
                 }

@@ -21,13 +21,13 @@ public static class StaffingValidator
             if (shiftType.MinStaffing is { } min && count < min)
             {
                 result.Warnings.Add(new ValidationIssue(
-                    "Understaffed",
+                    ValidationIssueCode.Understaffed,
                     $"{shiftType.Name} am {group.Key.Date:yyyy-MM-dd}: {count}/{min} besetzt."));
             }
             if (shiftType.MaxStaffing is { } max && count > max)
             {
                 result.Warnings.Add(new ValidationIssue(
-                    "Overstaffed",
+                    ValidationIssueCode.Overstaffed,
                     $"{shiftType.Name} am {group.Key.Date:yyyy-MM-dd}: {count}/{max} besetzt."));
             }
         }
