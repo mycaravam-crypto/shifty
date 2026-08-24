@@ -24,7 +24,7 @@ public static class BreakMinutesValidator
                 result.Errors.Add(new ValidationIssue(
                     "InsufficientBreak",
                     $"Mindestpause von {required}min unterschritten ({a.BreakMinutes}min).",
-                    a.EmployeeId, a.Id));
+                    EmployeeId: a.EmployeeId, ShiftAssignmentId: a.Id));
             }
         }
     }

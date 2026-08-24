@@ -27,7 +27,7 @@ public static class RestTimeValidator
                     result.Errors.Add(new ValidationIssue(
                         "InsufficientRest",
                         $"Ruhezeit von {MinRestHours}h unterschritten ({rest.TotalHours:F1}h).",
-                        group.Key, ordered[i].Id));
+                        EmployeeId: group.Key, ShiftAssignmentId: ordered[i].Id));
                 }
             }
         }
