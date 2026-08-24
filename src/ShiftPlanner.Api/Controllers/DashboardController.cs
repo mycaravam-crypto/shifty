@@ -273,8 +273,9 @@ public class DashboardController(ApplicationDbContext db) : ControllerBase
             .MaxBy(c => c.ValidFrom);
 
     // issue #56: aggregated per-surcharge-type so the dashboard can show a cost breakdown, not
-    // just a total — WageCalculator.Breakdown (not the plain LaborCost total) is the single
-    // source of truth for the split, same as BuildCost always was for the total alone.
+    // just a total — WageCalculator.Breakdown (not the plain SimpleLaborCost/LaborCostWithSurcharges
+    // total) is the single source of truth for the split, same as BuildCost always was for the
+    // total alone.
     private static CostBreakdownDto BuildCostBreakdown(
         IReadOnlyList<ShiftAssignment> assignments, IReadOnlyList<Contract> contracts,
         IReadOnlyDictionary<Guid, Bundesland?> bundeslandByEmployee,
@@ -289,10 +290,10 @@ public class DashboardController(ApplicationDbContext db) : ControllerBase
             var land = bundeslandByEmployee.GetValueOrDefault(a.EmployeeId);
             var isHoliday = (land is { } bl ? holidaysByBundesland[bl] : nationwideHolidays).Contains(a.Date);
             // issue #58: BreakMinutes/BreakStartTime threaded through so the night-surcharge
-            // portion of the breakdown gets the same break-adjusted precision LaborCost's other
-            // call sites already have.
-            var breakdown = WageCalculator.Breakdown(a.StartTime, a.EndTime, a.Date.DayOfWeek, isHoliday, netHours, contract?.HourlyRate,
-                a.BreakMinutes, a.BreakStartTime);
+            // portion of the breakdown gets the same break-adjusted precision LaborCostWithSurcharges'
+            // other call sites already have.
+            var timing = new ShiftTiming(a.StartTime, a.EndTime, a.BreakMinutes, a.BreakStartTime);
+            var breakdown = WageCalculator.Breakdown(timing, a.Date.DayOfWeek, isHoliday, netHours, contract?.HourlyRate);
             if (breakdown is not { } b)
                 continue;
             regular += b.Regular;
