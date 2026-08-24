@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using System.Text;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -42,6 +43,20 @@ builder.Services
             ValidIssuer = builder.Configuration["Jwt:Issuer"],
             ValidAudience = builder.Configuration["Jwt:Audience"],
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
+        };
+        // Access and refresh tokens are both self-contained JWTs (JwtTokenFactory) distinguished
+        // only by a "token_use" claim — without this check, a refresh token satisfies the same
+        // signature/issuer/audience/lifetime checks as an access token and would work as a Bearer
+        // token against every protected endpoint (issue #71).
+        options.Events = new JwtBearerEvents
+        {
+            OnTokenValidated = context =>
+            {
+                var tokenUse = context.Principal?.FindFirstValue("token_use");
+                if (tokenUse != "access")
+                    context.Fail("Token is not an access token.");
+                return Task.CompletedTask;
+            },
         };
     })
     .AddScheme<AuthenticationSchemeOptions, ApiKeyAuthenticationHandler>(
