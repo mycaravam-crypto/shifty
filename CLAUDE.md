@@ -44,7 +44,12 @@ items came back (cost breakdown by regular/night/Sunday/holiday, a per-employee 
 table, and the exact ±6-day `historyAssignments` lookback `/validate` already had) — the
 Location filter and a budget comparison are still deliberately out, both needing a new domain
 concept (a `Location` entity; a stored budget figure) that nothing else in the app needs yet.
-See below.
+See below. A fresh batch of 25 issues (#55–#82) came in from an external code review of the
+whole codebase; several have landed since (issues #55/#57/#56 above, issue #71's
+refresh-token-as-Bearer fix, issue #82's atomic month-copy, issues #76/#78 on the Dienstplan
+grid — see below for all of these), and issue #68 (enforcing the Schedule Draft/Published/
+Archived lifecycle server-side, flagged by that review as the single most impactful integrity
+gap in the app) is now built too.
 What's built:
 
 - **Backend** (`src/`): 4-project skeleton (Domain → Application → Infrastructure → Api)
@@ -1058,6 +1063,57 @@ What's built:
     (confirming the conflict check runs before any writes, not a partial-then-rollback); copying
     from a schedule with zero assignments still atomically creates the (empty) target; and
     401/404 on unauthenticated/nonexistent-source requests.
+- **Enforce Schedule lifecycle server-side** (issue #68, backend-only) — flagged by the same
+    external code review as "the most impactful integrity gap" in the app: nothing previously
+    stopped assignments from being created/moved/deleted on a `Published`/`Archived` Schedule,
+    and no endpoint checked that an assignment's `Date` actually falls within its owning
+    Schedule's `StartDate..EndDate`. `Schedule` gains `PublishedAt`/`PublishedBy` (migration
+    `SchedulePublishInfo`) and two new gated transitions, both `SchedulesController`, both
+    `ManagerWrite`: `POST /schedules/{id}/publish` (Draft → Published — 409 if not currently
+    Draft; otherwise re-runs the exact same `ValidateScheduleAsync` helper `/validate` already
+    exposes and 409s with the full `ValidationResult` body if it has any blocking Errors, so a
+    manager can't freeze a schedule that's still legally/operationally broken; success sets
+    `PublishedAt`/`PublishedBy` — no explicit AuditLog call needed, `ApplicationDbContext`'s
+    existing change-tracker walk already audits every `Schedule` field change) and
+    `POST /schedules/{id}/archive` (Published → Archived — 409 otherwise; no re-validation,
+    since archiving just marks a period as over, not a quality gate). `PUT /schedules/{id}` no
+    longer accepts a `Status` field at all (a Schedule only ever transitions through the two
+    endpoints above) and now 409s on any edit once the Schedule isn't Draft, since a Published
+    schedule's span is exactly what its own `/publish` check was already run against. Every
+    assignment-mutating endpoint (`CreateAssignment`, `UpdateAssignment`, `DeleteAssignment`,
+    `AutoFillCommit`) now loads the owning Schedule and 409s unless it's Draft; `CreateAssignment`/
+    `UpdateAssignment` also 400 when the assignment's `Date` falls outside the Schedule's own
+    range (`AutoFillCommit` already had this date check from issue #63, just needed the Draft
+    guard added alongside it). `CopyMonth` (issue #82) gained the same Draft guard on its
+    *target* schedule, on top of the pre-existing "target already has assignments" check.
+    Deliberately left out of scope, per the review's own suggested approach listing it
+    separately: optimistic concurrency control (a `Version`/`xmin` check) for two managers
+    editing the same schedule at once — a real gap, but one that would need coordinated
+    frontend changes (every mutation would need to carry and check a version token) that
+    nothing in the frontend does today; flagged here rather than folded in half-built. No
+    frontend change in this session either — surfacing Publish/Archive as UI actions (a visible
+    lifecycle state, a disabled-with-reason "Veröffentlichen" button, a read-only grid once
+    Published) is issue #79, which explicitly depends on this one and was left for it rather
+    than duplicating that scope here. No `ShiftPlanner.Tests` addition — same reasoning as
+    issue #71's token_use fix: that project is pure Domain/Application unit tests over POCOs,
+    no ASP.NET Core hosting, so controller-level 409/400 behavior isn't unit-testable there
+    (that gap is issue #75's own ask). Verified end-to-end instead, against a real local
+    Postgres (this session got both a working Docker daemon — `dockerd` started cleanly and
+    could pull `mcr.microsoft.com/dotnet/sdk:10.0` — and this machine's local `postgresql-16`
+    install running side by side): `dotnet build`/`dotnet test` clean (97/97, unaffected),
+    `dotnet ef migrations script` confirms the exact expected
+    `ALTER TABLE "Schedules" ADD "PublishedAt" timestamp with time zone; ADD "PublishedBy"
+    text;`, `npm run lint`/`npm run build` clean (no frontend code touched, checked anyway).
+    Then curl round-tripped the full lifecycle end-to-end: created a schedule, added an
+    in-range assignment (201) and confirmed an out-of-range one 400s; published it (200,
+    `PublishedAt`/`PublishedBy` set, confirmed in the `AuditLogs` table as an auto-captured
+    `Schedule` Update row) and confirmed create/update/delete/auto-fill-commit on it now all
+    409, `PUT` on it 409s, and re-publishing it 409s; archived it (200) and confirmed
+    re-archiving and publishing-an-archived-schedule both 409; confirmed a genuine blocking
+    Error (a break-minutes violation) correctly 409s `/publish` with the violating
+    `ValidationIssue` in the body; confirmed `/copy` 409s against a Published target; and
+    401/404 on unauthenticated/nonexistent-schedule requests. Test data deleted again
+    afterward to leave the dev DB clean.
 - **Docker/deploy**: `docker-compose.yml` (db/api/web) validated with `docker compose config`,
   never actually deployed. No `.env` exists anywhere yet (only `.env.example`).
 - **Versioning**: same scheme as vanspace3d. `frontend/package.json`'s `version` is shown

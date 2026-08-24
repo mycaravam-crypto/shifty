@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using ShiftPlanner.Infrastructure.Persistence;
@@ -11,9 +12,11 @@ using ShiftPlanner.Infrastructure.Persistence;
 namespace ShiftPlanner.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260824094236_SchedulePublishInfo")]
+    partial class SchedulePublishInfo
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -233,39 +236,6 @@ namespace ShiftPlanner.Infrastructure.Persistence.Migrations
                     b.ToTable("AuditLogs");
                 });
 
-            modelBuilder.Entity("ShiftPlanner.Domain.Common.RefreshToken", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTimeOffset>("ExpiresAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTimeOffset>("IssuedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTimeOffset?>("RevokedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("TokenHash")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("UserId")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("TokenHash")
-                        .IsUnique();
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("RefreshTokens");
-                });
-
             modelBuilder.Entity("ShiftPlanner.Domain.Contracts.Contract", b =>
                 {
                     b.Property<Guid>("Id")
@@ -402,9 +372,6 @@ namespace ShiftPlanner.Infrastructure.Persistence.Migrations
 
                     b.Property<bool>("Active")
                         .HasColumnType("boolean");
-
-                    b.Property<int?>("Bundesland")
-                        .HasColumnType("integer");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -674,15 +641,6 @@ namespace ShiftPlanner.Infrastructure.Persistence.Migrations
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserToken<string>", b =>
-                {
-                    b.HasOne("ShiftPlanner.Infrastructure.Persistence.ApplicationUser", null)
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("ShiftPlanner.Domain.Common.RefreshToken", b =>
                 {
                     b.HasOne("ShiftPlanner.Infrastructure.Persistence.ApplicationUser", null)
                         .WithMany()
