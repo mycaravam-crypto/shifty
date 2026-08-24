@@ -14,7 +14,7 @@ public record ScheduleDto(Guid Id, string Name, DateOnly StartDate, DateOnly End
 
 public record ShiftAssignmentDto(
     Guid Id, Guid ScheduleId, Guid EmployeeId, Guid ShiftTypeId,
-    DateOnly Date, TimeOnly StartTime, TimeOnly EndTime, int BreakMinutes,
+    DateOnly Date, TimeOnly StartTime, TimeOnly EndTime, int BreakMinutes, TimeOnly? BreakStartTime,
     decimal NetHours, decimal? LaborCost);
 
 public record ScheduleDetailDto(
@@ -30,11 +30,11 @@ public record ShiftSuggestionDto(Guid EmployeeId, string FirstName, string LastN
 
 public record CreateAssignmentRequest(
     Guid EmployeeId, Guid ShiftTypeId, DateOnly Date, TimeOnly StartTime, TimeOnly EndTime,
-    [Range(0, 480)] int BreakMinutes);
+    [Range(0, 480)] int BreakMinutes, TimeOnly? BreakStartTime = null);
 
 public record UpdateAssignmentRequest(
     Guid EmployeeId, Guid ShiftTypeId, DateOnly Date, TimeOnly StartTime, TimeOnly EndTime,
-    [Range(0, 480)] int BreakMinutes);
+    [Range(0, 480)] int BreakMinutes, TimeOnly? BreakStartTime = null);
 
 [ApiController]
 [Route("api")]
@@ -47,8 +47,9 @@ public class SchedulesController(ApplicationDbContext db) : ControllerBase
     private static ShiftAssignmentDto ToAssignmentDto(ShiftAssignment a, decimal? hourlyRate, bool isHoliday)
     {
         var netHours = WorkingTimeCalculator.NetHours(a.StartTime, a.EndTime, a.BreakMinutes);
-        var laborCost = WageCalculator.LaborCost(a.StartTime, a.EndTime, a.Date.DayOfWeek, isHoliday, netHours, hourlyRate);
-        return new(a.Id, a.ScheduleId, a.EmployeeId, a.ShiftTypeId, a.Date, a.StartTime, a.EndTime, a.BreakMinutes,
+        var laborCost = WageCalculator.LaborCost(a.StartTime, a.EndTime, a.Date.DayOfWeek, isHoliday, netHours, hourlyRate,
+            a.BreakMinutes, a.BreakStartTime);
+        return new(a.Id, a.ScheduleId, a.EmployeeId, a.ShiftTypeId, a.Date, a.StartTime, a.EndTime, a.BreakMinutes, a.BreakStartTime,
             netHours, laborCost);
     }
 
@@ -224,7 +225,8 @@ public class SchedulesController(ApplicationDbContext db) : ControllerBase
             Date = request.Date,
             StartTime = request.StartTime,
             EndTime = request.EndTime,
-            BreakMinutes = request.BreakMinutes
+            BreakMinutes = request.BreakMinutes,
+            BreakStartTime = request.BreakStartTime
         };
         db.ShiftAssignments.Add(assignment);
         await db.SaveChangesAsync();
@@ -262,6 +264,7 @@ public class SchedulesController(ApplicationDbContext db) : ControllerBase
         assignment.StartTime = request.StartTime;
         assignment.EndTime = request.EndTime;
         assignment.BreakMinutes = request.BreakMinutes;
+        assignment.BreakStartTime = request.BreakStartTime;
         await db.SaveChangesAsync();
 
         return NoContent();

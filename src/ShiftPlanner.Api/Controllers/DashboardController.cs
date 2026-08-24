@@ -204,7 +204,8 @@ public class DashboardController(ApplicationDbContext db) : ControllerBase
         {
             var contract = ActiveContract(contracts, a.EmployeeId, a.Date);
             var netHours = WorkingTimeCalculator.NetHours(a.StartTime, a.EndTime, a.BreakMinutes);
-            return WageCalculator.LaborCost(a.StartTime, a.EndTime, a.Date.DayOfWeek, holidays.Contains(a.Date), netHours, contract?.HourlyRate) ?? 0m;
+            return WageCalculator.LaborCost(a.StartTime, a.EndTime, a.Date.DayOfWeek, holidays.Contains(a.Date), netHours, contract?.HourlyRate,
+                a.BreakMinutes, a.BreakStartTime) ?? 0m;
         });
 
     // Contract.WeeklyHours scaled to the period's day-span, minus Absence days overlapping the
