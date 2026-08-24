@@ -65,4 +65,21 @@ public class AbsenceValidatorTests
 
         Assert.Single(result.Errors);
     }
+
+    [Fact]
+    public void UnknownEmployee_FallsBackToPlaceholderName()
+    {
+        // The employee lookup can miss (stale id, or a caller that didn't pre-load it) — the
+        // validator should still produce a usable message rather than throwing.
+        var employeeId = Guid.NewGuid();
+        var shiftType = ShiftType();
+        var absence = Absence(employeeId, new DateOnly(2026, 8, 20), new DateOnly(2026, 8, 27));
+        var assignment = Assignment(employeeId, shiftType.Id, new DateOnly(2026, 8, 24), new TimeOnly(8, 0), new TimeOnly(16, 0));
+
+        var result = new ValidationResult();
+        AbsenceValidator.Validate([assignment], [absence], new Dictionary<Guid, Employee>(), result);
+
+        var error = Assert.Single(result.Errors);
+        Assert.StartsWith("Mitarbeiter ist am", error.Message);
+    }
 }
