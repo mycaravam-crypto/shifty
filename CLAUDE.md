@@ -353,10 +353,19 @@ What's built:
     ([issue #2](https://github.com/mycaravam-crypto/shifty/issues/2)). Clicking a row opens
     `EmployeeDetailModal.vue` (in a reusable `components/ModalShell.vue`, pm-tool2-style):
     edit/team-assignment, eligible-shift-types checkboxes (`GET`/`PUT
-    /employees/{id}/eligible-shift-types`), and Contract list/create/delete
+    /employees/{id}/eligible-shift-types`), and Contract list/create/edit/delete
     (`/employees/{id}/contracts`, `/contracts/{id}`) — the Contract form/table now also
-    carries the optional `HourlyRate` (issue #14, "€/Std", blank means untracked). A new
-    Abwesenheiten section (issue #17) below Verträge, same list/create/delete table pattern —
+    carries the optional `HourlyRate` (issue #14, "€/Std", blank means untracked). Editing an
+    existing Contract (issue #62) reuses that same create form rather than a second one: a
+    Pencil icon per row (mirroring `ShiftTypeDetailModal.vue`'s click-to-edit for the other
+    PUT-only-no-PATCH entity) pre-fills it and an `editingContractId` ref switches the one
+    submit handler from `POST` to `PUT /contracts/{id}`, with an "Abbrechen" button back to
+    create mode — previously the only way to fix a mistyped field was delete+recreate, which
+    lost the id and showed up in `AuditLog` as Delete+Create instead of a single Update.
+    Frontend-only (`ContractsController`'s `PUT` already existed, unchanged); verified via
+    `npm run lint`/`npm run build` (`vue-tsc -b` + `vite build`, both clean) — not clicked
+    through in an actual browser (same Playwright-install gap noted elsewhere in this file). A
+    new Abwesenheiten section (issue #17) below Verträge, same list/create/delete table pattern —
     `AbsenceType`'s numeric enum values are mapped to German labels client-side
     (Urlaub/Krankheit/Fortbildung/Sonstiges) since the backend serializes enums as their
     ordinal, not a string.
