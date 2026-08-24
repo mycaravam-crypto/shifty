@@ -27,8 +27,8 @@ test coverage anywhere (readme.md §19 named a `ShiftPlanner.Tests` project that
 built) and no CI gate before `deploy.yml`'s push-to-`main` (issues #50/#51, see below). A
 backlog of eight frontend UX-polish issues (#36–#43) had also accumulated with no toast/
 confirm-dialog system, loading skeletons, filter persistence, a keyboard-shortcuts hint, or
-mobile-responsive tables on the two main list views — all except #43 (a real `SettingsView`)
-are now closed too (see below).
+mobile-responsive tables on the two main list views — all closed now, including #43 (a real
+`SettingsView`, see below), which was the last one open.
 What's built:
 
 - **Backend** (`src/`): 4-project skeleton (Domain → Application → Infrastructure → Api)
@@ -477,9 +477,32 @@ What's built:
     leave the dev DB clean.
   - `components/AppShell.vue` — sidebar nav (Übersicht/Dienstplan/Mitarbeiter/Stammdaten/
     Einstellungen) + user identity + logout, applying CLAUDE.md's "Visual design" tokens (dark
-    glass, Inter, blue→indigo accent). `SettingsView` is still a styled-but-minimal placeholder
-    — this is a functional cut of [issue #5](https://github.com/mycaravam-crypto/shifty/issues/5),
-    not the full pm-tool2/vanspace3d component-level parity pass.
+    glass, Inter, blue→indigo accent) — a functional cut of
+    [issue #5](https://github.com/mycaravam-crypto/shifty/issues/5), not the full pm-tool2/
+    vanspace3d component-level parity pass.
+  - `views/Settings/SettingsView.vue` ([issue #43](https://github.com/mycaravam-crypto/shifty/issues/43))
+    — no longer just the account-info placeholder: a first real, scoped-down cut per the
+    issue's own "pick what's actually useful" framing. Only one setting landed — a default
+    team filter for the Dienstplan, picked from `GET /teams` in a new `stores/settings.ts`
+    Pinia store, persisted to `localStorage` (there's no backend concept of per-user settings
+    to persist it server-side, and none of Phase 5 needed one badly enough to add it here).
+    The other two candidates the issue named were both dead ends right now: notification
+    preferences need something non-transient to configure first (the toast system, issue #36,
+    is still purely live/session-only — no digest concept exists anywhere), and a light/dark
+    toggle is explicitly out of scope per this file's own "Visual design" section (dark-only by
+    design). `ScheduleView.vue`'s `load()` now applies the stored default as the initial
+    `teamFilter` — but only when the URL has no `?team=` of its own, so issue #41's existing
+    URL-query-string filter persistence (a bookmarked/shared link, or the dashboard's
+    `?scheduleId=` deep link) always wins over the user's own default; the two coexist rather
+    than one replacing the other. Verified via `vue-tsc -b`/`vite build` clean, and — Docker
+    wasn't reachable at all this session, so no live backend/Postgres existed to hit — a
+    scratch Playwright script drove the real dev server with `/api/*` mocked at the network
+    layer (same technique issue #19's session used for the same reason): the Settings select
+    renders the mocked teams, picking one persists to `localStorage` and shows a toast, a fresh
+    Dienstplan load with no `?team=` in the URL picks up the stored default (URL gains
+    `?team=`), an explicit `?team=` in the URL is left untouched (overrides the default), and
+    resetting to "Alle Teams" clears `localStorage` and a subsequent fresh load carries no team
+    param — no console/page errors throughout.
   - Verified end-to-end in a real headless browser against the local stack below: login
     success/failure, employee list load, create, 409-conflict surfaced in the UI, logout,
     Dienstplan empty-state schedule creation, drag-to-place, drag-to-move, hour-bar update,
