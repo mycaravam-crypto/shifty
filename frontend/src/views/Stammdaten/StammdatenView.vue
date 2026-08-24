@@ -178,37 +178,56 @@ onMounted(load)
         </button>
       </form>
 
-      <div class="glass rounded-xl overflow-x-auto">
-        <table class="w-full text-sm">
-          <thead>
-            <tr
-              class="text-left text-[10px] uppercase tracking-wider font-bold text-slate-500 border-b border-white/8"
+      <div class="glass rounded-xl overflow-hidden">
+        <div class="md:hidden divide-y divide-white/5">
+          <div v-for="t in teams" :key="t.id" class="p-4 flex items-center justify-between gap-3">
+            <div class="min-w-0 text-sm truncate">{{ t.name }}</div>
+            <span
+              class="rounded-full px-2 py-0.5 text-xs shrink-0"
+              :class="
+                t.active ? 'bg-emerald-500/15 text-emerald-400' : 'bg-slate-500/15 text-slate-400'
+              "
             >
-              <th class="px-4 py-3">Name</th>
-              <th class="px-4 py-3">Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="t in teams" :key="t.id" class="border-b border-white/5 last:border-0">
-              <td class="px-4 py-3">{{ t.name }}</td>
-              <td class="px-4 py-3">
-                <span
-                  class="rounded-full px-2 py-0.5 text-xs"
-                  :class="
-                    t.active
-                      ? 'bg-emerald-500/15 text-emerald-400'
-                      : 'bg-slate-500/15 text-slate-400'
-                  "
-                >
-                  {{ t.active ? 'Aktiv' : 'Inaktiv' }}
-                </span>
-              </td>
-            </tr>
-            <tr v-if="!teams.length">
-              <td colspan="2" class="px-4 py-8 text-center text-slate-500">Keine Teams.</td>
-            </tr>
-          </tbody>
-        </table>
+              {{ t.active ? 'Aktiv' : 'Inaktiv' }}
+            </span>
+          </div>
+          <p v-if="!teams.length" class="px-4 py-8 text-center text-slate-500 text-sm">
+            Keine Teams.
+          </p>
+        </div>
+
+        <div class="hidden md:block overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead>
+              <tr
+                class="text-left text-[10px] uppercase tracking-wider font-bold text-slate-500 border-b border-white/8"
+              >
+                <th class="px-4 py-3">Name</th>
+                <th class="px-4 py-3">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="t in teams" :key="t.id" class="border-b border-white/5 last:border-0">
+                <td class="px-4 py-3">{{ t.name }}</td>
+                <td class="px-4 py-3">
+                  <span
+                    class="rounded-full px-2 py-0.5 text-xs"
+                    :class="
+                      t.active
+                        ? 'bg-emerald-500/15 text-emerald-400'
+                        : 'bg-slate-500/15 text-slate-400'
+                    "
+                  >
+                    {{ t.active ? 'Aktiv' : 'Inaktiv' }}
+                  </span>
+                </td>
+              </tr>
+              <tr v-if="!teams.length">
+                <td colspan="2" class="px-4 py-8 text-center text-slate-500">Keine Teams.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </div>
     </section>
 
@@ -261,7 +280,7 @@ onMounted(load)
         <input
           v-model="shiftTypeForm.color"
           type="color"
-          class="h-10 w-full rounded-lg bg-white/5 border border-white/10"
+          class="h-10 w-full rounded-lg bg-white/5 border border-white/10 outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
         />
         <input
           v-model="shiftTypeForm.minStaffing"

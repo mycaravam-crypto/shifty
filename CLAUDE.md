@@ -403,10 +403,19 @@ What's built:
     ([issue #2](https://github.com/mycaravam-crypto/shifty/issues/2)). Clicking a row opens
     `EmployeeDetailModal.vue` (in a reusable `components/ModalShell.vue`, pm-tool2-style):
     edit/team-assignment, eligible-shift-types checkboxes (`GET`/`PUT
-    /employees/{id}/eligible-shift-types`), and Contract list/create/delete
+    /employees/{id}/eligible-shift-types`), and Contract list/create/edit/delete
     (`/employees/{id}/contracts`, `/contracts/{id}`) — the Contract form/table now also
-    carries the optional `HourlyRate` (issue #14, "€/Std", blank means untracked). A new
-    Abwesenheiten section (issue #17) below Verträge, same list/create/delete table pattern —
+    carries the optional `HourlyRate` (issue #14, "€/Std", blank means untracked). Editing an
+    existing Contract (issue #62) reuses that same create form rather than a second one: a
+    Pencil icon per row (mirroring `ShiftTypeDetailModal.vue`'s click-to-edit for the other
+    PUT-only-no-PATCH entity) pre-fills it and an `editingContractId` ref switches the one
+    submit handler from `POST` to `PUT /contracts/{id}`, with an "Abbrechen" button back to
+    create mode — previously the only way to fix a mistyped field was delete+recreate, which
+    lost the id and showed up in `AuditLog` as Delete+Create instead of a single Update.
+    Frontend-only (`ContractsController`'s `PUT` already existed, unchanged); verified via
+    `npm run lint`/`npm run build` (`vue-tsc -b` + `vite build`, both clean) — not clicked
+    through in an actual browser (same Playwright-install gap noted elsewhere in this file). A
+    new Abwesenheiten section (issue #17) below Verträge, same list/create/delete table pattern —
     `AbsenceType`'s numeric enum values are mapped to German labels client-side
     (Urlaub/Krankheit/Fortbildung/Sonstiges) since the backend serializes enums as their
     ordinal, not a string.
@@ -415,7 +424,20 @@ What's built:
     `views/Stammdaten/ShiftTypeDetailModal.vue`, since `ShiftTypesController` does have a
     `PUT`) on one page, mirroring `EmployeesView.vue`'s list/create pattern. Reachable at
     `/stammdaten` in the sidebar nav — previously this data was only reachable via
-    Swagger/API key.
+    Swagger/API key. **Component-level parity pass** ([issue #60](https://github.com/mycaravam-crypto/shifty/issues/60))
+    — the Teams table was the one concrete gap found against `EmployeesView.vue`: the
+    ShiftTypes table already got issue #40's `md:hidden` stacked-card / `hidden md:block`
+    table split, but the Teams table next to it in the same file never did (still an
+    unscrollable table below `md`), so it now gets the identical split. The color `<input>`
+    in both `StammdatenView.vue`'s create form and `ShiftTypeDetailModal.vue` was also missing
+    the `outline-none focus-visible:ring-2 focus-visible:ring-indigo-500` every other input in
+    the app carries — added to both for consistency. Everything else audited against
+    `EmployeesView.vue`/`EmployeeDetailModal.vue` (skeleton loading, toast/`ConfirmDialog`
+    usage, gradient/`bg-white/10` button split, `inputClass`, glass panels, chip styling,
+    hover/`cursor-pointer` on clickable rows) was already at parity from earlier work, so
+    nothing else changed. `npm run lint`/`npm run build` (`vue-tsc -b` + `vite build`) clean;
+    not clicked through in an actual browser (same Playwright-install gap noted elsewhere in
+    this file).
   - `views/Schedule/ScheduleView.vue` — the Wochenansicht (readme.md §15/§16), no longer a
     placeholder. In practice a Schichtplan is always created for a full calendar month (not a
     week — an earlier cut used Mon–Sun `Schedule`s, but that didn't match how the user actually
@@ -496,6 +518,17 @@ What's built:
     Year's, `end < start` 400s, unauthenticated 401s) — not yet clicked through in an actual
     browser (same Playwright-install gap as the rest of the Wochenansicht work). Issue #16
     (wage surcharges, backend-only, see above) builds on this and is now done.
+    Saturday/Sunday day columns ([issue #64](https://github.com/mycaravam-crypto/shifty/issues/64))
+    now get a subtle `bg-white/[0.03]` shade on both the header `<th>` and each employee's `<td>`
+    — a plain `Date.getDay()` check (`isWeekend`), same `data-date`-driving `Date` objects the
+    grid already builds for drag-and-drop, no backend change. Composes alongside the holiday dot
+    rather than replacing it (a weekend holiday shows both), and is skipped on drag-over/highlighted
+    cells so it never fights the existing blue highlight tint. Frontend-only. Verified via
+    `npm run lint`/`npm run build` clean, and — Playwright's browser install worked in this
+    session — actually clicked through in real headless Chromium against the dev server with
+    `/api/*` mocked at the network layer: the Dienstplan grid for August 2026 (1st a Saturday)
+    loads with no console errors and the Sat/Sun columns are visibly shaded darker than the
+    weekday columns in both the header and body rows.
     A glass panel above the palette lists every issue from `GET
     /schedules/{id}/validate` (❌ red for Errors, ⚠ amber for Warnings), refetched alongside
     the assignments on every load/move/create — the existing per-employee "Xh / Yh ⚠" bar is
@@ -585,9 +618,10 @@ What's built:
     to persist it server-side, and none of Phase 5 needed one badly enough to add it here).
     The other two candidates the issue named were both dead ends right now: notification
     preferences need something non-transient to configure first (the toast system, issue #36,
-    is still purely live/session-only — no digest concept exists anywhere), and a light/dark
-    toggle is explicitly out of scope per this file's own "Visual design" section (dark-only by
-    design). `ScheduleView.vue`'s `load()` now applies the stored default as the initial
+    is still purely live/session-only — no digest concept exists anywhere; issue #59, below,
+    later builds that "something non-transient" client-side and lands the setting), and a
+    light/dark toggle is explicitly out of scope per this file's own "Visual design" section
+    (dark-only by design). `ScheduleView.vue`'s `load()` now applies the stored default as the initial
     `teamFilter` — but only when the URL has no `?team=` of its own, so issue #41's existing
     URL-query-string filter persistence (a bookmarked/shared link, or the dashboard's
     `?scheduleId=` deep link) always wins over the user's own default; the two coexist rather
@@ -600,6 +634,43 @@ What's built:
     `?team=`), an explicit `?team=` in the URL is left untouched (overrides the default), and
     resetting to "Alle Teams" clears `localStorage` and a subsequent fresh load carries no team
     param — no console/page errors throughout.
+  - **Notification preferences** ([issue #59](https://github.com/mycaravam-crypto/shifty/issues/59))
+    — unblocks the "notification preferences" candidate `SettingsView` (issue #43) deferred
+    above, by first implementing the issue's own suggested concept: a client-side "new since
+    last visit" digest of the Dashboard's existing Pain Points feed (issue #31), not an
+    email/push digest — that would need a mail-sending integration this codebase has nothing
+    like today (no SMTP/mail-provider client anywhere in `src/`), so it's explicitly out of
+    scope here, same as this file's other "not this yet" calls (e.g. per-Bundesland holidays
+    under issue #15). Entirely frontend-only, no backend/DB change and no persisted
+    notification log, per the issue's own framing. `stores/settings.ts` gains
+    `notificationsEnabled` (bool, default on) plus `lastSeenAt`/`seenPainPointKeys`
+    (`markDashboardSeen(keys)` action), all `localStorage`-persisted like the existing
+    default-team-filter setting. `PainPointDto` carries no per-issue timestamp (same
+    limitation `DashboardView.vue`'s `actionFeed` sort already documents for issue #31), so
+    there's no real "since `<lastSeenAt>`" check possible — `DashboardView.vue`'s new
+    `painPointKey()` approximates an issue's identity instead (`type` + `scheduleId` +
+    `employeeId` + `message`), and "new" means "that identity wasn't in the previous visit's
+    snapshot", not "created after a real timestamp" (documented inline in
+    `DashboardView.vue`, in the same spirit as `WageCalculator`'s `ponytail:` comment for its
+    own night-hours approximation — a resolved-then-recreated identical issue won't re-flag as
+    new, for instance). The very first-ever Dashboard visit (`lastSeenAt` still null) is
+    special-cased to show no badges rather than flagging every pre-existing issue as new. The
+    snapshot updates on every `load()` (including a filter change), so "new" is scoped to
+    "since the last time this data was fetched", not literally "since the user last had the
+    tab open" — a coarser but simpler rule, also documented inline. Pain Points panel rows and
+    the Handlungsbedarf feed both get a small blue "Neu" badge; `SettingsView.vue` gets a
+    second panel with a "Benachrichtigungen für neue Probleme" checkbox wired to
+    `notificationsEnabled` via the same toast-confirmation pattern the default-team-filter
+    select already uses, with inline copy stating plainly that this is the client-side
+    highlighting described above, not a real digest/email. Verified via `npm run lint`
+    (0 errors) and `npm run build` (`vue-tsc -b` + `vite build`, clean); this session's
+    Playwright browser install worked (no repeat of the `onExit is not a function` gap noted
+    elsewhere in this file) — a scratch script drove the real dev server with `/api/*` mocked
+    (same technique issue #43's session used): a first Dashboard visit with two mocked Pain
+    Points shows zero "Neu" badges, a second visit with a third Pain Point added shows exactly
+    two badges (Pain Points panel + Handlungsbedarf feed) for that one issue, a third visit
+    with the same data again shows zero new badges, and the Settings checkbox toggles,
+    persists to `localStorage`, and shows the save toast — no console/page errors throughout.
   - **Contact info + Arbeitszeitpräferenzen / shift suggestions** (backend above, no issue
     filed) — `EmployeeDetailModal.vue` gets a "Telefon" input next to the existing E-Mail one
     (`EmployeesView.vue`'s create form too), and a new "Präferenzen" section below "Mögliche
@@ -697,6 +768,91 @@ What's built:
     (0 errors) and `npm run build` (`vue-tsc -b` + `vite build`, clean) — not clicked through in
     an actual browser (same Playwright-install gap noted elsewhere in this file). Issue #43 (a
     real `SettingsView`) is the one issue from this batch left open.
+- **Reject a refresh token used as a Bearer access token** (issue #71) — a genuine security gap
+    from a fresh batch of 25 issues an external code review filed against the whole codebase
+    (issues #55–#82): access and refresh JWTs (`JwtTokenFactory`) are both self-contained tokens
+    differing only by a `token_use` claim, and the JWT bearer scheme in `Program.cs` validated
+    signature/issuer/audience/lifetime but never checked that claim — so a refresh token, valid
+    for 7 days vs. the access token's 15 minutes, worked as a Bearer token against every
+    protected endpoint if obtained by an attacker. Fixed with an `OnTokenValidated` handler on
+    the bearer scheme's `JwtBearerEvents` that fails authentication unless `token_use == access`
+    — matches the issue's own suggested approach without needing a schema change (no separate
+    `aud` values). No test added to `ShiftPlanner.Tests` — that project is pure Domain/
+    Application unit tests over POCOs with no ASP.NET Core hosting/HTTP layer at all (adding one
+    is exactly issue #75's "integration test coverage" ask, not a one-off addition here).
+    Verified end-to-end instead, the same way this file's earlier auth work was: `dotnet build`/
+    `dotnet test` clean (85 tests, unaffected), then a real local Postgres (this machine's
+    `postgresql-16` install) + the API run via `dotnet run` in the SDK container — logged in via
+    `POST /v1/auth/login`, confirmed the access token still returns `200` from `GET /employees`,
+    confirmed the refresh-cookie token used as `Authorization: Bearer` on that same endpoint now
+    returns `401` (previously `200`), and confirmed `POST /v1/auth/refresh` (which reads the
+    refresh token from its httpOnly cookie, not as a Bearer header) still works normally.
+- **Dienstplan grid: sticky employee column and sticky date header** (issue #76, frontend-only)
+    — `ScheduleView.vue`'s month grid previously had no sticky positioning at all, so scrolling
+    right past a month's ~28–31 day columns lost the employee-name column, and scrolling down
+    past a long employee roster lost the date header. `sticky left-0` on the employee-name
+    `<th>`/`<td>` cells, `sticky top-0` on the header `<tr>`, and both (`sticky left-0` inside
+    the already-`sticky top-0` row) on the corner cell — each with its own opaque `#11141c`
+    background (else the underlying cells show through, since sticky cells paint over whatever
+    scrolls beneath them) and a subtle drop shadow on the pinned edges. The employee-column cell
+    also keeps the existing row-highlight tint (`highlightKey === e.id`, issue #39's click-to-
+    scroll) via an inline `:style` background swap rather than a second Tailwind `bg-*` class,
+    since two classes both setting `background-color` race on cascade order rather than actually
+    layering. Getting this working exposed (and required fixing) two real CSS bugs the sticky
+    positioning would otherwise silently no-op against, neither previously visible because
+    nothing in the app used `position: sticky` before this:
+    - The grid's `overflow-x-auto` wrapper looked horizontal-only, but CSS's own overflow rules
+      force `overflow-y` to compute as `auto` too whenever the two axes disagree on
+      visible-vs-not (there's no way to specify one axis as `auto` and the other `visible` and
+      have the browser respect it) — so the wrapper was already an unconditional scroll
+      container on *both* axes, just one that (with no height constraint) never actually
+      needed to scroll internally, since it grew to fit its content and the whole page scrolled
+      past it instead. `position: sticky` binds to the *nearest* such container regardless of
+      whether that container ever actually scrolls — so the header/column were binding to this
+      always-static wrapper and just riding along with the page scroll, never appearing to
+      stick. Fix: given the ~30-employee-row grids this is meant for, embrace a bounded,
+      genuinely-scrolling panel instead of fighting the CSS rule — `max-h-[70vh]` +
+      `overflow-auto` (both axes explicitly, matching what the browser was already forcing) on
+      the wrapper, so it becomes the real 2D scrollport the sticky cells correctly bind to
+      (`print:max-h-none` alongside the pre-existing `print:overflow-visible` keeps printing
+      unclipped). A short employee list just never grows tall enough to trigger the internal
+      scrollbar, same visual result as before.
+    - Confirming the above also surfaced that `AppShell.vue`'s `<main class="overflow-y-auto">`
+      has been dead CSS since it was written: `<div class="flex min-h-screen">`'s `min-h-screen`
+      (a floor, not a cap) lets the flex row grow past 100vh to fit tall content, so `<main>`
+      (a `flex-1` child) never ends up shorter than its own content and its `overflow-y-auto`
+      never actually clips anything — confirmed empirically (`main.scrollHeight ===
+      main.clientHeight` even with far more content than the viewport) rather than just reasoned
+      from the CSS. The page has always scrolled at the document/`<body>` level, on every view,
+      not inside `<main>` — harmless before now since nothing needed a real scroll boundary to
+      bind sticky positioning to, but left as-is here (not touched) since the Dienstplan fix
+      above no longer depends on it and changing shared shell behavior for every other view is
+      outside this issue's scope.
+    Verified with a scratch Playwright script (same technique prior sessions used for this app
+    when no live backend was available) driving the real dev server with `/api/*` mocked at the
+    network layer and a synthetic 20-employee/31-day dataset sized to force both scroll axes:
+    screenshots confirm the header row and employee column both stay visually pinned through
+    independent horizontal-only, vertical-only, and combined scrolling, with the corner cell
+    correctly layered above both (z-index), and a separate empty-state load produced no console
+    errors or warnings. `npm run lint` (0 errors) and `npm run build` (`vue-tsc -b` + `vite
+    build`) both clean.
+- **Redesign the Dienstplan validation panel as a grouped summary** (issue #78, frontend-only,
+    `ScheduleValidator`'s output shape untouched) — the panel used to render every
+    error/warning as one flat list of `<p>` rows, which didn't scale past a handful of issues.
+    Now: a compact header ("● 4 Fehler ▲ 3 Warnungen", per the issue's own example) followed by
+    one collapsible row per rule *type* (`ValidationIssue.type`, e.g. `ContractHoursExceeded`,
+    `InsufficientRest`, `Understaffed`), each showing a German label + count and expanding to the
+    individual messages underneath — still clickable per issue #39's existing click-to-scroll
+    (that handler, `focusIssue`, was untouched, just relocated into the new nested template).
+    Groups sort errors-before-warnings then by size. `ISSUE_TYPE_LABELS` is a small hardcoded
+    map from the 9 `type` strings the 7 backend validators actually emit (grepped from
+    `Application/Validation/*.cs` rather than guessed) to German labels — falls back to the raw
+    type string for anything unmapped, so a future validator doesn't silently disappear from the
+    panel. Verified with a scratch Playwright script (mocked `/api/*`, a hand-built
+    `ValidationResult` covering 5 of the 9 rule types across both severities): screenshots
+    confirm the header counts, the five grouped rows with correct counts/labels, and that
+    expanding two of them reveals the right individual messages with the chevron rotated — no
+    console errors. `npm run lint` (0 errors) and `npm run build` clean.
 - **Docker/deploy**: `docker-compose.yml` (db/api/web) validated with `docker compose config`,
   never actually deployed. No `.env` exists anywhere yet (only `.env.example`).
 - **Versioning**: same scheme as vanspace3d. `frontend/package.json`'s `version` is shown
