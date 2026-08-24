@@ -14,7 +14,7 @@ public record ScheduleDto(Guid Id, string Name, DateOnly StartDate, DateOnly End
 
 public record ShiftAssignmentDto(
     Guid Id, Guid ScheduleId, Guid EmployeeId, Guid ShiftTypeId,
-    DateOnly Date, TimeOnly StartTime, TimeOnly EndTime, int BreakMinutes,
+    DateOnly Date, TimeOnly StartTime, TimeOnly EndTime, int BreakMinutes, TimeOnly? BreakStartTime,
     decimal NetHours, decimal? LaborCost);
 
 public record ScheduleDetailDto(
@@ -28,13 +28,23 @@ public record UpdateScheduleRequest(
 
 public record ShiftSuggestionDto(Guid EmployeeId, string FirstName, string LastName, bool Eligible, decimal Score, List<SuggestionReason> Reasons);
 
+// issue #63: one row of the auto-fill dry-run preview — the manager reviews/trims these
+// before POSTing the (possibly-trimmed) set back as an AutoFillCommitRequest.
+public record AutoFillProposalDto(
+    Guid EmployeeId, string FirstName, string LastName,
+    Guid ShiftTypeId, string ShiftTypeName, DateOnly Date, decimal Score,
+    List<SuggestionReason> Reasons);
+
+public record AutoFillCommitItem(Guid EmployeeId, Guid ShiftTypeId, DateOnly Date);
+public record AutoFillCommitRequest(List<AutoFillCommitItem> Assignments);
+
 public record CreateAssignmentRequest(
     Guid EmployeeId, Guid ShiftTypeId, DateOnly Date, TimeOnly StartTime, TimeOnly EndTime,
-    [Range(0, 480)] int BreakMinutes);
+    [Range(0, 480)] int BreakMinutes, TimeOnly? BreakStartTime = null);
 
 public record UpdateAssignmentRequest(
     Guid EmployeeId, Guid ShiftTypeId, DateOnly Date, TimeOnly StartTime, TimeOnly EndTime,
-    [Range(0, 480)] int BreakMinutes);
+    [Range(0, 480)] int BreakMinutes, TimeOnly? BreakStartTime = null);
 
 [ApiController]
 [Route("api")]
@@ -47,8 +57,9 @@ public class SchedulesController(ApplicationDbContext db) : ControllerBase
     private static ShiftAssignmentDto ToAssignmentDto(ShiftAssignment a, decimal? hourlyRate, bool isHoliday)
     {
         var netHours = WorkingTimeCalculator.NetHours(a.StartTime, a.EndTime, a.BreakMinutes);
-        var laborCost = WageCalculator.LaborCost(a.StartTime, a.EndTime, a.Date.DayOfWeek, isHoliday, netHours, hourlyRate);
-        return new(a.Id, a.ScheduleId, a.EmployeeId, a.ShiftTypeId, a.Date, a.StartTime, a.EndTime, a.BreakMinutes,
+        var laborCost = WageCalculator.LaborCost(a.StartTime, a.EndTime, a.Date.DayOfWeek, isHoliday, netHours, hourlyRate,
+            a.BreakMinutes, a.BreakStartTime);
+        return new(a.Id, a.ScheduleId, a.EmployeeId, a.ShiftTypeId, a.Date, a.StartTime, a.EndTime, a.BreakMinutes, a.BreakStartTime,
             netHours, laborCost);
     }
 
@@ -215,6 +226,106 @@ public class SchedulesController(ApplicationDbContext db) : ControllerBase
             s.Eligible, s.Score, s.Reasons)));
     }
 
+    // issue #63: bulk/auto-fill dry run — walks every open (date, ShiftType) slot in
+    // [from, to] (defaulting to the whole Schedule) and returns the top-ranked eligible pick
+    // per slot from ShiftSuggestionEngine.AutoFill, without persisting anything. The manager
+    // reviews/trims this list client-side, then POSTs the kept rows to /auto-fill to commit.
+    [HttpGet("schedules/{id:guid}/auto-fill-preview")]
+    public async Task<ActionResult<IEnumerable<AutoFillProposalDto>>> AutoFillPreview(Guid id, DateOnly? from, DateOnly? to)
+    {
+        var schedule = await db.Schedules.FindAsync(id);
+        if (schedule is null)
+            return NotFound();
+
+        var rangeStart = from ?? schedule.StartDate;
+        var rangeEnd = to ?? schedule.EndDate;
+        if (rangeStart < schedule.StartDate || rangeEnd > schedule.EndDate || rangeEnd < rangeStart)
+            return BadRequest("Range must be a valid sub-range of the schedule's own date range.");
+
+        var shiftTypes = await db.ShiftTypes.Where(s => s.Active).ToListAsync();
+        var employees = await db.Employees.Include(e => e.EligibleShiftTypes)
+            .Where(e => e.Active).ToListAsync();
+        var employeeIds = employees.Select(e => e.Id).ToList();
+
+        // Same ±6-day lookback window as /validate and /suggestions — rest-time/consecutive-day
+        // checks need shifts outside the requested range too.
+        var historyStart = rangeStart.AddDays(-6);
+        var historyEnd = rangeEnd.AddDays(6);
+        var historyAssignments = await db.ShiftAssignments
+            .Where(a => employeeIds.Contains(a.EmployeeId) && a.Date >= historyStart && a.Date <= historyEnd)
+            .ToListAsync();
+
+        var absences = await db.Absences
+            .Where(a => employeeIds.Contains(a.EmployeeId) && a.From <= rangeEnd && a.To >= rangeStart)
+            .ToListAsync();
+        var scheduleAssignments = await db.ShiftAssignments.Where(a => a.ScheduleId == id).ToListAsync();
+        var contracts = await db.Contracts.Where(c => employeeIds.Contains(c.EmployeeId)).ToListAsync();
+        var shiftTypePreferences = await db.ShiftTypePreferences.Where(p => employeeIds.Contains(p.EmployeeId)).ToListAsync();
+        var weekdayPreferences = await db.WeekdayPreferences.Where(p => employeeIds.Contains(p.EmployeeId)).ToListAsync();
+
+        var proposals = ShiftSuggestionEngine.AutoFill(
+            rangeStart, rangeEnd, shiftTypes, employees, historyAssignments, absences,
+            schedule.StartDate, schedule.EndDate, scheduleAssignments, contracts,
+            shiftTypePreferences, weekdayPreferences);
+
+        var employeesById = employees.ToDictionary(e => e.Id);
+        var shiftTypesById = shiftTypes.ToDictionary(s => s.Id);
+        return Ok(proposals.Select(p => new AutoFillProposalDto(
+            p.EmployeeId, employeesById[p.EmployeeId].FirstName, employeesById[p.EmployeeId].LastName,
+            p.ShiftTypeId, shiftTypesById[p.ShiftTypeId].Name, p.Date, p.Score, p.Reasons)));
+    }
+
+    // issue #63: commits a (possibly manager-trimmed) set of proposals from the preview above —
+    // does not recompute them, so what the manager saw is exactly what gets written. Each item
+    // is created the same way a single "Zuweisen" click already does (ShiftType template
+    // times), so LaborCost/NetHours on the returned DTOs match CreateAssignment's shape.
+    [HttpPost("schedules/{id:guid}/auto-fill")]
+    [Authorize(Policy = "ManagerWrite")]
+    public async Task<ActionResult<IEnumerable<ShiftAssignmentDto>>> AutoFillCommit(Guid id, AutoFillCommitRequest request)
+    {
+        var schedule = await db.Schedules.FindAsync(id);
+        if (schedule is null)
+            return NotFound();
+
+        if (request.Assignments.Count == 0)
+            return Ok(Array.Empty<ShiftAssignmentDto>());
+
+        var shiftTypesById = await db.ShiftTypes.ToDictionaryAsync(s => s.Id);
+        var created = new List<ShiftAssignment>();
+        foreach (var item in request.Assignments)
+        {
+            if (item.Date < schedule.StartDate || item.Date > schedule.EndDate)
+                return BadRequest($"Date '{item.Date}' is outside the schedule's range.");
+
+            if (!await db.Employees.AnyAsync(e => e.Id == item.EmployeeId))
+                return BadRequest($"Employee '{item.EmployeeId}' does not exist.");
+
+            if (!shiftTypesById.TryGetValue(item.ShiftTypeId, out var shiftType))
+                return BadRequest($"Shift type '{item.ShiftTypeId}' does not exist.");
+
+            created.Add(new ShiftAssignment
+            {
+                Id = Guid.NewGuid(),
+                ScheduleId = id,
+                EmployeeId = item.EmployeeId,
+                ShiftTypeId = item.ShiftTypeId,
+                Date = item.Date,
+                StartTime = shiftType.StartTime,
+                EndTime = shiftType.EndTime,
+                BreakMinutes = shiftType.BreakMinutes,
+            });
+        }
+
+        db.ShiftAssignments.AddRange(created);
+        await db.SaveChangesAsync();
+
+        var employeeIds = created.Select(a => a.EmployeeId).Distinct().ToList();
+        var contracts = await db.Contracts.Where(c => employeeIds.Contains(c.EmployeeId)).ToListAsync();
+        var holidayDates = GermanPublicHolidays.InRange(schedule.StartDate, schedule.EndDate).Select(h => h.Date).ToHashSet();
+
+        return Ok(created.Select(a => ToAssignmentDto(a, HourlyRateOn(contracts, a.EmployeeId, a.Date), holidayDates.Contains(a.Date))));
+    }
+
     [HttpPost("schedules/{id:guid}/assignments")]
     [Authorize(Policy = "ManagerWrite")]
     public async Task<ActionResult<ShiftAssignmentDto>> CreateAssignment(Guid id, CreateAssignmentRequest request)
@@ -243,7 +354,8 @@ public class SchedulesController(ApplicationDbContext db) : ControllerBase
             Date = request.Date,
             StartTime = request.StartTime,
             EndTime = request.EndTime,
-            BreakMinutes = request.BreakMinutes
+            BreakMinutes = request.BreakMinutes,
+            BreakStartTime = request.BreakStartTime
         };
         db.ShiftAssignments.Add(assignment);
         await db.SaveChangesAsync();
@@ -281,6 +393,7 @@ public class SchedulesController(ApplicationDbContext db) : ControllerBase
         assignment.StartTime = request.StartTime;
         assignment.EndTime = request.EndTime;
         assignment.BreakMinutes = request.BreakMinutes;
+        assignment.BreakStartTime = request.BreakStartTime;
         await db.SaveChangesAsync();
 
         return NoContent();

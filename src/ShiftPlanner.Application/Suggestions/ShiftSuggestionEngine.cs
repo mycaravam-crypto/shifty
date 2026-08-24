@@ -22,6 +22,10 @@ public record SuggestionReason(SuggestionReasonCode Code, string Message);
 
 public record ShiftSuggestion(Guid EmployeeId, bool Eligible, decimal Score, List<SuggestionReason> Reasons);
 
+// issue #63: one proposed pick from AutoFill — a (date, ShiftType) open slot paired with the
+// top-ranked eligible employee `Suggest` returned for it, at the moment it was picked.
+public record AutoFillProposal(Guid EmployeeId, Guid ShiftTypeId, DateOnly Date, decimal Score, List<SuggestionReason> Reasons);
+
 // readme.md §17's "später können hier Arbeitszeitpräferenzen ergänzt werden" — ranks
 // employees for one open (date, ShiftType) slot so a manager filling in a Dienstplan doesn't
 // have to check eligibility/rest-time/preferences by hand for every candidate.
@@ -165,5 +169,93 @@ public static class ShiftSuggestionEngine
         }
 
         return results.OrderByDescending(r => r.Eligible).ThenByDescending(r => r.Score).ToList();
+    }
+
+    // issue #63: bulk/auto-fill mode on top of the single-slot `Suggest` above — walks every
+    // open (date, ShiftType) slot in [rangeStart, rangeEnd] (a ShiftType with `MinStaffing` set
+    // whose currently-assigned count for that date is below it, StaffingValidator's own
+    // grouping) and, for each one, picks the top-ranked ELIGIBLE candidate exactly as a manager
+    // clicking "Zuweisen" in ShiftSuggestionModal would. Slots are visited in date-then-
+    // ShiftType-name order (deterministic — DB query order otherwise isn't guaranteed) and each
+    // pick is folded into a working copy of `scheduleAssignments`/`historyAssignments` before
+    // the next `Suggest` call, so later slots in the same run correctly see the employee as
+    // already-assigned-that-day (scoring), potentially rest-time/consecutive-day-excluded, and
+    // further along their contract-hours target — no separate "double-booking" check needed,
+    // it falls out of reusing `Suggest` on updated data. A slot with no eligible candidate left
+    // is skipped (and, since the candidate pool for that (date, ShiftType) only shrinks as
+    // instances are filled, so are any further instances of the same slot) rather than left
+    // half-filled with an ineligible pick.
+    public static List<AutoFillProposal> AutoFill(
+        DateOnly rangeStart,
+        DateOnly rangeEnd,
+        IReadOnlyList<ShiftType> shiftTypes,
+        IReadOnlyList<Employee> candidateEmployees,
+        IReadOnlyList<ShiftAssignment> historyAssignments,
+        IReadOnlyList<Absence> absences,
+        DateOnly scheduleStart,
+        DateOnly scheduleEnd,
+        IReadOnlyList<ShiftAssignment> scheduleAssignments,
+        IReadOnlyList<Contract> contracts,
+        IReadOnlyList<ShiftTypePreference> shiftTypePreferences,
+        IReadOnlyList<WeekdayPreference> weekdayPreferences)
+    {
+        var proposals = new List<AutoFillProposal>();
+        var workingSchedule = new List<ShiftAssignment>(scheduleAssignments);
+        var workingHistory = new List<ShiftAssignment>(historyAssignments);
+
+        var staffedShiftTypes = shiftTypes
+            .Where(s => s.MinStaffing is not null)
+            .OrderBy(s => s.Name).ThenBy(s => s.Id)
+            .ToList();
+
+        for (var date = rangeStart; date <= rangeEnd; date = date.AddDays(1))
+        {
+            foreach (var shiftType in staffedShiftTypes)
+            {
+                var min = shiftType.MinStaffing!.Value;
+
+                // One `Suggest` call, and at most one pick, per still-open instance of this
+                // slot — re-checked from `workingSchedule` every time so a pick just made for
+                // an earlier instance today counts toward `min` immediately.
+                while (workingSchedule.Count(a => a.Date == date && a.ShiftTypeId == shiftType.Id) < min)
+                {
+                    var alreadyInSlot = workingSchedule
+                        .Where(a => a.Date == date && a.ShiftTypeId == shiftType.Id)
+                        .Select(a => a.EmployeeId)
+                        .ToHashSet();
+                    var candidates = candidateEmployees.Where(e => !alreadyInSlot.Contains(e.Id)).ToList();
+                    if (candidates.Count == 0)
+                        break;
+
+                    var ranked = Suggest(
+                        date, shiftType, candidates, workingHistory, absences,
+                        scheduleStart, scheduleEnd, workingSchedule, contracts,
+                        shiftTypePreferences, weekdayPreferences);
+                    var pick = ranked.FirstOrDefault(r => r.Eligible);
+                    if (pick is null)
+                        break; // no eligible candidate left — skip this and any further instances
+
+                    proposals.Add(new AutoFillProposal(pick.EmployeeId, shiftType.Id, date, pick.Score, pick.Reasons));
+
+                    // Not persisted — just makes this pick visible to the rest of the run, same
+                    // shape `SchedulesController.CreateAssignment` would actually write.
+                    var hypothetical = new ShiftAssignment
+                    {
+                        Id = Guid.NewGuid(),
+                        ScheduleId = Guid.Empty,
+                        EmployeeId = pick.EmployeeId,
+                        ShiftTypeId = shiftType.Id,
+                        Date = date,
+                        StartTime = shiftType.StartTime,
+                        EndTime = shiftType.EndTime,
+                        BreakMinutes = shiftType.BreakMinutes,
+                    };
+                    workingSchedule.Add(hypothetical);
+                    workingHistory.Add(hypothetical);
+                }
+            }
+        }
+
+        return proposals;
     }
 }
