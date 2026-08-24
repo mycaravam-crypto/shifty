@@ -84,7 +84,10 @@ public static class ShiftSuggestionEngine
             // hypothetical one can violate the minimum rest — earlier/later pairs are already
             // covered by the real ScheduleValidator run over the placed assignments.
             var neighbours = employeeHistory
-                .Where(a => a.EndTime > a.StartTime) // cross-midnight shifts unsupported — issue #11
+                // cross-midnight shifts unsupported — issue #11; centralized via
+                // WorkingTimeCalculator.IsValidShiftTiming (issue #101), same as
+                // RestTimeValidator's identical filter — no behavior change.
+                .Where(a => WorkingTimeCalculator.IsValidShiftTiming(a.StartTime, a.EndTime))
                 .Select(a => (Start: a.Date.ToDateTime(a.StartTime), End: a.Date.ToDateTime(a.EndTime)))
                 .Append((Start: hypotheticalStart, End: hypotheticalEnd))
                 .OrderBy(x => x.Start)

@@ -53,7 +53,7 @@ public class ShiftTypesController(ApplicationDbContext db) : ControllerBase
         if (await db.ShiftTypes.AnyAsync(s => s.Name == request.Name))
             return Conflict($"Shift type '{request.Name}' already exists.");
 
-        if (request.EndTime <= request.StartTime)
+        if (!WorkingTimeCalculator.IsValidShiftTiming(request.StartTime, request.EndTime))
             return BadRequest("Cross-midnight shift types are not supported (issue #11); EndTime must be after StartTime.");
 
         var shiftType = new ShiftType
@@ -89,7 +89,7 @@ public class ShiftTypesController(ApplicationDbContext db) : ControllerBase
         if (await db.ShiftTypes.AnyAsync(s => s.Name == request.Name && s.Id != id))
             return Conflict($"Shift type '{request.Name}' already exists.");
 
-        if (request.EndTime <= request.StartTime)
+        if (!WorkingTimeCalculator.IsValidShiftTiming(request.StartTime, request.EndTime))
             return BadRequest("Cross-midnight shift types are not supported (issue #11); EndTime must be after StartTime.");
 
         shiftType.Name = request.Name;
