@@ -715,6 +715,23 @@ What's built:
     correctly layered above both (z-index), and a separate empty-state load produced no console
     errors or warnings. `npm run lint` (0 errors) and `npm run build` (`vue-tsc -b` + `vite
     build`) both clean.
+- **Redesign the Dienstplan validation panel as a grouped summary** (issue #78, frontend-only,
+    `ScheduleValidator`'s output shape untouched) — the panel used to render every
+    error/warning as one flat list of `<p>` rows, which didn't scale past a handful of issues.
+    Now: a compact header ("● 4 Fehler ▲ 3 Warnungen", per the issue's own example) followed by
+    one collapsible row per rule *type* (`ValidationIssue.type`, e.g. `ContractHoursExceeded`,
+    `InsufficientRest`, `Understaffed`), each showing a German label + count and expanding to the
+    individual messages underneath — still clickable per issue #39's existing click-to-scroll
+    (that handler, `focusIssue`, was untouched, just relocated into the new nested template).
+    Groups sort errors-before-warnings then by size. `ISSUE_TYPE_LABELS` is a small hardcoded
+    map from the 9 `type` strings the 7 backend validators actually emit (grepped from
+    `Application/Validation/*.cs` rather than guessed) to German labels — falls back to the raw
+    type string for anything unmapped, so a future validator doesn't silently disappear from the
+    panel. Verified with a scratch Playwright script (mocked `/api/*`, a hand-built
+    `ValidationResult` covering 5 of the 9 rule types across both severities): screenshots
+    confirm the header counts, the five grouped rows with correct counts/labels, and that
+    expanding two of them reveals the right individual messages with the chevron rotated — no
+    console errors. `npm run lint` (0 errors) and `npm run build` clean.
 - **Docker/deploy**: `docker-compose.yml` (db/api/web) validated with `docker compose config`,
   never actually deployed. No `.env` exists anywhere yet (only `.env.example`).
 - **Versioning**: same scheme as vanspace3d. `frontend/package.json`'s `version` is shown
