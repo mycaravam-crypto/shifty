@@ -2,7 +2,11 @@
 import { ref } from 'vue'
 import { Trash2 } from '@lucide/vue'
 import api from '@/services/api'
+import { useToastStore } from '@/stores/toast'
 import ModalShell from '@/components/ModalShell.vue'
+import ConfirmDialog from '@/components/ConfirmDialog.vue'
+
+const toast = useToastStore()
 
 interface ShiftType {
   id: string
@@ -58,18 +62,26 @@ async function onSave() {
       endTime: `${form.value.endTime}:00`,
       breakMinutes: form.value.breakMinutes,
     })
+    toast.success('Schicht gespeichert.')
     emit('updated')
   } catch {
     error.value = 'Speichern fehlgeschlagen.'
+    toast.error(error.value)
   } finally {
     saving.value = false
   }
 }
 
-async function onDelete() {
-  if (!confirm('Schicht wirklich löschen?')) return
-  await api.delete(`/assignments/${props.assignment.id}`)
-  emit('updated')
+const confirmingDelete = ref(false)
+
+async function onDeleteConfirmed() {
+  try {
+    await api.delete(`/assignments/${props.assignment.id}`)
+    toast.success('Schicht gelöscht.')
+    emit('updated')
+  } catch {
+    toast.error('Schicht konnte nicht gelöscht werden.')
+  }
 }
 </script>
 
@@ -107,10 +119,18 @@ async function onDelete() {
       <button
         type="button"
         class="col-span-2 flex items-center justify-center gap-2 rounded-lg bg-white/5 hover:bg-rose-500/15 hover:text-rose-400 transition-colors py-2 text-sm font-medium"
-        @click="onDelete"
+        @click="confirmingDelete = true"
       >
         <Trash2 :size="14" /> Löschen
       </button>
     </form>
+
+    <ConfirmDialog
+      v-if="confirmingDelete"
+      title="Schicht löschen"
+      message="Diese Schicht wirklich löschen?"
+      @confirm="onDeleteConfirmed"
+      @close="confirmingDelete = false"
+    />
   </ModalShell>
 </template>

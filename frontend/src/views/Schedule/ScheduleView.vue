@@ -1,9 +1,13 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ChevronLeft, ChevronRight, Copy, Search, Printer } from '@lucide/vue'
+import { ChevronLeft, ChevronRight, Copy, Search, Printer, HelpCircle } from '@lucide/vue'
 import api from '@/services/api'
+import { useToastStore } from '@/stores/toast'
+import ModalShell from '@/components/ModalShell.vue'
 import ShiftAssignmentModal from './ShiftAssignmentModal.vue'
+
+const toast = useToastStore()
 
 interface Employee {
   id: string
@@ -124,6 +128,8 @@ const searchInputRef = ref<HTMLInputElement | null>(null)
 const route = useRoute()
 const router = useRouter()
 const tableWrapRef = ref<HTMLElement | null>(null)
+const showShortcuts = ref(false)
+const highlightKey = ref<string | null>(null)
 
 const monthStart = computed(() => firstOfMonth(anchorDate.value))
 const monthEnd = computed(() => lastOfMonth(anchorDate.value))
@@ -239,10 +245,25 @@ async function loadDetail() {
 }
 watch(currentSchedule, loadDetail, { immediate: true })
 
+// issue #41: search/team filter persisted to the URL query string, so navigating away and
+// back (or bookmarking/sharing a filtered view) doesn't lose the selection.
+function filterQuery(): Record<string, string> {
+  const query: Record<string, string> = {}
+  if (search.value) query.q = search.value
+  if (teamFilter.value) query.team = teamFilter.value
+  return query
+}
+watch([search, teamFilter], () => {
+  router.replace({ query: filterQuery() })
+})
+
 async function load() {
   loading.value = true
   error.value = ''
   try {
+    if (typeof route.query.q === 'string') search.value = route.query.q
+    if (typeof route.query.team === 'string') teamFilter.value = route.query.team
+
     const [schedulesRes, employeesRes, shiftTypesRes, teamsRes] = await Promise.all([
       api.get('/schedules'),
       api.get('/employees'),
@@ -256,11 +277,12 @@ async function load() {
 
     // Deep link from the dashboard's pain-point/planning-status links (issue #30/#31):
     // jump to the month of the linked schedule instead of always showing today's month.
+    // Strips scheduleId once consumed but keeps the q/team filter params intact.
     const linkedId = route.query.scheduleId
     if (typeof linkedId === 'string') {
       const linked = schedules.value.find((s) => s.id === linkedId)
       if (linked) anchorDate.value = parseIso(linked.startDate)
-      router.replace({ query: {} })
+      router.replace({ query: filterQuery() })
     }
 
     const [contractsResults, absencesResults] = await Promise.all([
@@ -285,15 +307,35 @@ function isTyping(): boolean {
   return tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA'
 }
 function onKeydown(e: KeyboardEvent) {
-  if (selectedAssignment.value) return
+  if (selectedAssignment.value || showShortcuts.value) return
   if (e.key === '/' && !isTyping()) {
     e.preventDefault()
     searchInputRef.value?.focus()
+  } else if (e.key === '?' && !isTyping()) {
+    showShortcuts.value = true
   } else if (e.key === 'ArrowLeft' && !isTyping()) {
     prevMonth()
   } else if (e.key === 'ArrowRight' && !isTyping()) {
     nextMonth()
   }
+}
+
+// issue #39: jump to and briefly highlight the row/cell a validation issue is about.
+function focusIssue(issue: ValidationIssue) {
+  if (!issue.employeeId) return
+  const assignment = issue.shiftAssignmentId
+    ? assignments.value.find((a) => a.id === issue.shiftAssignmentId)
+    : undefined
+  const selector = assignment
+    ? `[data-employee-id="${issue.employeeId}"][data-date="${assignment.date}"]`
+    : `[data-employee-id="${issue.employeeId}"]`
+  document
+    .querySelector(selector)
+    ?.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' })
+  highlightKey.value = assignment ? `${issue.employeeId}|${assignment.date}` : issue.employeeId
+  window.setTimeout(() => {
+    highlightKey.value = null
+  }, 1500)
 }
 
 onMounted(load)
@@ -323,6 +365,9 @@ async function onCreateSchedule() {
       endDate: monthEndIso.value,
     })
     schedules.value = (await api.get('/schedules')).data
+    toast.success('Dienstplan angelegt.')
+  } catch {
+    toast.error('Dienstplan konnte nicht angelegt werden.')
   } finally {
     creatingSchedule.value = false
   }
@@ -349,6 +394,7 @@ async function onCopyMonth() {
       const existing = await api.get(`/schedules/${target.id}`)
       if (existing.data.assignments.length) {
         error.value = 'Nächster Monat hat bereits Schichten — Kopieren abgebrochen.'
+        toast.error(error.value)
         return
       }
     }
@@ -365,7 +411,10 @@ async function onCopyMonth() {
         breakMinutes: a.breakMinutes,
       })
     }
+    toast.success('Monat kopiert.')
     nextMonth()
+  } catch {
+    toast.error('Monat konnte nicht kopiert werden.')
   } finally {
     copyingMonth.value = false
   }
@@ -506,30 +555,34 @@ function cleanupDrag() {
 async function performDrop(payload: DragPayload, employeeId: string, dateIso: string) {
   if (!currentSchedule.value) return
 
-  if (payload.kind === 'shiftType') {
-    const shiftType = shiftTypeById(payload.shiftTypeId!)
-    if (!shiftType) return
-    await api.post(`/schedules/${currentSchedule.value.id}/assignments`, {
-      employeeId,
-      shiftTypeId: shiftType.id,
-      date: dateIso,
-      startTime: shiftType.startTime,
-      endTime: shiftType.endTime,
-      breakMinutes: shiftType.breakMinutes,
-    })
-  } else if (payload.kind === 'assignment') {
-    const assignment = assignments.value.find((a) => a.id === payload.assignmentId)
-    if (!assignment) return
-    await api.put(`/assignments/${assignment.id}`, {
-      employeeId,
-      shiftTypeId: assignment.shiftTypeId,
-      date: dateIso,
-      startTime: assignment.startTime,
-      endTime: assignment.endTime,
-      breakMinutes: assignment.breakMinutes,
-    })
+  try {
+    if (payload.kind === 'shiftType') {
+      const shiftType = shiftTypeById(payload.shiftTypeId!)
+      if (!shiftType) return
+      await api.post(`/schedules/${currentSchedule.value.id}/assignments`, {
+        employeeId,
+        shiftTypeId: shiftType.id,
+        date: dateIso,
+        startTime: shiftType.startTime,
+        endTime: shiftType.endTime,
+        breakMinutes: shiftType.breakMinutes,
+      })
+    } else if (payload.kind === 'assignment') {
+      const assignment = assignments.value.find((a) => a.id === payload.assignmentId)
+      if (!assignment) return
+      await api.put(`/assignments/${assignment.id}`, {
+        employeeId,
+        shiftTypeId: assignment.shiftTypeId,
+        date: dateIso,
+        startTime: assignment.startTime,
+        endTime: assignment.endTime,
+        breakMinutes: assignment.breakMinutes,
+      })
+    }
+    await loadDetail()
+  } catch {
+    toast.error('Schicht konnte nicht gespeichert werden.')
   }
-  await loadDetail()
 }
 
 async function onAssignmentUpdated() {
@@ -563,19 +616,35 @@ window.addEventListener('afterprint', () => {
       class="fixed z-50 pointer-events-none flex items-center gap-2 rounded-lg bg-[#11141c] border border-white/20 px-3 py-1.5 text-sm shadow-lg"
       :style="{ left: drag.x + 14 + 'px', top: drag.y + 14 + 'px' }"
     >
-      <span class="w-2.5 h-2.5 rounded-full shrink-0" :style="{ backgroundColor: drag.payload.color }"></span>
+      <span
+        class="w-2.5 h-2.5 rounded-full shrink-0"
+        :style="{ backgroundColor: drag.payload.color }"
+      ></span>
       {{ drag.payload.label }}
       <span class="font-mono text-slate-500 text-xs">{{ drag.payload.time }}</span>
     </div>
     <div class="flex items-center justify-between mb-6">
       <h1 class="text-2xl font-semibold">Dienstplan</h1>
       <div class="flex items-center gap-3">
-        <button class="text-slate-400 hover:text-slate-200 transition-colors print:hidden" @click="prevMonth">
+        <button
+          class="text-slate-400 hover:text-slate-200 transition-colors print:hidden"
+          @click="prevMonth"
+        >
           <ChevronLeft :size="18" />
         </button>
         <span class="font-mono text-sm text-slate-400 capitalize">{{ monthLabel }}</span>
-        <button class="text-slate-400 hover:text-slate-200 transition-colors print:hidden" @click="nextMonth">
+        <button
+          class="text-slate-400 hover:text-slate-200 transition-colors print:hidden"
+          @click="nextMonth"
+        >
           <ChevronRight :size="18" />
+        </button>
+        <button
+          class="text-slate-400 hover:text-slate-200 transition-colors print:hidden"
+          title="Tastenkürzel anzeigen (?)"
+          @click="showShortcuts = true"
+        >
+          <HelpCircle :size="18" />
         </button>
         <button
           v-if="currentSchedule"
@@ -589,7 +658,14 @@ window.addEventListener('afterprint', () => {
     </div>
 
     <p v-if="error" class="mb-4 text-sm text-rose-400">{{ error }}</p>
-    <p v-if="loading" class="text-sm text-slate-500">Lädt…</p>
+    <div v-if="loading" class="space-y-4" aria-label="Lädt…">
+      <div class="flex gap-2">
+        <div v-for="i in 4" :key="i" class="h-9 w-32 rounded-lg bg-white/5 animate-pulse"></div>
+      </div>
+      <div class="glass rounded-xl p-4 space-y-3">
+        <div v-for="i in 6" :key="i" class="h-10 rounded-lg bg-white/5 animate-pulse"></div>
+      </div>
+    </div>
 
     <template v-else>
       <div v-if="!currentSchedule" class="glass rounded-xl p-8 text-center">
@@ -608,10 +684,22 @@ window.addEventListener('afterprint', () => {
           v-if="validation && (validation.errors.length || validation.warnings.length)"
           class="glass rounded-xl p-4 mb-4 text-sm space-y-1 print:hidden"
         >
-          <p v-for="(issue, i) in validation.errors" :key="'e' + i" class="text-rose-400">
+          <p
+            v-for="(issue, i) in validation.errors"
+            :key="'e' + i"
+            class="text-rose-400"
+            :class="{ 'cursor-pointer hover:underline': issue.employeeId }"
+            @click="focusIssue(issue)"
+          >
             ❌ {{ issue.message }}
           </p>
-          <p v-for="(issue, i) in validation.warnings" :key="'w' + i" class="text-amber-400">
+          <p
+            v-for="(issue, i) in validation.warnings"
+            :key="'w' + i"
+            class="text-amber-400"
+            :class="{ 'cursor-pointer hover:underline': issue.employeeId }"
+            @click="focusIssue(issue)"
+          >
             ⚠ {{ issue.message }}
           </p>
         </div>
@@ -698,7 +786,10 @@ window.addEventListener('afterprint', () => {
                 v-for="e in visibleEmployees"
                 :key="e.id"
                 class="border-b border-white/5 last:border-0"
-                :class="{ 'print:hidden': printEmployeeId && printEmployeeId !== e.id }"
+                :class="{
+                  'print:hidden': printEmployeeId && printEmployeeId !== e.id,
+                  'bg-blue-500/10': highlightKey === e.id,
+                }"
               >
                 <td class="px-4 py-3 align-top">
                   <div class="flex items-center gap-1.5">
@@ -737,7 +828,10 @@ window.addEventListener('afterprint', () => {
                       ></div>
                     </div>
                   </template>
-                  <div v-if="laborCostFor(e.id) !== null" class="font-mono text-xs text-emerald-400 mt-1">
+                  <div
+                    v-if="laborCostFor(e.id) !== null"
+                    class="font-mono text-xs text-emerald-400 mt-1"
+                  >
                     {{ currencyFmt.format(laborCostFor(e.id)!) }}
                   </div>
                 </td>
@@ -747,7 +841,8 @@ window.addEventListener('afterprint', () => {
                   class="px-2 py-2 align-top transition-colors"
                   :class="{
                     'bg-blue-500/10 ring-1 ring-inset ring-blue-500/50':
-                      dragOverKey === `${e.id}|${toIso(d)}`,
+                      dragOverKey === `${e.id}|${toIso(d)}` ||
+                      highlightKey === `${e.id}|${toIso(d)}`,
                   }"
                   :data-employee-id="e.id"
                   :data-date="toIso(d)"
@@ -758,7 +853,9 @@ window.addEventListener('afterprint', () => {
                     class="rounded-lg bg-white/5 border border-white/10 px-2 py-1 mb-1 cursor-pointer hover:bg-white/10 transition-colors touch-none select-none"
                     :class="{
                       'opacity-40':
-                        drag?.active && drag.payload.kind === 'assignment' && drag.payload.assignmentId === a.id,
+                        drag?.active &&
+                        drag.payload.kind === 'assignment' &&
+                        drag.payload.assignmentId === a.id,
                     }"
                     @pointerdown="onChipPointerDown($event, assignmentDragPayload(a))"
                   >
@@ -793,6 +890,31 @@ window.addEventListener('afterprint', () => {
       @close="selectedAssignment = null"
       @updated="onAssignmentUpdated"
     />
+
+    <ModalShell v-if="showShortcuts" title="Tastenkürzel" @close="showShortcuts = false">
+      <ul class="text-sm divide-y divide-white/5">
+        <li class="flex items-center justify-between py-2">
+          <span class="text-slate-400">Suche fokussieren</span>
+          <kbd class="font-mono text-xs rounded bg-white/10 px-1.5 py-0.5">/</kbd>
+        </li>
+        <li class="flex items-center justify-between py-2">
+          <span class="text-slate-400">Vorheriger Monat</span>
+          <kbd class="font-mono text-xs rounded bg-white/10 px-1.5 py-0.5">←</kbd>
+        </li>
+        <li class="flex items-center justify-between py-2">
+          <span class="text-slate-400">Nächster Monat</span>
+          <kbd class="font-mono text-xs rounded bg-white/10 px-1.5 py-0.5">→</kbd>
+        </li>
+        <li class="flex items-center justify-between py-2">
+          <span class="text-slate-400">Diese Übersicht öffnen</span>
+          <kbd class="font-mono text-xs rounded bg-white/10 px-1.5 py-0.5">?</kbd>
+        </li>
+        <li class="flex items-center justify-between py-2">
+          <span class="text-slate-400">Dialog schließen</span>
+          <kbd class="font-mono text-xs rounded bg-white/10 px-1.5 py-0.5">Esc</kbd>
+        </li>
+      </ul>
+    </ModalShell>
   </div>
 </template>
 

@@ -3,8 +3,12 @@ import { onMounted, ref } from 'vue'
 import { Trash2 } from '@lucide/vue'
 import axios from 'axios'
 import api from '@/services/api'
+import { useToastStore } from '@/stores/toast'
 import ModalShell from '@/components/ModalShell.vue'
+import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import { formatDate } from '@/utils/date'
+
+const toast = useToastStore()
 
 interface Employee {
   id: string
@@ -74,6 +78,7 @@ async function onSaveEmployee() {
       active: form.value.active,
       teamId: form.value.teamId || null,
     })
+    toast.success('Mitarbeiter gespeichert.')
     emit('updated')
   } catch (e) {
     employeeError.value =
@@ -148,21 +153,31 @@ async function onCreateContract() {
       dailyTargetHours: 8,
       hourlyRate: null,
     }
+    toast.success('Vertrag angelegt.')
     await loadContracts()
   } catch (e) {
     contractError.value =
       axios.isAxiosError(e) && e.response?.data
         ? e.response.data
         : 'Vertrag konnte nicht angelegt werden.'
+    toast.error(contractError.value)
   } finally {
     savingContract.value = false
   }
 }
 
-async function onDeleteContract(id: string) {
-  if (!confirm('Vertrag wirklich löschen?')) return
-  await api.delete(`/contracts/${id}`)
-  await loadContracts()
+const contractToDelete = ref<Contract | null>(null)
+
+async function onDeleteContractConfirmed() {
+  if (!contractToDelete.value) return
+  try {
+    await api.delete(`/contracts/${contractToDelete.value.id}`)
+    toast.success('Vertrag gelöscht.')
+    contractToDelete.value = null
+    await loadContracts()
+  } catch {
+    toast.error('Vertrag konnte nicht gelöscht werden.')
+  }
 }
 
 const absences = ref<Absence[]>([])
@@ -191,21 +206,31 @@ async function onCreateAbsence() {
       comment: absenceForm.value.comment || null,
     })
     absenceForm.value = { from: '', to: '', type: 0, comment: '' }
+    toast.success('Abwesenheit angelegt.')
     await loadAbsences()
   } catch (e) {
     absenceError.value =
       axios.isAxiosError(e) && e.response?.data
         ? e.response.data
         : 'Abwesenheit konnte nicht angelegt werden.'
+    toast.error(absenceError.value)
   } finally {
     savingAbsence.value = false
   }
 }
 
-async function onDeleteAbsence(id: string) {
-  if (!confirm('Abwesenheit wirklich löschen?')) return
-  await api.delete(`/absences/${id}`)
-  await loadAbsences()
+const absenceToDelete = ref<Absence | null>(null)
+
+async function onDeleteAbsenceConfirmed() {
+  if (!absenceToDelete.value) return
+  try {
+    await api.delete(`/absences/${absenceToDelete.value.id}`)
+    toast.success('Abwesenheit gelöscht.')
+    absenceToDelete.value = null
+    await loadAbsences()
+  } catch {
+    toast.error('Abwesenheit konnte nicht gelöscht werden.')
+  }
 }
 
 onMounted(() => {
@@ -316,7 +341,7 @@ onMounted(() => {
                 <td class="px-3 py-2 text-right">
                   <button
                     class="text-slate-500 hover:text-rose-400 transition-colors"
-                    @click="onDeleteContract(c.id)"
+                    @click="contractToDelete = c"
                   >
                     <Trash2 :size="14" />
                   </button>
@@ -328,10 +353,16 @@ onMounted(() => {
             </tbody>
           </table>
         </div>
-        <form class="grid grid-cols-3 gap-2" @submit.prevent="onCreateContract">
-          <label class="text-xs text-slate-500 col-span-3 -mb-1">Neuer Vertrag</label>
+        <form class="grid grid-cols-2 sm:grid-cols-3 gap-2" @submit.prevent="onCreateContract">
+          <label class="text-xs text-slate-500 col-span-2 sm:col-span-3 -mb-1">Neuer Vertrag</label>
           <!-- lang="de-DE" is a no-op in Chromium (picker format is OS-locale-driven, not page-lang) -->
-          <input v-model="contractForm.validFrom" type="date" lang="de-DE" required :class="inputClass" />
+          <input
+            v-model="contractForm.validFrom"
+            type="date"
+            lang="de-DE"
+            required
+            :class="inputClass"
+          />
           <input
             v-model="contractForm.validTo"
             type="date"
@@ -380,11 +411,13 @@ onMounted(() => {
           <button
             type="submit"
             :disabled="savingContract"
-            class="col-span-3 rounded-lg bg-white/10 hover:bg-white/15 transition-colors py-2 text-sm font-medium disabled:opacity-50"
+            class="col-span-2 sm:col-span-3 rounded-lg bg-white/10 hover:bg-white/15 transition-colors py-2 text-sm font-medium disabled:opacity-50"
           >
             {{ savingContract ? 'Anlegen…' : 'Anlegen' }}
           </button>
-          <p v-if="contractError" class="col-span-3 text-sm text-rose-400">{{ contractError }}</p>
+          <p v-if="contractError" class="col-span-2 sm:col-span-3 text-sm text-rose-400">
+            {{ contractError }}
+          </p>
         </form>
       </section>
 
@@ -414,7 +447,7 @@ onMounted(() => {
                 <td class="px-3 py-2 text-right">
                   <button
                     class="text-slate-500 hover:text-rose-400 transition-colors"
-                    @click="onDeleteAbsence(a.id)"
+                    @click="absenceToDelete = a"
                   >
                     <Trash2 :size="14" />
                   </button>
@@ -457,5 +490,20 @@ onMounted(() => {
         </form>
       </section>
     </div>
+
+    <ConfirmDialog
+      v-if="contractToDelete"
+      title="Vertrag löschen"
+      :message="`Vertrag ab ${formatDate(contractToDelete.validFrom)} wirklich löschen?`"
+      @confirm="onDeleteContractConfirmed"
+      @close="contractToDelete = null"
+    />
+    <ConfirmDialog
+      v-if="absenceToDelete"
+      title="Abwesenheit löschen"
+      :message="`${ABSENCE_TYPE_LABELS[absenceToDelete.type]} vom ${formatDate(absenceToDelete.from)} bis ${formatDate(absenceToDelete.to)} wirklich löschen?`"
+      @confirm="onDeleteAbsenceConfirmed"
+      @close="absenceToDelete = null"
+    />
   </ModalShell>
 </template>
