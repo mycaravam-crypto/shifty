@@ -42,9 +42,29 @@ public record PainPointDto(
     string Type, string Severity, string Message, Guid ScheduleId, string ScheduleName,
     Guid? EmployeeId, string? EmployeeName);
 
-public record CostOverviewDto(decimal CurrentTotal, decimal PreviousTotal, decimal? DeltaPercent);
+// issue #56: regular/overtime/premium/weekend cost breakdown restored from the parent issue's
+// (#27/#29) trimmed mockup scope. Mapped onto what WageCalculator actually tracks internally
+// (base rate + night/Sunday/holiday surcharges) rather than a literal "overtime" cost line —
+// see CLAUDE.md for why: there's no separate overtime pay rate anywhere in this codebase, so an
+// "overtime cost" bucket would just be a subset of Regular charged at the same rate, redundant
+// with the existing OvertimeHours KPI (an hours figure, not a cost one).
+public record CostOverviewDto(decimal CurrentTotal, decimal PreviousTotal, decimal? DeltaPercent, CostBreakdownDto Breakdown);
 
-public record UtilizationDto(decimal ContractCapacityHours, decimal PlannedHours, decimal UtilizationPercent);
+public record CostBreakdownDto(decimal Regular, decimal Night, decimal Sunday, decimal Holiday)
+{
+    public decimal Total => Regular + Night + Sunday + Holiday;
+}
+
+// issue #56: per-employee utilization table restored from the trimmed mockup scope — same
+// WorkingTimeCalculator.ExpectedHours formula ContractValidator/HoursBalanceCalculator already
+// use, just grouped by employee instead of summed schedule-wide.
+public record EmployeeUtilizationDto(
+    Guid EmployeeId, string EmployeeName, decimal ContractCapacityHours, decimal PlannedHours,
+    decimal UtilizationPercent, decimal OvertimeHours);
+
+public record UtilizationDto(
+    decimal ContractCapacityHours, decimal PlannedHours, decimal UtilizationPercent,
+    List<EmployeeUtilizationDto> ByEmployee);
 
 [ApiController]
 [Route("api")]
@@ -86,6 +106,19 @@ public class DashboardController(ApplicationDbContext db) : ControllerBase
         var shiftTypes = await db.ShiftTypes.ToListAsync();
         var shiftTypesById = shiftTypes.ToDictionary(s => s.Id);
 
+        // issue #56: exact ±6-day historyAssignments lookback, mirroring
+        // SchedulesController's /validate endpoint exactly, instead of omitting it — fetched once
+        // as a pool spanning every schedule in view, then sliced back to each schedule's own
+        // ±6-day window inside BuildPainPoints (matching what /validate would compute per-schedule,
+        // without a per-schedule DB round trip).
+        List<ShiftAssignment> historyPool = schedules.Count == 0
+            ? []
+            : await db.ShiftAssignments
+                .Where(a => employeeIds.Contains(a.EmployeeId)
+                    && a.Date >= schedules.Min(s => s.StartDate).AddDays(-6)
+                    && a.Date <= schedules.Max(s => s.EndDate).AddDays(6))
+                .ToListAsync();
+
         var holidays = GermanPublicHolidays.InRange(prevFrom, periodTo).Select(h => h.Date).ToHashSet();
 
         bool InScope(ShiftAssignment a) =>
@@ -96,16 +129,23 @@ public class DashboardController(ApplicationDbContext db) : ControllerBase
         var coverage = BuildCoverage(current, shiftTypesById);
         var coveragePercent = coverage.Count == 0 ? 100m : Math.Round(coverage.Average(c => Math.Min(100m, c.CoveragePercent)), 1);
 
-        var painPoints = BuildPainPoints(schedules, assignmentsByScheduleId, employeesById, shiftTypes, contracts, absences, teamId);
+        var painPoints = BuildPainPoints(schedules, assignmentsByScheduleId, historyPool, employeesById, shiftTypes, contracts, absences, teamId);
         var planningStatus = BuildPlanningStatus(schedules, painPoints);
 
-        var costTotal = BuildCost(current, contracts, holidays);
-        var previousCostTotal = BuildCost(previous, contracts, holidays);
+        var costBreakdown = BuildCostBreakdown(current, contracts, holidays);
+        var costTotal = costBreakdown.Total;
+        var previousCostTotal = BuildCostBreakdown(previous, contracts, holidays).Total;
 
         var matchingEmployees = employees.Where(e => MatchesTeam(e.Id)).ToList();
-        var utilization = BuildUtilization(matchingEmployees, current, contracts, absences, periodFrom, periodTo);
-        var overtimeHours = OvertimeHours(matchingEmployees, current, contracts, absences, periodFrom, periodTo);
-        var previousOvertimeHours = OvertimeHours(matchingEmployees, previous, contracts, absences, prevFrom, prevTo);
+        var employeeUtilization = BuildEmployeeUtilization(matchingEmployees, current, contracts, absences, periodFrom, periodTo);
+        var utilization = new UtilizationDto(
+            employeeUtilization.Sum(u => u.ContractCapacityHours),
+            employeeUtilization.Sum(u => u.PlannedHours),
+            UtilizationPercent(employeeUtilization),
+            employeeUtilization);
+        var overtimeHours = employeeUtilization.Sum(u => u.OvertimeHours);
+        var previousOvertimeHours = BuildEmployeeUtilization(matchingEmployees, previous, contracts, absences, prevFrom, prevTo)
+            .Sum(u => u.OvertimeHours);
 
         var kpis = new DashboardKpisDto(
             coveragePercent,
@@ -116,7 +156,7 @@ public class DashboardController(ApplicationDbContext db) : ControllerBase
             overtimeHours, DeltaPercent(overtimeHours, previousOvertimeHours));
 
         return Ok(new DashboardDto(periodFrom, periodTo, kpis, coverage, planningStatus, painPoints,
-            new CostOverviewDto(costTotal, previousCostTotal, DeltaPercent(costTotal, previousCostTotal)),
+            new CostOverviewDto(costTotal, previousCostTotal, DeltaPercent(costTotal, previousCostTotal), costBreakdown),
             utilization));
     }
 
@@ -153,6 +193,7 @@ public class DashboardController(ApplicationDbContext db) : ControllerBase
     private static List<PainPointDto> BuildPainPoints(
         IReadOnlyList<Schedule> schedules,
         IReadOnlyDictionary<Guid, IReadOnlyList<ShiftAssignment>> assignmentsByScheduleId,
+        IReadOnlyList<ShiftAssignment> historyPool,
         IReadOnlyDictionary<Guid, Employee> employeesById,
         IReadOnlyList<ShiftType> shiftTypes,
         IReadOnlyList<Contract> contracts,
@@ -163,10 +204,15 @@ public class DashboardController(ApplicationDbContext db) : ControllerBase
         foreach (var schedule in schedules)
         {
             var assignments = assignmentsByScheduleId.GetValueOrDefault(schedule.Id, []);
-            // issue #29: cross-schedule-boundary lookback (historyAssignments) is intentionally
-            // omitted here — this is an overview, exact rest-time/consecutive-day enforcement
-            // still lives on the existing GET /schedules/{id}/validate.
-            var result = ScheduleValidator.Validate(schedule, assignments, employeesById.Values.ToList(), shiftTypes, contracts, null, absences);
+            // issue #56: sliced back down to this schedule's own ±6-day window (same window
+            // SchedulesController's /validate endpoint uses) rather than the omitted-entirely
+            // lookback this endpoint shipped with originally — RestTimeValidator/
+            // ConsecutiveDaysValidator now see the same cross-schedule-boundary history /validate
+            // would, instead of only this schedule's own assignments.
+            var historyStart = schedule.StartDate.AddDays(-6);
+            var historyEnd = schedule.EndDate.AddDays(6);
+            var historyAssignments = historyPool.Where(a => a.Date >= historyStart && a.Date <= historyEnd).ToList();
+            var result = ScheduleValidator.Validate(schedule, assignments, employeesById.Values.ToList(), shiftTypes, contracts, historyAssignments, absences);
 
             foreach (var (issue, severity) in result.Errors.Select(e => (e, "Error")).Concat(result.Warnings.Select(w => (w, "Warning"))))
             {
@@ -198,50 +244,54 @@ public class DashboardController(ApplicationDbContext db) : ControllerBase
         contracts.Where(c => c.EmployeeId == employeeId && c.ValidFrom <= date && (c.ValidTo is null || c.ValidTo >= date))
             .MaxBy(c => c.ValidFrom);
 
-    private static decimal BuildCost(
-        IReadOnlyList<ShiftAssignment> assignments, IReadOnlyList<Contract> contracts, HashSet<DateOnly> holidays) =>
-        assignments.Sum(a =>
+    // issue #56: aggregated per-surcharge-type so the dashboard can show a cost breakdown, not
+    // just a total — WageCalculator.Breakdown (not the plain LaborCost total) is the single
+    // source of truth for the split, same as BuildCost always was for the total alone.
+    private static CostBreakdownDto BuildCostBreakdown(
+        IReadOnlyList<ShiftAssignment> assignments, IReadOnlyList<Contract> contracts, HashSet<DateOnly> holidays)
+    {
+        decimal regular = 0, night = 0, sunday = 0, holiday = 0;
+        foreach (var a in assignments)
         {
             var contract = ActiveContract(contracts, a.EmployeeId, a.Date);
             var netHours = WorkingTimeCalculator.NetHours(a.StartTime, a.EndTime, a.BreakMinutes);
-            return WageCalculator.LaborCost(a.StartTime, a.EndTime, a.Date.DayOfWeek, holidays.Contains(a.Date), netHours, contract?.HourlyRate) ?? 0m;
-        });
-
-    // Contract.WeeklyHours scaled to the period's day-span, minus Absence days overlapping the
-    // period — same formula as ContractValidator, just applied to an arbitrary period instead
-    // of one Schedule.
-    private static decimal ExpectedHours(
-        Employee employee, IReadOnlyList<Contract> contracts, IReadOnlyList<Absence> absences, DateOnly from, DateOnly to)
-    {
-        var contract = ActiveContract(contracts, employee.Id, from);
-        if (contract is null)
-            return 0m;
-
-        var days = to.DayNumber - from.DayNumber + 1;
-        var absenceDays = absences.Where(a => a.EmployeeId == employee.Id)
-            .Sum(a => WorkingTimeCalculator.OverlapDays(a.From, a.To, from, to));
-        var effectiveDays = Math.Max(0, days - absenceDays);
-        return contract.WeeklyHours * effectiveDays / 7m;
+            var breakdown = WageCalculator.Breakdown(a.StartTime, a.EndTime, a.Date.DayOfWeek, holidays.Contains(a.Date), netHours, contract?.HourlyRate);
+            if (breakdown is not { } b)
+                continue;
+            regular += b.Regular;
+            night += b.Night;
+            sunday += b.Sunday;
+            holiday += b.Holiday;
+        }
+        return new CostBreakdownDto(regular, night, sunday, holiday);
     }
 
-    private static UtilizationDto BuildUtilization(
+    // issue #56: per-employee utilization restored from the trimmed mockup scope — same
+    // WorkingTimeCalculator.ExpectedHours formula ContractValidator/HoursBalanceCalculator use,
+    // grouped by employee instead of summed. The schedule-wide UtilizationDto/OvertimeHours KPI
+    // are now just aggregates over this list rather than a separate pass over the same data.
+    private static List<EmployeeUtilizationDto> BuildEmployeeUtilization(
         IReadOnlyList<Employee> employees, IReadOnlyList<ShiftAssignment> assignments,
         IReadOnlyList<Contract> contracts, IReadOnlyList<Absence> absences, DateOnly from, DateOnly to)
     {
-        var capacity = employees.Sum(e => ExpectedHours(e, contracts, absences, from, to));
-        var planned = assignments.Sum(a => WorkingTimeCalculator.NetHours(a.StartTime, a.EndTime, a.BreakMinutes));
-        var percent = capacity == 0 ? 0m : Math.Round(planned * 100m / capacity, 1);
-        return new UtilizationDto(capacity, planned, percent);
+        var result = new List<EmployeeUtilizationDto>();
+        foreach (var employee in employees)
+        {
+            var contract = ActiveContract(contracts, employee.Id, from);
+            var expected = WorkingTimeCalculator.ExpectedHours(contract, absences, employee.Id, from, to);
+            var actual = assignments.Where(a => a.EmployeeId == employee.Id)
+                .Sum(a => WorkingTimeCalculator.NetHours(a.StartTime, a.EndTime, a.BreakMinutes));
+            var percent = expected == 0 ? 0m : Math.Round(actual * 100m / expected, 1);
+            result.Add(new EmployeeUtilizationDto(
+                employee.Id, $"{employee.FirstName} {employee.LastName}", expected, actual, percent, Math.Max(0, actual - expected)));
+        }
+        return result.OrderByDescending(u => u.PlannedHours).ToList();
     }
 
-    private static decimal OvertimeHours(
-        IReadOnlyList<Employee> employees, IReadOnlyList<ShiftAssignment> assignments,
-        IReadOnlyList<Contract> contracts, IReadOnlyList<Absence> absences, DateOnly from, DateOnly to) =>
-        employees.Sum(e =>
-        {
-            var expected = ExpectedHours(e, contracts, absences, from, to);
-            var actual = assignments.Where(a => a.EmployeeId == e.Id)
-                .Sum(a => WorkingTimeCalculator.NetHours(a.StartTime, a.EndTime, a.BreakMinutes));
-            return Math.Max(0, actual - expected);
-        });
+    private static decimal UtilizationPercent(IReadOnlyList<EmployeeUtilizationDto> byEmployee)
+    {
+        var capacity = byEmployee.Sum(u => u.ContractCapacityHours);
+        var planned = byEmployee.Sum(u => u.PlannedHours);
+        return capacity == 0 ? 0m : Math.Round(planned * 100m / capacity, 1);
+    }
 }

@@ -15,9 +15,10 @@ public static class ContractValidator
         IReadOnlyList<Absence>? absences,
         ValidationResult result)
     {
-        // Schedules aren't always a week (e.g. a full calendar month) — scale the contract's
-        // weekly limit to the schedule's actual span instead of assuming 7 days.
-        var scheduleDays = schedule.EndDate.DayNumber - schedule.StartDate.DayNumber + 1;
+        // Schedules aren't always a week (e.g. a full calendar month) — WorkingTimeCalculator.
+        // ExpectedHours scales the contract's weekly limit to the schedule's actual span instead
+        // of assuming 7 days, and excludes Absence days (issue #17) so a week of vacation doesn't
+        // false-flag as under-planned or (after making up for it elsewhere) over-planned.
         foreach (var group in assignments.GroupBy(a => a.EmployeeId))
         {
             var contract = contracts
@@ -27,15 +28,8 @@ public static class ContractValidator
             if (contract is null)
                 continue;
 
-            // issue #17: days the employee is on Absence within this Schedule's span don't
-            // count toward the expected hours, so a week of vacation doesn't false-flag as
-            // under-planned or (after making up for it elsewhere) over-planned.
-            var absenceDays = (absences ?? [])
-                .Where(a => a.EmployeeId == group.Key)
-                .Sum(a => WorkingTimeCalculator.OverlapDays(a.From, a.To, schedule.StartDate, schedule.EndDate));
-            var effectiveDays = Math.Max(0, scheduleDays - absenceDays);
-
-            var expectedHours = contract.WeeklyHours * effectiveDays / 7m;
+            var expectedHours = WorkingTimeCalculator.ExpectedHours(
+                contract, absences ?? [], group.Key, schedule.StartDate, schedule.EndDate);
             var plannedHours = group.Sum(a => WorkingTimeCalculator.NetHours(a.StartTime, a.EndTime, a.BreakMinutes));
             if (plannedHours > expectedHours)
             {
