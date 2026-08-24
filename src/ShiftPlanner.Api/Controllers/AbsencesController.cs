@@ -49,18 +49,15 @@ public class AbsencesController(ApplicationDbContext db) : ControllerBase
         if (!await db.Employees.AnyAsync(e => e.Id == employeeId))
             return NotFound();
 
-        if (request.To < request.From)
-            return BadRequest("'To' must not be before 'From'.");
-
-        var absence = new Absence
+        Absence absence;
+        try
         {
-            Id = Guid.NewGuid(),
-            EmployeeId = employeeId,
-            From = request.From,
-            To = request.To,
-            Type = request.Type,
-            Comment = request.Comment
-        };
+            absence = Absence.Create(Guid.NewGuid(), employeeId, request.From, request.To, request.Type, request.Comment);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(ex.Message);
+        }
         db.Absences.Add(absence);
         await db.SaveChangesAsync();
 
@@ -75,13 +72,20 @@ public class AbsencesController(ApplicationDbContext db) : ControllerBase
         if (absence is null)
             return NotFound();
 
-        if (request.To < request.From)
-            return BadRequest("'To' must not be before 'From'.");
-
         absence.From = request.From;
         absence.To = request.To;
         absence.Type = request.Type;
         absence.Comment = request.Comment;
+
+        try
+        {
+            absence.Validate();
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+
         await db.SaveChangesAsync();
 
         return NoContent();

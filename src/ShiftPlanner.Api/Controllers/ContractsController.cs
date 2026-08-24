@@ -65,17 +65,17 @@ public class ContractsController(ApplicationDbContext db) : ControllerBase
         if (await db.Contracts.AnyAsync(c => c.EmployeeId == employeeId && c.ValidFrom == request.ValidFrom))
             return Conflict($"Employee already has a contract valid from {request.ValidFrom}.");
 
-        var contract = new Contract
+        Contract contract;
+        try
         {
-            Id = Guid.NewGuid(),
-            EmployeeId = employeeId,
-            ValidFrom = request.ValidFrom,
-            ValidTo = request.ValidTo,
-            WeeklyHours = request.WeeklyHours,
-            WorkingDaysPerWeek = request.WorkingDaysPerWeek,
-            DailyTargetHours = request.DailyTargetHours,
-            HourlyRate = request.HourlyRate
-        };
+            contract = Contract.Create(
+                Guid.NewGuid(), employeeId, request.ValidFrom, request.ValidTo,
+                request.WeeklyHours, request.WorkingDaysPerWeek, request.DailyTargetHours, request.HourlyRate);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(ex.Message);
+        }
         db.Contracts.Add(contract);
         await db.SaveChangesAsync();
 
@@ -99,6 +99,16 @@ public class ContractsController(ApplicationDbContext db) : ControllerBase
         contract.WorkingDaysPerWeek = request.WorkingDaysPerWeek;
         contract.DailyTargetHours = request.DailyTargetHours;
         contract.HourlyRate = request.HourlyRate;
+
+        try
+        {
+            contract.Validate();
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+
         await db.SaveChangesAsync();
 
         return NoContent();
