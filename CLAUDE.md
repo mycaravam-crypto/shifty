@@ -33,7 +33,10 @@ issue filed for either (same as the earlier PDF export): `Employee.PhoneNumber` 
 contact info alongside the pre-existing (and already-editable) Email field, and a first cut of
 readme.md §17's "später können hier Arbeitszeitpräferenzen ergänzt werden" — per-employee
 shift-type/weekday preferences plus a ShiftSuggestionEngine that ranks candidates for an open
-(date, ShiftType) slot, surfaced as a "Vorschlagen" action in the Wochenansicht. See below.
+(date, ShiftType) slot, surfaced as a "Vorschlagen" action in the Wochenansicht. That engine has
+since been extended into a bulk/auto-fill mode (issue #63): a dry-run preview of proposed
+assignments for every understaffed slot in a Schedule, which a manager can trim before
+committing — see below.
 What's built:
 
 - **Backend** (`src/`): 4-project skeleton (Domain → Application → Infrastructure → Api)
@@ -338,6 +341,53 @@ What's built:
     an Absence on the target date does too, an adjacent shift with <11h gap correctly trips
     `InsufficientRest`, and six consecutive prior days correctly trips `TooManyConsecutiveDays`
     on the would-be 7th. Test data deleted again afterward to leave the dev DB clean.
+  - **Bulk auto-fill** (issue #63) — extends `ShiftSuggestionEngine`'s single-slot `Suggest`
+    into a new `AutoFill(...)` method on the same class rather than a separate service: walks
+    every open `(date, ShiftType)` slot in a date range (a `ShiftType` with `MinStaffing` set
+    whose currently-assigned count for that date is below it — `StaffingValidator`'s own
+    grouping), and for each one calls `Suggest` and takes the top-ranked *eligible* candidate,
+    same as one "Zuweisen" click in `ShiftSuggestionModal`. Slots are visited date-then-
+    ShiftType-name order for determinism. Each pick is folded into working copies of
+    `scheduleAssignments`/`historyAssignments` before the next `Suggest` call — no separate
+    double-booking check was needed, reusing `Suggest` on updated data already makes a
+    just-picked employee show up as already-assigned-that-day (scored down, not excluded,
+    matching `ShiftOverlapValidator`) and, if relevant, rest-time/consecutive-day-excluded for
+    a later slot the same run. A slot with no eligible candidate left is skipped, and so are any
+    further not-yet-filled instances of that same slot (the candidate pool for it only shrinks).
+    Per the issue's own "wants a dry-run/preview step" framing, this is exposed as two
+    `SchedulesController` endpoints rather than one: `GET /schedules/{id}/auto-fill-preview
+    ?from=&to=` (defaults to the Schedule's own range, `ApiRead` like `/suggestions`) loads the
+    same shape of data `/suggestions` already does and returns every proposal
+    (employee/ShiftType/date/score/reasons) without persisting anything; `POST
+    /schedules/{id}/auto-fill` (`ManagerWrite`) commits a given, possibly manager-trimmed, list
+    of `{employeeId, shiftTypeId, date}` items exactly as given — it does not recompute, so what
+    the manager reviewed in the preview is exactly what gets written, built from each ShiftType's
+    template times the same way `CreateAssignment`/`ShiftSuggestionModal`'s existing "Zuweisen"
+    already do. `ShiftPlanner.Tests`: 8 new orchestration-focused tests (one open slot fills,
+    a slot with no eligible candidate is skipped, `MinStaffing=2` picks two *different*
+    employees rather than double-booking one, an already-fully-staffed slot produces no
+    proposal, a ShiftType with no `MinStaffing` has no open slots, a pick for an earlier slot
+    the same day correctly shows up as `AlreadyAssignedThatDay` scoring on a later same-day
+    slot, and open slots spanning multiple days are all filled) — 93 tests total now, all
+    passing. Frontend: a "Automatisch füllen" toolbar button next to "Monat kopieren" in
+    `ScheduleView.vue` opens a new `AutoFillModal.vue` (mirrors `ShiftSuggestionModal.vue`'s
+    `ModalShell` pattern) that loads the preview for the visible month, lists every proposal
+    with a per-row "discard" button (dropped rows stay visible but dimmed, rather than being
+    spliced out, so the "N von M werden übernommen" summary reads clearly), and a "Bestätigen"
+    button that POSTs only the kept rows to `/auto-fill` and refreshes the grid — toast
+    notifications on both success and failure, same pattern as every other write flow in this
+    file. Verified with `dotnet build`/`dotnet test` (Docker `mcr.microsoft.com/dotnet/sdk:10.0`,
+    93/93 passing) and `vue-tsc -b`/`vite build`/`npm run lint` all clean, no live Postgres was
+    spun up (deliberately, to avoid conflicting with other concurrent sessions on this host) —
+    and, unlike several other frontend features logged in this file, **was** clicked through in
+    a real headless Chromium this session (Playwright's browser install worked fine here): a
+    scratch script drove the actual dev server with `/api/*` mocked at the network layer (same
+    technique prior sessions used for the same reason, e.g. issue #19/#43) — opened the modal,
+    confirmed both mocked proposals rendered with their scores, discarded one row, confirmed the
+    "1 von 2" summary updated, clicked "Bestätigen", and confirmed the POST body contained only
+    the kept proposal — no console errors throughout. Not exercised against a real backend/
+    Postgres, so the actual `ShiftSuggestionEngine.AutoFill` orchestration logic is verified only
+    by the new unit tests above, not end-to-end.
 - **Frontend** (`frontend/`): Vite + Vue 3 + TS + Tailwind v4 + Pinia + Vue Router + Axios +
   ESLint/Prettier + `@lucide/vue` (the `lucide-vue-next` package readme.md/issue #5 named is
   deprecated upstream in favor of this). `services/api.ts`'s JWT-attach + 401-refresh now
