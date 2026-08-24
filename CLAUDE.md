@@ -183,10 +183,9 @@ What's built:
     tax-free-allowance thresholds, so these are a starting point, not a compliance claim),
     night window 20:00–06:00. Night stacks additively with Sunday or holiday (works a
     different axis — time-of-day vs. day-type); Sunday and holiday don't stack with each
-    other, holiday wins when a holiday lands on a Sunday. Night hours are the raw shift-time
-    overlap with the night window, not break-adjusted — `BreakMinutes` has no specific time
-    slot to subtract from, so a large break inside a shift's night-window overlap will
-    over-count slightly (`ponytail:` comment in the code names this). `isHoliday` comes from
+    other, holiday wins when a holiday lands on a Sunday. Night hours were originally the raw
+    shift-time overlap with the night window, not break-adjusted — see issue #58 below, which
+    closed that gap when a break's timing is known. `isHoliday` comes from
     the existing `GermanPublicHolidays` (issue #15) — `SchedulesController` builds one
     `HashSet<DateOnly>` per schedule load and reuses it across all assignments; `CreateAssignment`
     checks the single date directly. No frontend change needed — the Wochenansicht's existing
@@ -197,6 +196,33 @@ What's built:
     (no surcharge), an 18:00–22:00 shift (2h night overlap → correct partial surcharge), a
     Sunday shift (+50%), and 1. Weihnachtstag (+125%) — each matched hand-computed expected
     `laborCost` exactly.
+  - **Break-adjusted night hours** (issue #58, on top of issue #16 above) — the night-surcharge
+    overlap used to be the shift's raw `StartTime`–`EndTime` overlap with 20:00–06:00, with no
+    way to subtract a break that itself fell inside that window (flagged inline by a `ponytail:`
+    comment). Rather than reworking `BreakMinutes` into a real time range, this adds a single
+    nullable `ShiftAssignment.BreakStartTime` (`TimeOnly?`, migration `BreakStartTime`) —
+    unset/null means "unknown/unspecified break timing" and `WageCalculator`'s night-surcharge
+    overload falls back to the EXACT pre-issue-#58 approximation for that case (no behavior
+    change for existing/unset data, regression-proofed by a dedicated test). When it IS set,
+    `WageCalculator.NightOverlapHours` computes the break's own `[BreakStartTime,
+    BreakStartTime+BreakMinutes]` overlap with the night window (same same-day assumption as the
+    shift's own times — issue #11 already rejects cross-midnight shifts, so a break within one
+    never wraps past midnight either) and subtracts it from the raw shift/night-window overlap.
+    `SchedulesController`'s assignment DTOs/create/update and `DashboardController`'s cost
+    aggregation both thread the new field through. Frontend: `ShiftAssignmentModal.vue` gets an
+    optional "Pausenbeginn" time input next to the existing break-minutes field (blank = null,
+    same "unknown" meaning as the backend), and `ScheduleView.vue`'s month-copy/drag-move flows
+    now carry `breakStartTime` along with the rest of an assignment's fields instead of dropping
+    it. The migration was generated via a real `dotnet ef migrations add` (Docker was reachable
+    this session, same CA-trust-plus-`--network host` approach documented elsewhere in this
+    file) — `dotnet build`/`dotnet test` (Release, matching CI) are clean at 89 tests (4 new:
+    break unset matches the old approximation exactly, break entirely inside/outside the night
+    window, and a break straddling the window's 20:00 boundary), and `dotnet ef migrations
+    script` confirms the exact expected `ALTER TABLE "ShiftAssignments" ADD "BreakStartTime"
+    time without time zone;`. `npm run lint`/`npm run build` (`vue-tsc -b` + `vite build`) clean.
+    No live Postgres/Docker-compose stack was spun up this session (by design, to avoid
+    conflicting with other concurrent sessions on this host) — build/test/migration-script level
+    only, not round-tripped via curl or clicked through in a browser.
   - **Absence tracking** (issue #17, readme.md §8) — the `Absence` entity readme.md always
     defined but nothing had ever built: `Domain/Employees/Absence.cs` (EmployeeId/From/To/
     `AbsenceType` enum Vacation/Sick/Training/Other/Comment), same "doesn't live on Employee

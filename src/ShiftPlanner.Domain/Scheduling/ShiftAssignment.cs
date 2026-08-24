@@ -11,4 +11,10 @@ public class ShiftAssignment
     public TimeOnly StartTime { get; set; }
     public TimeOnly EndTime { get; set; }
     public int BreakMinutes { get; set; }
+
+    // issue #58: optional break start time. Null means "unknown/unspecified break timing" —
+    // WageCalculator falls back to its existing (unadjusted) night-overlap approximation in
+    // that case. When set, it lets WageCalculator subtract the break's own overlap with the
+    // night window from the raw shift/night-window overlap for a precise figure.
+    public TimeOnly? BreakStartTime { get; set; }
 }

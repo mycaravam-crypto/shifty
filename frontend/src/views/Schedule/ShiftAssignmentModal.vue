@@ -25,6 +25,7 @@ interface Assignment {
   startTime: string
   endTime: string
   breakMinutes: number
+  breakStartTime: string | null
 }
 
 const props = defineProps<{ assignment: Assignment; shiftTypes: ShiftType[] }>()
@@ -38,6 +39,10 @@ const form = ref({
   startTime: props.assignment.startTime.slice(0, 5),
   endTime: props.assignment.endTime.slice(0, 5),
   breakMinutes: props.assignment.breakMinutes,
+  // issue #58: optional — blank means "unknown/unspecified break timing", same as the backend's
+  // null BreakStartTime, in which case the night-surcharge calculation falls back to its
+  // pre-existing (unadjusted) approximation.
+  breakStartTime: props.assignment.breakStartTime?.slice(0, 5) ?? '',
 })
 const saving = ref(false)
 const error = ref('')
@@ -61,6 +66,7 @@ async function onSave() {
       startTime: `${form.value.startTime}:00`,
       endTime: `${form.value.endTime}:00`,
       breakMinutes: form.value.breakMinutes,
+      breakStartTime: form.value.breakStartTime ? `${form.value.breakStartTime}:00` : null,
     })
     toast.success('Schicht gespeichert.')
     emit('updated')
@@ -105,7 +111,16 @@ async function onDeleteConfirmed() {
         min="0"
         max="480"
         placeholder="Pause (Minuten)"
-        class="col-span-2"
+        :class="inputClass"
+      />
+      <!-- issue #58: optional break start time, used to precisely reduce the night-surcharge
+           overlap when it falls partly/fully in the 20:00-06:00 window; left blank it falls back
+           to the existing approximation. -->
+      <input
+        v-model="form.breakStartTime"
+        type="time"
+        lang="de-DE"
+        title="Pausenbeginn (optional)"
         :class="inputClass"
       />
       <p v-if="error" class="col-span-2 text-sm text-rose-400">{{ error }}</p>

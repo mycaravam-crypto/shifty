@@ -57,6 +57,7 @@ interface Assignment {
   startTime: string
   endTime: string
   breakMinutes: number
+  breakStartTime: string | null
   netHours: number
   laborCost: number | null
 }
@@ -494,6 +495,7 @@ async function onCopyMonth() {
         startTime: a.startTime,
         endTime: a.endTime,
         breakMinutes: a.breakMinutes,
+        breakStartTime: a.breakStartTime,
       })
     }
     toast.success('Monat kopiert.')
@@ -662,6 +664,7 @@ async function performDrop(payload: DragPayload, employeeId: string, dateIso: st
         startTime: assignment.startTime,
         endTime: assignment.endTime,
         breakMinutes: assignment.breakMinutes,
+        breakStartTime: assignment.breakStartTime,
       })
     }
     await loadDetail()
