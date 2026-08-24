@@ -647,6 +647,25 @@ What's built:
     (0 errors) and `npm run build` (`vue-tsc -b` + `vite build`, clean) — not clicked through in
     an actual browser (same Playwright-install gap noted elsewhere in this file). Issue #43 (a
     real `SettingsView`) is the one issue from this batch left open.
+- **Reject a refresh token used as a Bearer access token** (issue #71) — a genuine security gap
+    from a fresh batch of 25 issues an external code review filed against the whole codebase
+    (issues #55–#82): access and refresh JWTs (`JwtTokenFactory`) are both self-contained tokens
+    differing only by a `token_use` claim, and the JWT bearer scheme in `Program.cs` validated
+    signature/issuer/audience/lifetime but never checked that claim — so a refresh token, valid
+    for 7 days vs. the access token's 15 minutes, worked as a Bearer token against every
+    protected endpoint if obtained by an attacker. Fixed with an `OnTokenValidated` handler on
+    the bearer scheme's `JwtBearerEvents` that fails authentication unless `token_use == access`
+    — matches the issue's own suggested approach without needing a schema change (no separate
+    `aud` values). No test added to `ShiftPlanner.Tests` — that project is pure Domain/
+    Application unit tests over POCOs with no ASP.NET Core hosting/HTTP layer at all (adding one
+    is exactly issue #75's "integration test coverage" ask, not a one-off addition here).
+    Verified end-to-end instead, the same way this file's earlier auth work was: `dotnet build`/
+    `dotnet test` clean (85 tests, unaffected), then a real local Postgres (this machine's
+    `postgresql-16` install) + the API run via `dotnet run` in the SDK container — logged in via
+    `POST /v1/auth/login`, confirmed the access token still returns `200` from `GET /employees`,
+    confirmed the refresh-cookie token used as `Authorization: Bearer` on that same endpoint now
+    returns `401` (previously `200`), and confirmed `POST /v1/auth/refresh` (which reads the
+    refresh token from its httpOnly cookie, not as a Bearer header) still works normally.
 - **Docker/deploy**: `docker-compose.yml` (db/api/web) validated with `docker compose config`,
   never actually deployed. No `.env` exists anywhere yet (only `.env.example`).
 - **Versioning**: same scheme as vanspace3d. `frontend/package.json`'s `version` is shown
