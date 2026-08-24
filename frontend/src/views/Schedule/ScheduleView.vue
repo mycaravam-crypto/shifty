@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ChevronLeft, ChevronRight, Copy, Search, Printer, HelpCircle } from '@lucide/vue'
+import { ChevronLeft, ChevronRight, Copy, Search, Printer, HelpCircle, Sparkles } from '@lucide/vue'
 import api from '@/services/api'
 import { useToastStore } from '@/stores/toast'
 import { useSettingsStore } from '@/stores/settings'
 import ModalShell from '@/components/ModalShell.vue'
 import ShiftAssignmentModal from './ShiftAssignmentModal.vue'
+import ShiftSuggestionModal from './ShiftSuggestionModal.vue'
 
 const toast = useToastStore()
 const settings = useSettingsStore()
@@ -132,6 +133,7 @@ const router = useRouter()
 const tableWrapRef = ref<HTMLElement | null>(null)
 const showShortcuts = ref(false)
 const highlightKey = ref<string | null>(null)
+const suggestingShiftType = ref<ShiftType | null>(null)
 
 const monthStart = computed(() => firstOfMonth(anchorDate.value))
 const monthEnd = computed(() => lastOfMonth(anchorDate.value))
@@ -740,6 +742,15 @@ window.addEventListener('afterprint', () => {
             <span class="font-mono text-slate-500 text-xs"
               >{{ s.startTime.slice(0, 5) }}–{{ s.endTime.slice(0, 5) }}</span
             >
+            <button
+              type="button"
+              title="Mitarbeiter vorschlagen"
+              class="text-slate-500 hover:text-indigo-300 transition-colors"
+              @pointerdown.stop
+              @click.stop="suggestingShiftType = s"
+            >
+              <Sparkles :size="13" />
+            </button>
           </div>
           <p v-if="!activeShiftTypes.length" class="text-sm text-slate-500">
             Keine Schichtarten angelegt.
@@ -901,6 +912,17 @@ window.addEventListener('afterprint', () => {
       :shift-types="shiftTypes"
       @close="selectedAssignment = null"
       @updated="onAssignmentUpdated"
+    />
+
+    <ShiftSuggestionModal
+      v-if="suggestingShiftType && currentSchedule"
+      :schedule-id="currentSchedule.id"
+      :shift-type="suggestingShiftType"
+      :default-date="monthStartIso"
+      :min-date="monthStartIso"
+      :max-date="monthEndIso"
+      @close="suggestingShiftType = null"
+      @assigned="loadDetail"
     />
 
     <ModalShell v-if="showShortcuts" title="Tastenkürzel" @close="showShortcuts = false">
