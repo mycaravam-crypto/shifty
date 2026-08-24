@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
+import axios from 'axios'
 import { useRoute, useRouter } from 'vue-router'
 import {
   ChevronLeft,
@@ -467,44 +468,26 @@ async function onCopyMonth() {
   copyingMonth.value = true
   try {
     const nextStart = addMonths(anchorDate.value, 1)
-    const nextStartIso = toIso(nextStart)
-    const nextMonthDays = lastOfMonth(nextStart).getDate()
-    let target = schedules.value.find((s) => s.startDate === nextStartIso)
-
-    if (!target) {
-      const created = await api.post('/schedules', {
-        name: monthFmt.format(nextStart),
-        startDate: nextStartIso,
-        endDate: toIso(lastOfMonth(nextStart)),
-      })
-      target = created.data
-      schedules.value.push(target!)
-    } else {
-      const existing = await api.get(`/schedules/${target.id}`)
-      if (existing.data.assignments.length) {
-        error.value = 'Nächster Monat hat bereits Schichten — Kopieren abgebrochen.'
-        toast.error(error.value)
-        return
-      }
-    }
-
-    for (const a of assignments.value) {
-      // Same day-of-month next month; clamped into shorter months (e.g. 31 → 28/29/30).
-      const day = Math.min(parseIso(a.date).getDate(), nextMonthDays)
-      await api.post(`/schedules/${target!.id}/assignments`, {
-        employeeId: a.employeeId,
-        shiftTypeId: a.shiftTypeId,
-        date: toIso(new Date(nextStart.getFullYear(), nextStart.getMonth(), day)),
-        startTime: a.startTime,
-        endTime: a.endTime,
-        breakMinutes: a.breakMinutes,
-        breakStartTime: a.breakStartTime,
-      })
+    // issue #82: the whole copy (target-schedule creation + every assignment) is computed and
+    // applied atomically server-side in one request, instead of a per-assignment POST loop that
+    // could leave a partial copy behind if one request in the middle failed.
+    const res = await api.post(`/schedules/${currentSchedule.value.id}/copy`, {
+      targetName: monthFmt.format(nextStart),
+      targetStartDate: toIso(nextStart),
+      targetEndDate: toIso(lastOfMonth(nextStart)),
+    })
+    if (!schedules.value.some((s) => s.id === res.data.target.id)) {
+      schedules.value.push(res.data.target)
     }
     toast.success('Monat kopiert.')
     nextMonth()
-  } catch {
-    toast.error('Monat konnte nicht kopiert werden.')
+  } catch (err) {
+    if (axios.isAxiosError(err) && err.response?.status === 409) {
+      error.value = 'Nächster Monat hat bereits Schichten — Kopieren abgebrochen.'
+      toast.error(error.value)
+    } else {
+      toast.error('Monat konnte nicht kopiert werden.')
+    }
   } finally {
     copyingMonth.value = false
   }

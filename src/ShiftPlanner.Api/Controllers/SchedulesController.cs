@@ -38,6 +38,11 @@ public record AutoFillProposalDto(
 public record AutoFillCommitItem(Guid EmployeeId, Guid ShiftTypeId, DateOnly Date);
 public record AutoFillCommitRequest(List<AutoFillCommitItem> Assignments);
 
+public record CopyMonthRequest(
+    [Required, MaxLength(200)] string TargetName, DateOnly TargetStartDate, DateOnly TargetEndDate);
+
+public record CopyMonthResponse(ScheduleDto Target, int CopiedCount);
+
 public record CreateAssignmentRequest(
     Guid EmployeeId, Guid ShiftTypeId, DateOnly Date, TimeOnly StartTime, TimeOnly EndTime,
     [Range(0, 480)] int BreakMinutes, TimeOnly? BreakStartTime = null);
@@ -131,6 +136,64 @@ public class SchedulesController(ApplicationDbContext db) : ControllerBase
         await db.SaveChangesAsync();
 
         return NoContent();
+    }
+
+    // issue #82: the frontend's "Monat kopieren" used to create each copied assignment via its
+    // own POST /assignments call in a loop — a failure partway through left the target month
+    // partially copied with no rollback. This computes the whole change set and applies it in
+    // one SaveChangesAsync call, which EF Core already wraps in a single DB transaction, so a
+    // failure rolls back everything instead of partially applying.
+    [HttpPost("schedules/{id:guid}/copy")]
+    [Authorize(Policy = "ManagerWrite")]
+    public async Task<ActionResult<CopyMonthResponse>> CopyMonth(Guid id, CopyMonthRequest request)
+    {
+        var source = await db.Schedules.FindAsync(id);
+        if (source is null)
+            return NotFound();
+
+        if (request.TargetEndDate < request.TargetStartDate)
+            return BadRequest("TargetEndDate must not be before TargetStartDate.");
+
+        var sourceAssignments = await db.ShiftAssignments.Where(a => a.ScheduleId == id).ToListAsync();
+
+        var target = await db.Schedules.FirstOrDefaultAsync(s => s.StartDate == request.TargetStartDate);
+        if (target is not null && await db.ShiftAssignments.AnyAsync(a => a.ScheduleId == target.Id))
+            return Conflict("Target month already has assignments; copy aborted.");
+
+        if (target is null)
+        {
+            target = new Schedule
+            {
+                Id = Guid.NewGuid(),
+                Name = request.TargetName,
+                StartDate = request.TargetStartDate,
+                EndDate = request.TargetEndDate,
+            };
+            db.Schedules.Add(target);
+        }
+
+        // Same day-of-month next month; clamped into shorter months (e.g. 31 → 28/29/30).
+        var daysInTargetMonth = DateTime.DaysInMonth(request.TargetStartDate.Year, request.TargetStartDate.Month);
+        foreach (var a in sourceAssignments)
+        {
+            var day = Math.Min(a.Date.Day, daysInTargetMonth);
+            db.ShiftAssignments.Add(new ShiftAssignment
+            {
+                Id = Guid.NewGuid(),
+                ScheduleId = target.Id,
+                EmployeeId = a.EmployeeId,
+                ShiftTypeId = a.ShiftTypeId,
+                Date = new DateOnly(request.TargetStartDate.Year, request.TargetStartDate.Month, day),
+                StartTime = a.StartTime,
+                EndTime = a.EndTime,
+                BreakMinutes = a.BreakMinutes,
+                BreakStartTime = a.BreakStartTime,
+            });
+        }
+
+        await db.SaveChangesAsync();
+
+        return Ok(new CopyMonthResponse(ToDto(target), sourceAssignments.Count));
     }
 
     [HttpGet("schedules/{id:guid}/validate")]
