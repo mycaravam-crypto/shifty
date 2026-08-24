@@ -41,6 +41,9 @@ public class TeamsController(ApplicationDbContext db) : ControllerBase
         await db.SaveChangesAsync();
 
         var dto = new TeamDto(team.Id, team.Name, team.Active, team.Bundesland);
-        return CreatedAtAction(nameof(GetAll), new { id = team.Id }, dto);
+        // No GetById endpoint exists for this resource, so CreatedAtAction(nameof(GetAll), ...)
+        // would produce a Location header pointing at the collection, not the created resource
+        // (GetAll takes no id parameter) — StatusCode(201, ...) avoids that misleading header.
+        return StatusCode(StatusCodes.Status201Created, dto);
     }
 }
