@@ -280,18 +280,20 @@ public class SchedulesController(ApplicationDbContext db) : ControllerBase
             db.Schedules.Add(target);
         }
 
-        // Same day-of-month next month; clamped into shorter months (e.g. 31 → 28/29/30).
-        var daysInTargetMonth = DateTime.DaysInMonth(request.TargetStartDate.Year, request.TargetStartDate.Month);
+        // Same day-of-month next month; clamped into shorter months (e.g. 31 → 28/29/30) —
+        // issue #102: the clamping arithmetic itself lives in WorkingTimeCalculator.ClampDayToMonth
+        // now, so it's unit-tested independently of this EF-Core-touching controller method.
         foreach (var a in sourceAssignments)
         {
-            var day = Math.Min(a.Date.Day, daysInTargetMonth);
+            var date = WorkingTimeCalculator.ClampDayToMonth(
+                a.Date, request.TargetStartDate.Year, request.TargetStartDate.Month);
             db.ShiftAssignments.Add(new ShiftAssignment
             {
                 Id = Guid.NewGuid(),
                 ScheduleId = target.Id,
                 EmployeeId = a.EmployeeId,
                 ShiftTypeId = a.ShiftTypeId,
-                Date = new DateOnly(request.TargetStartDate.Year, request.TargetStartDate.Month, day),
+                Date = date,
                 StartTime = a.StartTime,
                 EndTime = a.EndTime,
                 BreakMinutes = a.BreakMinutes,
