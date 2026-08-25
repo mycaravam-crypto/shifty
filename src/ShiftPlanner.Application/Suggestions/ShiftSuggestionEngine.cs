@@ -56,7 +56,6 @@ public static class ShiftSuggestionEngine
     {
         var hypotheticalStart = date.ToDateTime(shiftType.StartTime);
         var hypotheticalEnd = date.ToDateTime(shiftType.EndTime);
-        var scheduleDays = scheduleEnd.DayNumber - scheduleStart.DayNumber + 1;
 
         var results = new List<ShiftSuggestion>();
 
@@ -145,16 +144,17 @@ public static class ShiftSuggestionEngine
             // Same expected-vs-actual math as ContractValidator, but as a small nudge toward
             // whoever's furthest under their contracted hours for this Schedule rather than a
             // hard check — the real over-hours enforcement still lives in ContractValidator.
-            var contract = contracts
-                .Where(c => c.EmployeeId == employee.Id && c.ValidFrom <= scheduleStart && (c.ValidTo is null || c.ValidTo >= scheduleStart))
-                .MaxBy(c => c.ValidFrom);
-            if (contract is not null)
+            //
+            // issue #70: this used to re-implement the WeeklyHours×effectiveDays/7 formula
+            // inline against a single contract resolved at the schedule's start date — a 6th
+            // independent duplicate of the same bug ContractValidator had. Now shares
+            // WorkingTimeCalculator.ExpectedHours, which resolves the applicable contract per
+            // day, so a mid-schedule contract change is reflected correctly here too.
+            var hasAnyContract = contracts.Any(c => c.EmployeeId == employee.Id
+                && c.ValidFrom <= scheduleEnd && (c.ValidTo is null || c.ValidTo >= scheduleStart));
+            if (hasAnyContract)
             {
-                var absenceDays = absences
-                    .Where(a => a.EmployeeId == employee.Id)
-                    .Sum(a => WorkingTimeCalculator.OverlapDays(a.From, a.To, scheduleStart, scheduleEnd));
-                var effectiveDays = Math.Max(0, scheduleDays - absenceDays);
-                var expectedHours = contract.WeeklyHours * effectiveDays / 7m;
+                var expectedHours = WorkingTimeCalculator.ExpectedHours(contracts, absences, employee.Id, scheduleStart, scheduleEnd);
                 var plannedHours = scheduleAssignments
                     .Where(a => a.EmployeeId == employee.Id)
                     .Sum(a => WorkingTimeCalculator.NetHours(a.StartTime, a.EndTime, a.BreakMinutes));

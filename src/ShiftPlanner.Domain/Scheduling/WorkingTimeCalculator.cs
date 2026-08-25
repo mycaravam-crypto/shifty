@@ -28,16 +28,56 @@ public static class WorkingTimeCalculator
     // HoursBalanceCalculator, and DashboardController's own private ExpectedHours — extracted
     // here once a 3rd/4th caller (the dashboard's per-employee utilization breakdown) needed
     // the exact same formula, same reasoning OverlapDays itself was extracted for.
+    //
+    // issue #70: this used to take a single already-resolved Contract, picked once at the
+    // caller's chosen anchor date (the schedule's *start* date in every caller) and applied to
+    // the whole [from,to] span — wrong for any employee whose contract changes mid-span (a
+    // Schedule is often a full calendar month). Now takes the full contracts list and resolves
+    // the applicable one PER DAY via Contract.ActiveOn, so a mid-schedule contract change is
+    // reflected exactly on the day it takes effect rather than for the whole period either way.
+    // A day with no contract covering it (a gap between two Contract rows) contributes 0 —
+    // there's no obligation to derive an expected-hours figure from.
     public static decimal ExpectedHours(
-        Contract? contract, IReadOnlyList<Absence> absences, Guid employeeId, DateOnly from, DateOnly to)
+        IReadOnlyList<Contract> contracts, IReadOnlyList<Absence> absences, Guid employeeId, DateOnly from, DateOnly to)
     {
-        if (contract is null)
+        var employeeContracts = contracts.Where(c => c.EmployeeId == employeeId).ToList();
+        if (employeeContracts.Count == 0)
             return 0m;
 
-        var days = to.DayNumber - from.DayNumber + 1;
-        var absenceDays = absences.Where(a => a.EmployeeId == employeeId)
-            .Sum(a => OverlapDays(a.From, a.To, from, to));
-        var effectiveDays = Math.Max(0, days - absenceDays);
-        return contract.WeeklyHours * effectiveDays / 7m;
+        var absenceDays = new HashSet<DateOnly>();
+        foreach (var a in absences.Where(a => a.EmployeeId == employeeId))
+        {
+            var start = a.From > from ? a.From : from;
+            var end = a.To < to ? a.To : to;
+            for (var day = start; day <= end; day = day.AddDays(1))
+                absenceDays.Add(day);
+        }
+
+        // Group each non-absence day by whichever contract applies (if any) rather than
+        // applying WeeklyHours/7 per day directly — this keeps the single-contract common case
+        // doing the exact same "WeeklyHours * effectiveDays / 7" multiply-then-divide-once
+        // arithmetic the pre-#70 flat formula used (no decimal-rounding drift from repeatedly
+        // summing an unrounded 1/7th share), while still correctly blending multiple segments
+        // when a contract changes mid-span: each segment gets its own single multiply/divide.
+        var daysByContract = new Dictionary<Guid, int>();
+        for (var day = from; day <= to; day = day.AddDays(1))
+        {
+            if (absenceDays.Contains(day))
+                continue;
+
+            var contract = Contract.ActiveOn(employeeContracts, employeeId, day);
+            if (contract is null)
+                continue;
+
+            daysByContract[contract.Id] = daysByContract.GetValueOrDefault(contract.Id) + 1;
+        }
+
+        decimal total = 0m;
+        foreach (var (contractId, days) in daysByContract)
+        {
+            var contract = employeeContracts.First(c => c.Id == contractId);
+            total += contract.WeeklyHours * days / 7m;
+        }
+        return total;
     }
 }

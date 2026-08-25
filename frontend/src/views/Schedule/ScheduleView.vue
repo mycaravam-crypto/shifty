@@ -238,28 +238,60 @@ function netHoursFor(employeeId: string) {
     .filter((a) => a.employeeId === employeeId)
     .reduce((sum, a) => sum + a.netHours, 0)
 }
-// Mirrors ContractValidator.OverlapDays (backend) — days of [from, to] that fall within the
-// visible month, so a week of vacation doesn't count toward the expected hours.
-function overlapDays(from: string, to: string): number {
-  const start = from > monthStartIso.value ? from : monthStartIso.value
-  const end = to < monthEndIso.value ? to : monthEndIso.value
-  if (end < start) return 0
-  return Math.round((parseIso(end).getTime() - parseIso(start).getTime()) / 86400000) + 1
+// issue #70: mirrors WorkingTimeCalculator.ExpectedHours (backend) — resolves the applicable
+// Contract PER DAY of the visible month via Contract.ActiveOn's same rule, then applies the
+// WeeklyHours*days/7 formula once per contract encountered (not once for the whole month) so a
+// contract that changes mid-month correctly blends both segments. This used to resolve one
+// contract active on the month's *first* day and scale the whole month by it, silently
+// ignoring any mid-month contract change.
+function activeContractOn(contracts: Contract[], dateIso: string): Contract | undefined {
+  return [...contracts]
+    .filter((c) => c.validFrom <= dateIso && (!c.validTo || c.validTo >= dateIso))
+    .sort((a, b) => b.validFrom.localeCompare(a.validFrom))[0]
 }
+function absenceDaySet(absences: Absence[]): Set<string> {
+  const days = new Set<string>()
+  for (const a of absences) {
+    const start = a.from > monthStartIso.value ? a.from : monthStartIso.value
+    const end = a.to < monthEndIso.value ? a.to : monthEndIso.value
+    for (let d = parseIso(start); d <= parseIso(end); d = addDays(d, 1)) {
+      days.add(toIso(d))
+    }
+  }
+  return days
+}
+// Groups each non-absence day of the visible month by which contract (identified by its
+// unique-per-employee validFrom) applies. weeklyHours*days/7 is then applied once per contract
+// rather than once for the whole month — the single-contract common case reduces to exactly the
+// old flat formula, while a mid-month contract change now correctly gets two segments.
+function daysByContract(contracts: Contract[], absenceDays: Set<string>): Map<string, number> {
+  const days = new Map<string, number>()
+  for (let d = parseIso(monthStartIso.value); d <= parseIso(monthEndIso.value); d = addDays(d, 1)) {
+    const dateIso = toIso(d)
+    if (absenceDays.has(dateIso)) continue
+    const contract = activeContractOn(contracts, dateIso)
+    if (contract) days.set(contract.validFrom, (days.get(contract.validFrom) ?? 0) + 1)
+  }
+  return days
+}
+// issue #70: mirrors WorkingTimeCalculator.ExpectedHours (backend) — resolves the applicable
+// Contract PER DAY of the visible month via Contract.ActiveOn's same rule instead of resolving
+// one contract active on the month's *first* day and scaling the whole month by it, which used
+// to silently ignore a mid-month contract change.
 function targetHoursFor(employeeId: string): number | null {
   const contracts = contractsByEmployee.value.get(employeeId) ?? []
   if (!contracts.length) return null
-  const start = monthStartIso.value
-  const active = contracts.find((c) => c.validFrom <= start && (!c.validTo || c.validTo >= start))
-  const contract =
-    active ?? [...contracts].sort((a, b) => b.validFrom.localeCompare(a.validFrom))[0]
-  const daysInMonth = monthEnd.value.getDate()
-  const absenceDays = (absencesByEmployee.value.get(employeeId) ?? []).reduce(
-    (sum, a) => sum + overlapDays(a.from, a.to),
-    0,
-  )
-  const effectiveDays = Math.max(0, daysInMonth - absenceDays)
-  return Math.round(((contract.weeklyHours * effectiveDays) / 7) * 10) / 10
+
+  const absences = absencesByEmployee.value.get(employeeId) ?? []
+  const byContract = daysByContract(contracts, absenceDaySet(absences))
+  if (byContract.size === 0) return null
+
+  let total = 0
+  for (const [validFrom, days] of byContract) {
+    const contract = contracts.find((c) => c.validFrom === validFrom)
+    if (contract) total += (contract.weeklyHours * days) / 7
+  }
+  return Math.round(total * 10) / 10
 }
 function barWidth(employeeId: string) {
   const target = targetHoursFor(employeeId)

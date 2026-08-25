@@ -268,10 +268,6 @@ public class DashboardController(ApplicationDbContext db) : ControllerBase
             schedules.Count(s => s.Status == ScheduleStatus.Draft), published, affected.Count, completion, affected);
     }
 
-    private static Contract? ActiveContract(IReadOnlyList<Contract> contracts, Guid employeeId, DateOnly date) =>
-        contracts.Where(c => c.EmployeeId == employeeId && c.ValidFrom <= date && (c.ValidTo is null || c.ValidTo >= date))
-            .MaxBy(c => c.ValidFrom);
-
     // issue #56: aggregated per-surcharge-type so the dashboard can show a cost breakdown, not
     // just a total — WageCalculator.Breakdown (not the plain LaborCost total) is the single
     // source of truth for the split, same as BuildCost always was for the total alone.
@@ -284,7 +280,7 @@ public class DashboardController(ApplicationDbContext db) : ControllerBase
         decimal regular = 0, night = 0, sunday = 0, holiday = 0;
         foreach (var a in assignments)
         {
-            var contract = ActiveContract(contracts, a.EmployeeId, a.Date);
+            var contract = Contract.ActiveOn(contracts, a.EmployeeId, a.Date);
             var netHours = WorkingTimeCalculator.NetHours(a.StartTime, a.EndTime, a.BreakMinutes);
             var land = bundeslandByEmployee.GetValueOrDefault(a.EmployeeId);
             var isHoliday = (land is { } bl ? holidaysByBundesland[bl] : nationwideHolidays).Contains(a.Date);
@@ -307,6 +303,10 @@ public class DashboardController(ApplicationDbContext db) : ControllerBase
     // WorkingTimeCalculator.ExpectedHours formula ContractValidator/HoursBalanceCalculator use,
     // grouped by employee instead of summed. The schedule-wide UtilizationDto/OvertimeHours KPI
     // are now just aggregates over this list rather than a separate pass over the same data.
+    //
+    // issue #70: used to resolve one Contract at `from` and scale it across the whole [from,to]
+    // period — wrong for any employee whose contract changes mid-period. ExpectedHours now
+    // takes the full contracts list and resolves the applicable one per day itself.
     private static List<EmployeeUtilizationDto> BuildEmployeeUtilization(
         IReadOnlyList<Employee> employees, IReadOnlyList<ShiftAssignment> assignments,
         IReadOnlyList<Contract> contracts, IReadOnlyList<Absence> absences, DateOnly from, DateOnly to)
@@ -314,8 +314,7 @@ public class DashboardController(ApplicationDbContext db) : ControllerBase
         var result = new List<EmployeeUtilizationDto>();
         foreach (var employee in employees)
         {
-            var contract = ActiveContract(contracts, employee.Id, from);
-            var expected = WorkingTimeCalculator.ExpectedHours(contract, absences, employee.Id, from, to);
+            var expected = WorkingTimeCalculator.ExpectedHours(contracts, absences, employee.Id, from, to);
             var actual = assignments.Where(a => a.EmployeeId == employee.Id)
                 .Sum(a => WorkingTimeCalculator.NetHours(a.StartTime, a.EndTime, a.BreakMinutes));
             var percent = expected == 0 ? 0m : Math.Round(actual * 100m / expected, 1);

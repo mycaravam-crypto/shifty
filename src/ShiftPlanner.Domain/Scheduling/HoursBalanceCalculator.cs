@@ -20,17 +20,19 @@ public static class HoursBalanceCalculator
         decimal balance = 0;
         foreach (var schedule in schedules.Where(s => s.EndDate < before))
         {
-            var contract = contracts
-                .Where(c => c.EmployeeId == employeeId && c.ValidFrom <= schedule.StartDate
-                    && (c.ValidTo is null || c.ValidTo >= schedule.StartDate))
-                .MaxBy(c => c.ValidFrom);
-            if (contract is null)
+            // issue #70: only "does the employee have any contract at all overlapping this
+            // schedule" is resolved once per schedule here — ExpectedHours itself now resolves
+            // which contract applies PER DAY, so a schedule spanning a mid-period contract
+            // change is no longer scaled by whichever contract happened to be active on day 1.
+            var hasAnyContract = contracts.Any(c => c.EmployeeId == employeeId
+                && c.ValidFrom <= schedule.EndDate && (c.ValidTo is null || c.ValidTo >= schedule.StartDate));
+            if (!hasAnyContract)
                 continue;
 
             // issue #17: days on Absence within this Schedule's span don't count toward the
             // expected hours, same exclusion ContractValidator applies per-schedule.
             var expected = WorkingTimeCalculator.ExpectedHours(
-                contract, absences ?? [], employeeId, schedule.StartDate, schedule.EndDate);
+                contracts, absences ?? [], employeeId, schedule.StartDate, schedule.EndDate);
             var actual = assignments
                 .Where(a => a.ScheduleId == schedule.Id && a.EmployeeId == employeeId)
                 .Sum(a => WorkingTimeCalculator.NetHours(a.StartTime, a.EndTime, a.BreakMinutes));
