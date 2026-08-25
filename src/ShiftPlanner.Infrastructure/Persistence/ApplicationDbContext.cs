@@ -19,7 +19,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     private static readonly Type[] AuditedTypes =
     [
         typeof(Team), typeof(Employee), typeof(Contract), typeof(ShiftType),
-        typeof(Schedule), typeof(ShiftAssignment), typeof(Absence)
+        typeof(Schedule), typeof(ShiftAssignment), typeof(Absence), typeof(StaffingRequirement)
     ];
 
     public DbSet<ApiKey> ApiKeys => Set<ApiKey>();
@@ -35,6 +35,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<ShiftAssignment> ShiftAssignments => Set<ShiftAssignment>();
     public DbSet<ShiftTypePreference> ShiftTypePreferences => Set<ShiftTypePreference>();
     public DbSet<WeekdayPreference> WeekdayPreferences => Set<WeekdayPreference>();
+    public DbSet<StaffingRequirement> StaffingRequirements => Set<StaffingRequirement>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -72,6 +73,23 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
 
         builder.Entity<ShiftType>()
             .HasIndex(s => s.Name).IsUnique();
+
+        // issue #69: same weekly-pattern combo shouldn't be configured twice. Postgres treats
+        // each NULL TeamId as distinct for uniqueness purposes, so this doesn't stop a
+        // global (TeamId null) row and a per-team row for the same ShiftType/DayOfWeek from
+        // coexisting — that's intentional, they mean different things.
+        builder.Entity<StaffingRequirement>(r =>
+        {
+            r.HasIndex(x => new { x.TeamId, x.ShiftTypeId, x.DayOfWeek }).IsUnique();
+            r.HasOne(x => x.ShiftType)
+                .WithMany()
+                .HasForeignKey(x => x.ShiftTypeId)
+                .OnDelete(DeleteBehavior.Cascade);
+            r.HasOne<Team>()
+                .WithMany()
+                .HasForeignKey(x => x.TeamId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
 
         // issue #55: server-side refresh-token revocation. UserId is a plain string FK to
         // Identity's ApplicationUser (Infrastructure layer) — Domain can't reference it via a

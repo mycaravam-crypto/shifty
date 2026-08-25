@@ -68,4 +68,14 @@ internal static class TestFactory
         To = to,
         Type = type,
     };
+
+    public static StaffingRequirement StaffingRequirement(
+        Guid shiftTypeId, DayOfWeek dayOfWeek, int minimumStaffing, Guid? teamId = null) => new()
+    {
+        Id = Guid.NewGuid(),
+        TeamId = teamId,
+        ShiftTypeId = shiftTypeId,
+        DayOfWeek = dayOfWeek,
+        MinimumStaffing = minimumStaffing,
+    };
 }

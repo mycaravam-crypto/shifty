@@ -109,6 +109,11 @@ public class DashboardController(ApplicationDbContext db) : ControllerBase
         var shiftTypes = await db.ShiftTypes.ToListAsync();
         var shiftTypesById = shiftTypes.ToDictionary(s => s.Id);
 
+        // issue #69: loaded unconditionally (not scoped to employeeIds/schedules like the
+        // queries above) — the whole point of a StaffingRequirement is to surface a slot with
+        // *zero* assignments, so it can't be discovered by starting from existing rows.
+        var staffingRequirements = await db.StaffingRequirements.ToListAsync();
+
         // issue #56: exact ±6-day historyAssignments lookback, mirroring
         // SchedulesController's /validate endpoint exactly, instead of omitting it — fetched once
         // as a pool spanning every schedule in view, then sliced back to each schedule's own
@@ -154,10 +159,10 @@ public class DashboardController(ApplicationDbContext db) : ControllerBase
         var current = allAssignments.Where(a => a.Date >= periodFrom && a.Date <= periodTo && InScope(a)).ToList();
         var previous = allAssignments.Where(a => a.Date >= prevFrom && a.Date <= prevTo && InScope(a)).ToList();
 
-        var coverage = BuildCoverage(current, shiftTypesById);
+        var coverage = BuildCoverage(current, shiftTypesById, staffingRequirements, employeesById, periodFrom, periodTo, teamId, shiftTypeId);
         var coveragePercent = coverage.Count == 0 ? 100m : Math.Round(coverage.Average(c => Math.Min(100m, c.CoveragePercent)), 1);
 
-        var painPoints = BuildPainPoints(schedules, assignmentsByScheduleId, historyPool, employeesById, shiftTypes, contracts, absences, teamId);
+        var painPoints = BuildPainPoints(schedules, assignmentsByScheduleId, historyPool, employeesById, shiftTypes, contracts, absences, staffingRequirements, teamId);
         var planningStatus = BuildPlanningStatus(schedules, painPoints);
 
         var costBreakdown = BuildCostBreakdown(current, contracts, bundeslandByEmployee, holidaysByBundesland, nationwideHolidays);
@@ -202,9 +207,13 @@ public class DashboardController(ApplicationDbContext db) : ControllerBase
         previous == 0 ? null : Math.Round((current - previous) / previous * 100m, 1);
 
     private static List<CoverageDayDto> BuildCoverage(
-        IReadOnlyList<ShiftAssignment> assignments, IReadOnlyDictionary<Guid, ShiftType> shiftTypesById)
+        IReadOnlyList<ShiftAssignment> assignments, IReadOnlyDictionary<Guid, ShiftType> shiftTypesById,
+        IReadOnlyList<StaffingRequirement> requirements, IReadOnlyDictionary<Guid, Employee> employeesById,
+        DateOnly periodFrom, DateOnly periodTo, Guid? teamId, Guid? shiftTypeId)
     {
         var result = new List<CoverageDayDto>();
+        var seen = new HashSet<(Guid ShiftTypeId, DateOnly Date)>();
+
         foreach (var group in assignments.GroupBy(a => (a.ShiftTypeId, a.Date)))
         {
             if (!shiftTypesById.TryGetValue(group.Key.ShiftTypeId, out var shiftType) || shiftType.MinStaffing is not { } min || min == 0)
@@ -214,8 +223,51 @@ public class DashboardController(ApplicationDbContext db) : ControllerBase
             var percent = Math.Round(scheduled * 100m / min, 1);
             var status = percent >= 95 ? "Green" : percent >= 85 ? "Yellow" : "Red";
             result.Add(new CoverageDayDto(group.Key.Date, shiftType.Id, shiftType.Name, scheduled, min, percent, status));
+            seen.Add(group.Key);
         }
+
+        // issue #69: StaffingRequirement-driven rows the loop above can never produce, since it
+        // only ever iterates (ShiftType, Date) pairs that already have at least one assignment —
+        // a slot with a configured requirement and zero assignments was previously invisible
+        // to this coverage list entirely. `assignments` here is already team/shiftType-filtered
+        // by the caller (`current`), so a requirement with no TeamId of its own is counted
+        // against exactly that same filtered pool; a requirement with a TeamId narrows further.
+        foreach (var date in DateRange(periodFrom, periodTo))
+        {
+            foreach (var requirement in requirements)
+            {
+                if (requirement.DayOfWeek != date.DayOfWeek)
+                    continue;
+                if (shiftTypeId is { } filterShiftType && requirement.ShiftTypeId != filterShiftType)
+                    continue;
+                if (teamId is { } filterTeam && requirement.TeamId is { } requirementTeam && requirementTeam != filterTeam)
+                    continue;
+                if (!shiftTypesById.TryGetValue(requirement.ShiftTypeId, out var shiftType))
+                    continue;
+                if (!seen.Add((requirement.ShiftTypeId, date)))
+                    continue;
+
+                var scheduled = assignments
+                    .Where(a => a.ShiftTypeId == requirement.ShiftTypeId && a.Date == date)
+                    .Where(a => requirement.TeamId is not { } requirementTeamId
+                        || (employeesById.TryGetValue(a.EmployeeId, out var employee) && employee.TeamId == requirementTeamId))
+                    .Select(a => a.EmployeeId)
+                    .Distinct()
+                    .Count();
+
+                var percent = Math.Round(scheduled * 100m / requirement.MinimumStaffing, 1);
+                var status = percent >= 95 ? "Green" : percent >= 85 ? "Yellow" : "Red";
+                result.Add(new CoverageDayDto(date, shiftType.Id, shiftType.Name, scheduled, requirement.MinimumStaffing, percent, status));
+            }
+        }
+
         return result.OrderBy(c => c.Date).ThenBy(c => c.ShiftTypeName).ToList();
+    }
+
+    private static IEnumerable<DateOnly> DateRange(DateOnly from, DateOnly to)
+    {
+        for (var date = from; date <= to; date = date.AddDays(1))
+            yield return date;
     }
 
     private static List<PainPointDto> BuildPainPoints(
@@ -226,6 +278,7 @@ public class DashboardController(ApplicationDbContext db) : ControllerBase
         IReadOnlyList<ShiftType> shiftTypes,
         IReadOnlyList<Contract> contracts,
         IReadOnlyList<Absence> absences,
+        IReadOnlyList<StaffingRequirement> staffingRequirements,
         Guid? teamId)
     {
         var points = new List<PainPointDto>();
@@ -240,7 +293,7 @@ public class DashboardController(ApplicationDbContext db) : ControllerBase
             var historyStart = schedule.StartDate.AddDays(-6);
             var historyEnd = schedule.EndDate.AddDays(6);
             var historyAssignments = historyPool.Where(a => a.Date >= historyStart && a.Date <= historyEnd).ToList();
-            var result = ScheduleValidator.Validate(schedule, assignments, employeesById.Values.ToList(), shiftTypes, contracts, historyAssignments, absences);
+            var result = ScheduleValidator.Validate(schedule, assignments, employeesById.Values.ToList(), shiftTypes, contracts, historyAssignments, absences, staffingRequirements);
 
             foreach (var (issue, severity) in result.Errors.Select(e => (e, "Error")).Concat(result.Warnings.Select(w => (w, "Warning"))))
             {

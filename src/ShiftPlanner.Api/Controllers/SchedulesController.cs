@@ -198,7 +198,12 @@ public class SchedulesController(ApplicationDbContext db) : ControllerBase
             .Where(a => employeeIds.Contains(a.EmployeeId) && a.From <= schedule.EndDate && a.To >= schedule.StartDate)
             .ToListAsync();
 
-        return ScheduleValidator.Validate(schedule, assignments, employees, shiftTypes, contracts, historyAssignments, absences);
+        // issue #69: every StaffingRequirement is loaded, not just ones matching an employee
+        // who already has an assignment here — the whole point is to catch a slot with *zero*
+        // assignments, so it can't be scoped down via employeeIds the way the queries above are.
+        var staffingRequirements = await db.StaffingRequirements.ToListAsync();
+
+        return ScheduleValidator.Validate(schedule, assignments, employees, shiftTypes, contracts, historyAssignments, absences, staffingRequirements);
     }
 
     private string CurrentUserId() =>
