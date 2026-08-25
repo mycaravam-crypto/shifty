@@ -21,8 +21,17 @@ jobs:
       - name: Build
         run: dotnet build ShiftPlanner.sln --no-restore --configuration Release
 
-      - name: Test
+      - name: Unit tests
         run: dotnet test src/ShiftPlanner.Tests/ShiftPlanner.Tests.csproj --no-build --configuration Release --logger "console;verbosity=normal"
+
+      # issue #75: real integration tests through the ASP.NET Core pipeline (WebApplicationFactory)
+      # against a real Postgres. These use Testcontainers.PostgreSql, which starts and tears down
+      # its own throwaway Postgres container per run via the Docker daemon GitHub's hosted
+      # ubuntu-latest runners already have running — no `services:` Postgres container needed
+      # (and adding one would just sit unused, since Testcontainers manages its own container
+      # lifecycle rather than connecting to a fixed one).
+      - name: Integration tests
+        run: dotnet test src/ShiftPlanner.IntegrationTests/ShiftPlanner.IntegrationTests.csproj --no-build --configuration Release --logger "console;verbosity=normal"
 
   frontend:
     runs-on: ubuntu-latest

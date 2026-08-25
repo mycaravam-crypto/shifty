@@ -173,3 +173,7 @@ app.MapControllers();
 app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
 
 app.Run();
+
+// Top-level statements generate an internal `Program` class by default — made public+partial
+// so ShiftPlanner.IntegrationTests can target it via WebApplicationFactory<Program> (issue #75).
+public partial class Program;

@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Same test-runner stack as ShiftPlanner.Tests, plus Mvc.Testing (WebApplicationFactory)
+         and Testcontainers.PostgreSql for a real Postgres per test run — issue #75: these are
+         real integration tests through the ASP.NET Core pipeline + EF Core migrations against a
+         real database, not the pure-POCO unit tests ShiftPlanner.Tests covers. -->
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />
+    <PackageReference Include="xunit" Version="2.9.2" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.0" />
+    <PackageReference Include="Testcontainers.PostgreSql" Version="4.1.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ShiftPlanner.Api\ShiftPlanner.Api.csproj" />
+    <ProjectReference Include="..\ShiftPlanner.Infrastructure\ShiftPlanner.Infrastructure.csproj" />
+    <ProjectReference Include="..\ShiftPlanner.Application\ShiftPlanner.Application.csproj" />
+    <ProjectReference Include="..\ShiftPlanner.Domain\ShiftPlanner.Domain.csproj" />
+  </ItemGroup>
+
+</Project>
