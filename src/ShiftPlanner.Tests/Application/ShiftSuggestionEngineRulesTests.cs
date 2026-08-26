@@ -34,7 +34,7 @@ public class ShiftSuggestionEngineRulesTests
     {
         var otherShiftType = ShiftType();
         var employee = Employee();
-        employee.EligibleShiftTypes.Add(otherShiftType);
+        employee.AddEligibleShiftType(otherShiftType);
         var shiftType = ShiftType();
 
         var outcome = ShiftSuggestionEngine.EvaluateEligibility(employee, shiftType);
