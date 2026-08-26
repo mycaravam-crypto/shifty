@@ -18,7 +18,7 @@ public class StaffingValidatorTests
         StaffingValidator.Validate([assignment], new Dictionary<Guid, ShiftType> { [shiftType.Id] = shiftType }, result);
 
         var warning = Assert.Single(result.Warnings);
-        Assert.Equal("Understaffed", warning.Type);
+        Assert.Equal(ValidationIssueCode.Understaffed, warning.Type);
     }
 
     [Fact]
@@ -38,7 +38,7 @@ public class StaffingValidatorTests
         StaffingValidator.Validate(assignments, new Dictionary<Guid, ShiftType> { [shiftType.Id] = shiftType }, result);
 
         var warning = Assert.Single(result.Warnings);
-        Assert.Equal("Overstaffed", warning.Type);
+        Assert.Equal(ValidationIssueCode.Overstaffed, warning.Type);
     }
 
     [Fact]
@@ -97,6 +97,6 @@ public class StaffingValidatorTests
         StaffingValidator.Validate(assignments, new Dictionary<Guid, ShiftType> { [shiftType.Id] = shiftType }, result);
 
         var warning = Assert.Single(result.Warnings);
-        Assert.Equal("Understaffed", warning.Type);
+        Assert.Equal(ValidationIssueCode.Understaffed, warning.Type);
     }
 }

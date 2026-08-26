@@ -38,7 +38,7 @@ public class RestTimeValidatorTests
         RestTimeValidator.Validate(assignments, result);
 
         var error = Assert.Single(result.Errors);
-        Assert.Equal("InsufficientRest", error.Type);
+        Assert.Equal(ValidationIssueCode.InsufficientRest, error.Type);
     }
 
     [Fact]
