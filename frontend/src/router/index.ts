@@ -10,7 +10,21 @@ const router = createRouter({
       component: () => import('../views/Login/LoginView.vue'),
       meta: { public: true },
     },
-    { path: '/', name: 'schedule', component: () => import('../views/Schedule/ScheduleView.vue') },
+    // issue #74: the Dienstplan is split into a compact month-overview (the default landing
+    // view — coverage/absence/conflict glance + navigation) and a week-scoped detail editor
+    // carrying the full drag-and-drop/validation experience the single month grid used to try
+    // to be all at once. `Schedule` itself stays month-scoped server-side — this is a
+    // frontend presentation split only.
+    {
+      path: '/',
+      name: 'schedule',
+      component: () => import('../views/Schedule/MonthOverviewView.vue'),
+    },
+    {
+      path: '/dienstplan/woche/:date',
+      name: 'schedule-week',
+      component: () => import('../views/Schedule/ScheduleView.vue'),
+    },
     {
       path: '/dashboard',
       name: 'dashboard',

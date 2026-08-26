@@ -26,6 +26,13 @@ export function parseIso(iso: string): Date {
   const [y, m, d] = iso.split('-').map(Number)
   return new Date(y, m - 1, d)
 }
+// Monday of the calendar week containing `date` (ISO 8601 week start) — issue #74's
+// week-scoped ScheduleView.vue and the MonthOverviewView.vue grouping both need this.
+export function startOfWeek(date: Date): Date {
+  const day = date.getDay() // 0 = Sunday .. 6 = Saturday
+  const diff = day === 0 ? -6 : 1 - day
+  return addDays(date, diff)
+}
 
 export const weekdayFmt = new Intl.DateTimeFormat('de-DE', {
   weekday: 'short',
