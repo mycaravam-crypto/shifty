@@ -43,6 +43,10 @@ internal static class TestFactory
         ValidFrom = validFrom,
         ValidTo = validTo,
         WeeklyHours = weeklyHours,
+        // Fixed test default, independent of weeklyHours — WorkingDaysPerWeek isn't read by
+        // any production logic (WorkingTimeCalculator/WageCalculator/ContractValidator all
+        // scale by WeeklyHours × day-span/7, never by this field), so it doesn't need to vary
+        // per test case.
         WorkingDaysPerWeek = 5,
         DailyTargetHours = weeklyHours / 5,
     };
@@ -67,5 +71,15 @@ internal static class TestFactory
         From = from,
         To = to,
         Type = type,
+    };
+
+    public static StaffingRequirement StaffingRequirement(
+        Guid shiftTypeId, DayOfWeek dayOfWeek, int minimumStaffing, Guid? teamId = null) => new()
+    {
+        Id = Guid.NewGuid(),
+        TeamId = teamId,
+        ShiftTypeId = shiftTypeId,
+        DayOfWeek = dayOfWeek,
+        MinimumStaffing = minimumStaffing,
     };
 }

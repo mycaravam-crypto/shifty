@@ -23,6 +23,7 @@ public class TeamsController(ApplicationDbContext db) : ControllerBase
     public async Task<ActionResult<IEnumerable<TeamDto>>> GetAll()
     {
         var teams = await db.Teams
+            .AsNoTracking()
             .OrderBy(t => t.Name)
             .Select(t => new TeamDto(t.Id, t.Name, t.Active, t.Bundesland))
             .ToListAsync();

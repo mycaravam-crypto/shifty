@@ -13,6 +13,9 @@ export function usePlanningActions(board: ReturnType<typeof usePlanningBoard>) {
   const toast = useToastStore()
   const creatingSchedule = ref(false)
   const copyingMonth = ref(false)
+  const publishing = ref(false)
+  const archiving = ref(false)
+  const confirmingArchive = ref(false)
 
   async function onCreateSchedule() {
     creatingSchedule.value = true
@@ -28,6 +31,42 @@ export function usePlanningActions(board: ReturnType<typeof usePlanningBoard>) {
       toast.error('Dienstplan konnte nicht angelegt werden.')
     } finally {
       creatingSchedule.value = false
+    }
+  }
+
+  // issue #68/#79: the button is already disabled while blockingErrorCount > 0, but re-checks
+  // the 409 case too (e.g. another manager changed something between page load and this click).
+  async function onPublish() {
+    if (!board.currentSchedule.value) return
+    publishing.value = true
+    try {
+      const res = await api.post(`/schedules/${board.currentSchedule.value.id}/publish`)
+      board.updateCurrentScheduleFrom(res.data)
+      toast.success('Dienstplan veröffentlicht.')
+    } catch (err) {
+      if (axios.isAxiosError(err) && err.response?.status === 409) {
+        await board.loadDetail()
+        toast.error('Veröffentlichen nicht möglich — es bestehen noch ungelöste Fehler.')
+      } else {
+        toast.error('Dienstplan konnte nicht veröffentlicht werden.')
+      }
+    } finally {
+      publishing.value = false
+    }
+  }
+
+  async function onArchiveConfirmed() {
+    if (!board.currentSchedule.value) return
+    archiving.value = true
+    try {
+      const res = await api.post(`/schedules/${board.currentSchedule.value.id}/archive`)
+      board.updateCurrentScheduleFrom(res.data)
+      toast.success('Dienstplan archiviert.')
+    } catch {
+      toast.error('Dienstplan konnte nicht archiviert werden.')
+    } finally {
+      archiving.value = false
+      confirmingArchive.value = false
     }
   }
 
@@ -102,7 +141,12 @@ export function usePlanningActions(board: ReturnType<typeof usePlanningBoard>) {
   return {
     creatingSchedule,
     copyingMonth,
+    publishing,
+    archiving,
+    confirmingArchive,
     onCreateSchedule,
+    onPublish,
+    onArchiveConfirmed,
     onCopyMonth,
     performDrop,
     onAssignmentUpdated,

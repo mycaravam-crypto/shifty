@@ -30,6 +30,8 @@ export interface Schedule {
   startDate: string
   endDate: string
   status: number
+  publishedAt: string | null
+  publishedBy: string | null
 }
 export interface Assignment {
   id: string

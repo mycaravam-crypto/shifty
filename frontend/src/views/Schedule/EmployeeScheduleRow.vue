@@ -22,9 +22,13 @@ const props = defineProps<{
   carriedOverFor: (employeeId: string) => number
   laborCostFor: (employeeId: string) => number | null
   drag: DragState | null
+  isDraft: boolean
   chipPointerDown: (e: PointerEvent, payload: DragPayload) => void
 }>()
-const emit = defineEmits<{ 'export-pdf': [employeeId: string] }>()
+const emit = defineEmits<{
+  'export-pdf': [employeeId: string]
+  'view-readonly': [assignment: Assignment]
+}>()
 
 function isCellHighlighted(dateIso: string): boolean {
   const key = `${props.employee.id}|${dateIso}`
@@ -115,8 +119,9 @@ function barWidth(employeeId: string): number {
             drag.payload.assignmentId === a.id,
         }"
         @pointerdown="
-          chipPointerDown($event, assignmentDragPayload(a, shiftTypeById(a.shiftTypeId)))
+          isDraft && chipPointerDown($event, assignmentDragPayload(a, shiftTypeById(a.shiftTypeId)))
         "
+        @click="!isDraft && emit('view-readonly', a)"
       >
         <div class="flex items-center gap-1.5 text-xs">
           <span

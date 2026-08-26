@@ -21,9 +21,13 @@ defineProps<{
   carriedOverFor: (employeeId: string) => number
   laborCostFor: (employeeId: string) => number | null
   drag: DragState | null
+  isDraft: boolean
   chipPointerDown: (e: PointerEvent, payload: DragPayload) => void
 }>()
-const emit = defineEmits<{ 'export-employee-pdf': [employeeId: string] }>()
+const emit = defineEmits<{
+  'export-employee-pdf': [employeeId: string]
+  'view-readonly': [assignment: Assignment]
+}>()
 
 // Auto-scrolls the horizontally-scrolling table while dragging near its edge — otherwise a
 // month with 28+ day columns has no way to reach off-screen days mid-drag. Driven by
@@ -94,8 +98,10 @@ defineExpose({ autoScrollTableWrap })
           :carried-over-for="carriedOverFor"
           :labor-cost-for="laborCostFor"
           :drag="drag"
+          :is-draft="isDraft"
           :chip-pointer-down="chipPointerDown"
           @export-pdf="emit('export-employee-pdf', $event)"
+          @view-readonly="emit('view-readonly', $event)"
         />
         <tr v-if="!visibleEmployees.length">
           <td :colspan="days.length + 1" class="px-4 py-8 text-center text-slate-500">

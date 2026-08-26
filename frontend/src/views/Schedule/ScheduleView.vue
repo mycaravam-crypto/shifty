@@ -2,6 +2,7 @@
 import { nextTick, onMounted, onUnmounted, ref } from 'vue'
 import { Search } from '@lucide/vue'
 import ModalShell from '@/components/ModalShell.vue'
+import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import ShiftAssignmentModal from './ShiftAssignmentModal.vue'
 import ShiftSuggestionModal from './ShiftSuggestionModal.vue'
 import AutoFillModal from './AutoFillModal.vue'
@@ -36,6 +37,10 @@ const {
   activeShiftTypes,
   visibleEmployees,
   currentSchedule,
+  isDraft,
+  isPublished,
+  blockingErrorCount,
+  publishBlockReason,
   days,
   shiftTypeById,
   holidayFor,
@@ -58,7 +63,12 @@ const actions = usePlanningActions(board)
 const {
   creatingSchedule,
   copyingMonth,
+  publishing,
+  archiving,
+  confirmingArchive,
   onCreateSchedule,
+  onPublish,
+  onArchiveConfirmed,
   onCopyMonth,
   performDrop,
   onAssignmentUpdated,
@@ -80,6 +90,13 @@ const { drag, dragOverKey, onChipPointerDown } = useScheduleDnD({
   },
   onAutoScroll: (clientX) => gridRef.value?.autoScrollTableWrap(clientX),
 })
+
+// issue #79: once a Schedule isn't Draft, PlanningGrid/EmployeeScheduleRow don't attach the
+// pointerdown-based drag handler at all (it would just 409) — a plain click still needs to open
+// the assignment modal in read-only mode instead.
+function viewAssignmentReadonly(assignment: Assignment) {
+  selectedAssignment.value = assignment
+}
 
 async function handleAssignmentUpdated() {
   selectedAssignment.value = null
@@ -162,11 +179,19 @@ window.addEventListener('afterprint', () => {
 
     <PlanningToolbar
       :month-label="monthLabel"
-      :has-current-schedule="!!currentSchedule"
+      :current-schedule="currentSchedule ?? null"
+      :is-draft="!!isDraft"
+      :is-published="!!isPublished"
+      :publishing="publishing"
+      :archiving="archiving"
+      :blocking-error-count="blockingErrorCount"
+      :publish-block-reason="publishBlockReason"
       @prev="prevMonth"
       @next="nextMonth"
       @show-shortcuts="showShortcuts = true"
       @export-all="exportAllPdf"
+      @publish="onPublish"
+      @archive="confirmingArchive = true"
     />
 
     <p v-if="error" class="mb-4 text-sm text-rose-400">{{ error }}</p>
@@ -199,6 +224,7 @@ window.addEventListener('afterprint', () => {
           :has-assignments="assignments.length > 0"
           :copying-month="copyingMonth"
           :total-labor-cost="totalLaborCost"
+          :is-draft="!!isDraft"
           :chip-pointer-down="onChipPointerDown"
           @copy-month="onCopyMonth"
           @open-auto-fill="showAutoFill = true"
@@ -242,8 +268,10 @@ window.addEventListener('afterprint', () => {
           :carried-over-for="carriedOverFor"
           :labor-cost-for="laborCostFor"
           :drag="drag"
+          :is-draft="!!isDraft"
           :chip-pointer-down="onChipPointerDown"
           @export-employee-pdf="exportEmployeePdf"
+          @view-readonly="viewAssignmentReadonly"
         />
       </template>
     </template>
@@ -252,8 +280,18 @@ window.addEventListener('afterprint', () => {
       v-if="selectedAssignment"
       :assignment="selectedAssignment"
       :shift-types="shiftTypes"
+      :readonly="!isDraft"
       @close="selectedAssignment = null"
       @updated="handleAssignmentUpdated"
+    />
+
+    <ConfirmDialog
+      v-if="confirmingArchive"
+      title="Dienstplan archivieren"
+      message="Diesen veröffentlichten Dienstplan als archiviert markieren? Er bleibt einsehbar, kann aber nicht mehr bearbeitet werden."
+      confirm-label="Archivieren"
+      @confirm="onArchiveConfirmed"
+      @close="confirmingArchive = false"
     />
 
     <ShiftSuggestionModal

@@ -29,6 +29,7 @@ public record UpdateEmployeeRequest(
 
 public record ShiftTypePreferenceDto(Guid ShiftTypeId, PreferenceLevel Level);
 public record WeekdayPreferenceDto(DayOfWeek DayOfWeek, PreferenceLevel Level);
+public record SetEligibleShiftTypesRequest(List<Guid> ShiftTypeIds);
 
 [ApiController]
 [Route("api/employees")]
@@ -42,6 +43,7 @@ public class EmployeesController(ApplicationDbContext db) : ControllerBase
     public async Task<ActionResult<IEnumerable<EmployeeDto>>> GetAll()
     {
         var employees = await db.Employees
+            .AsNoTracking()
             .OrderBy(e => e.LastName).ThenBy(e => e.FirstName)
             .ToListAsync();
         return Ok(employees.Select(ToDto));
@@ -50,7 +52,7 @@ public class EmployeesController(ApplicationDbContext db) : ControllerBase
     [HttpGet("{id:guid}")]
     public async Task<ActionResult<EmployeeDto>> GetById(Guid id)
     {
-        var employee = await db.Employees.FindAsync(id);
+        var employee = await db.Employees.AsNoTracking().FirstOrDefaultAsync(e => e.Id == id);
         return employee is null ? NotFound() : Ok(ToDto(employee));
     }
 
@@ -63,12 +65,12 @@ public class EmployeesController(ApplicationDbContext db) : ControllerBase
             return NotFound();
 
         var cutoff = before ?? DateOnly.FromDateTime(DateTime.UtcNow);
-        var schedules = await db.Schedules.Where(s => s.EndDate < cutoff).ToListAsync();
+        var schedules = await db.Schedules.AsNoTracking().Where(s => s.EndDate < cutoff).ToListAsync();
         var scheduleIds = schedules.Select(s => s.Id).ToList();
-        var assignments = await db.ShiftAssignments
+        var assignments = await db.ShiftAssignments.AsNoTracking()
             .Where(a => a.EmployeeId == id && scheduleIds.Contains(a.ScheduleId)).ToListAsync();
-        var contracts = await db.Contracts.Where(c => c.EmployeeId == id).ToListAsync();
-        var absences = await db.Absences.Where(a => a.EmployeeId == id).ToListAsync();
+        var contracts = await db.Contracts.AsNoTracking().Where(c => c.EmployeeId == id).ToListAsync();
+        var absences = await db.Absences.AsNoTracking().Where(a => a.EmployeeId == id).ToListAsync();
 
         return Ok(HoursBalanceCalculator.CumulativeBalance(id, cutoff, schedules, assignments, contracts, absences));
     }
@@ -143,7 +145,7 @@ public class EmployeesController(ApplicationDbContext db) : ControllerBase
     [HttpGet("{id:guid}/eligible-shift-types")]
     public async Task<ActionResult<IEnumerable<ShiftTypeDto>>> GetEligibleShiftTypes(Guid id)
     {
-        var employee = await db.Employees.Include(e => e.EligibleShiftTypes).FirstOrDefaultAsync(e => e.Id == id);
+        var employee = await db.Employees.AsNoTracking().Include(e => e.EligibleShiftTypes).FirstOrDefaultAsync(e => e.Id == id);
         if (employee is null)
             return NotFound();
 
@@ -155,8 +157,9 @@ public class EmployeesController(ApplicationDbContext db) : ControllerBase
 
     [HttpPut("{id:guid}/eligible-shift-types")]
     [Authorize(Policy = "ManagerWrite")]
-    public async Task<IActionResult> SetEligibleShiftTypes(Guid id, List<Guid> shiftTypeIds)
+    public async Task<IActionResult> SetEligibleShiftTypes(Guid id, SetEligibleShiftTypesRequest request)
     {
+        var shiftTypeIds = request.ShiftTypeIds;
         var employee = await db.Employees.Include(e => e.EligibleShiftTypes).FirstOrDefaultAsync(e => e.Id == id);
         if (employee is null)
             return NotFound();
@@ -165,7 +168,7 @@ public class EmployeesController(ApplicationDbContext db) : ControllerBase
         if (shiftTypes.Count != shiftTypeIds.Distinct().Count())
             return BadRequest("One or more shift type ids do not exist.");
 
-        employee.EligibleShiftTypes = shiftTypes;
+        employee.ReplaceEligibleShiftTypes(shiftTypes);
         await db.SaveChangesAsync();
         return NoContent();
     }
@@ -179,7 +182,7 @@ public class EmployeesController(ApplicationDbContext db) : ControllerBase
         if (!await db.Employees.AnyAsync(e => e.Id == id))
             return NotFound();
 
-        var preferences = await db.ShiftTypePreferences.Where(p => p.EmployeeId == id).ToListAsync();
+        var preferences = await db.ShiftTypePreferences.AsNoTracking().Where(p => p.EmployeeId == id).ToListAsync();
         return Ok(preferences.Select(p => new ShiftTypePreferenceDto(p.ShiftTypeId, p.Level)));
     }
 
@@ -215,7 +218,7 @@ public class EmployeesController(ApplicationDbContext db) : ControllerBase
         if (!await db.Employees.AnyAsync(e => e.Id == id))
             return NotFound();
 
-        var preferences = await db.WeekdayPreferences.Where(p => p.EmployeeId == id).ToListAsync();
+        var preferences = await db.WeekdayPreferences.AsNoTracking().Where(p => p.EmployeeId == id).ToListAsync();
         return Ok(preferences.Select(p => new WeekdayPreferenceDto(p.DayOfWeek, p.Level)));
     }
 

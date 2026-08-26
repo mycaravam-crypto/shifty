@@ -64,6 +64,20 @@ export function usePlanningBoard(filters: ReturnType<typeof useScheduleFilters>)
     schedules.value.find((s) => s.startDate === monthStartIso.value),
   )
 
+  // issue #79: the grid is only editable (drag/drop create+move, delete, auto-fill, suggestions)
+  // while the Schedule is still Draft — the backend already 409s all of that once it isn't
+  // (issue #68), this just keeps the UI from offering actions that would fail.
+  const SCHEDULE_STATUS_DRAFT = 0
+  const SCHEDULE_STATUS_PUBLISHED = 1
+  const isDraft = computed(() => currentSchedule.value?.status === SCHEDULE_STATUS_DRAFT)
+  const isPublished = computed(() => currentSchedule.value?.status === SCHEDULE_STATUS_PUBLISHED)
+  const blockingErrorCount = computed(() => validation.value?.errors.length ?? 0)
+  const publishBlockReason = computed(() =>
+    blockingErrorCount.value > 0
+      ? `${blockingErrorCount.value} Fehler müssen zuerst behoben werden.`
+      : undefined,
+  )
+
   const days = computed(() => {
     const start = currentSchedule.value
       ? parseIso(currentSchedule.value.startDate)
@@ -168,6 +182,15 @@ export function usePlanningBoard(filters: ReturnType<typeof useScheduleFilters>)
   }
   watch(currentSchedule, loadDetail, { immediate: true })
 
+  // issue #79: replaces the Schedule in the already-loaded list with the backend's response,
+  // rather than a full reload — /publish and /archive don't change anything else about the
+  // month (assignments, other schedules), so the rest of the page's already-fetched state stays
+  // valid as-is.
+  function updateCurrentScheduleFrom(dto: Schedule) {
+    const idx = schedules.value.findIndex((s) => s.id === dto.id)
+    if (idx !== -1) schedules.value[idx] = dto
+  }
+
   async function load() {
     loading.value = true
     error.value = ''
@@ -246,6 +269,10 @@ export function usePlanningBoard(filters: ReturnType<typeof useScheduleFilters>)
     activeShiftTypes,
     visibleEmployees,
     currentSchedule,
+    isDraft,
+    isPublished,
+    blockingErrorCount,
+    publishBlockReason,
     days,
     shiftTypeById,
     holidayFor,
@@ -260,6 +287,7 @@ export function usePlanningBoard(filters: ReturnType<typeof useScheduleFilters>)
     loadDetail,
     loadBalances,
     loadHolidays,
+    updateCurrentScheduleFrom,
     prevMonth,
     nextMonth,
   }

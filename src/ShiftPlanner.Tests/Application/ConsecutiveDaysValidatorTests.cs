@@ -35,7 +35,7 @@ public class ConsecutiveDaysValidatorTests
         ConsecutiveDaysValidator.Validate(assignments, result);
 
         var error = Assert.Single(result.Errors);
-        Assert.Equal("TooManyConsecutiveDays", error.Type);
+        Assert.Equal(ValidationIssueCode.TooManyConsecutiveDays, error.Type);
     }
 
     [Fact]

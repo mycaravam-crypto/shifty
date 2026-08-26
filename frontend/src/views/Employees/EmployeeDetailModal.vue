@@ -112,7 +112,9 @@ function toggleEligible(id: string) {
 async function onSaveEligible() {
   savingEligible.value = true
   try {
-    await api.put(`/employees/${props.employee.id}/eligible-shift-types`, [...eligibleIds.value])
+    await api.put(`/employees/${props.employee.id}/eligible-shift-types`, {
+      shiftTypeIds: [...eligibleIds.value],
+    })
   } finally {
     savingEligible.value = false
   }
