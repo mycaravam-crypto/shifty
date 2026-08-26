@@ -18,7 +18,7 @@ public static class ShiftOverlapValidator
                     result.Warnings.Add(new ValidationIssue(
                         "ShiftOverlap",
                         $"Überlappende Schichten am {group.Key.Date:yyyy-MM-dd}.",
-                        group.Key.EmployeeId, ordered[i].Id));
+                        EmployeeId: group.Key.EmployeeId, ShiftAssignmentId: ordered[i].Id));
                 }
             }
         }

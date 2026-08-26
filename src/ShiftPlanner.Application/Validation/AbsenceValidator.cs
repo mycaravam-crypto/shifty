@@ -27,7 +27,7 @@ public static class AbsenceValidator
             result.Errors.Add(new ValidationIssue(
                 "AssignedDuringAbsence",
                 $"{name} ist am {assignment.Date:yyyy-MM-dd} als {absence.Type} abwesend.",
-                assignment.EmployeeId, assignment.Id));
+                EmployeeId: assignment.EmployeeId, ShiftAssignmentId: assignment.Id));
         }
     }
 }

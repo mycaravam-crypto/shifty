@@ -36,7 +36,7 @@ public static class ContractValidator
                 result.Errors.Add(new ValidationIssue(
                     "ContractHoursExceeded",
                     $"{plannedHours}h geplant, Vertrag sieht {Math.Round(expectedHours, 1)}h für diesen Zeitraum vor.",
-                    group.Key));
+                    EmployeeId: group.Key));
             }
         }
     }

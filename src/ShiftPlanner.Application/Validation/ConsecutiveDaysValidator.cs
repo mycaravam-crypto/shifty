@@ -28,7 +28,7 @@ public static class ConsecutiveDaysValidator
                     result.Errors.Add(new ValidationIssue(
                         "TooManyConsecutiveDays",
                         $"Mehr als {MaxConsecutiveDays} aufeinanderfolgende Arbeitstage.",
-                        group.Key, assignment.Id));
+                        EmployeeId: group.Key, ShiftAssignmentId: assignment.Id));
                 }
                 streakStart = i;
             }
