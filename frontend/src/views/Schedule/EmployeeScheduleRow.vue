@@ -24,6 +24,9 @@ const props = defineProps<{
   drag: DragState | null
   isDraft: boolean
   chipPointerDown: (e: PointerEvent, payload: DragPayload) => void
+  isFocusableCell: (employeeId: string, dateIso: string) => boolean
+  cellAriaLabel: (employeeId: string, dateIso: string) => string
+  onCellFocus: (employeeId: string, dateIso: string) => void
 }>()
 const emit = defineEmits<{
   'export-pdf': [employeeId: string]
@@ -56,11 +59,14 @@ function barWidth(employeeId: string): number {
       <div class="flex items-center gap-1.5">
         {{ employee.lastName }}, {{ employee.firstName }}
         <button
-          class="text-slate-500 hover:text-slate-200 transition-colors print:hidden"
+          class="relative text-slate-500 hover:text-slate-200 transition-colors print:hidden"
           title="Nur diesen Mitarbeiter als PDF exportieren"
           @click="emit('export-pdf', employee.id)"
         >
           <Printer :size="12" />
+          <!-- issue #80: invisible hit-slop, same reasoning as the "Vorschlagen" sparkle —
+               this icon sits inline next to the employee name. -->
+          <span class="absolute -inset-3.5" aria-hidden="true"></span>
         </button>
       </div>
       <template v-if="targetHoursFor(employee.id) !== null">
@@ -100,13 +106,17 @@ function barWidth(employeeId: string): number {
     <td
       v-for="d in days"
       :key="toIso(d)"
-      class="px-2 py-2 align-top transition-colors"
+      class="px-2 py-2 align-top transition-colors outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 focus-visible:ring-inset"
       :class="{
         'bg-blue-500/10 ring-1 ring-inset ring-blue-500/50': isCellHighlighted(toIso(d)),
         'bg-white/[0.03]': isWeekend(d) && !isCellHighlighted(toIso(d)),
       }"
       :data-employee-id="employee.id"
       :data-date="toIso(d)"
+      :tabindex="isFocusableCell(employee.id, toIso(d)) ? 0 : -1"
+      role="gridcell"
+      :aria-label="cellAriaLabel(employee.id, toIso(d))"
+      @focus="onCellFocus(employee.id, toIso(d))"
     >
       <div
         v-for="a in assignmentsFor(employee.id, toIso(d))"

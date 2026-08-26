@@ -35,14 +35,14 @@ const emit = defineEmits<{
     <h1 class="text-2xl font-semibold">Dienstplan</h1>
     <div class="flex items-center gap-3">
       <button
-        class="text-slate-400 hover:text-slate-200 transition-colors print:hidden"
+        class="flex items-center justify-center p-3 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-white/5 transition-colors print:hidden"
         @click="emit('prev')"
       >
         <ChevronLeft :size="18" />
       </button>
       <span class="font-mono text-sm text-slate-400 capitalize">{{ monthLabel }}</span>
       <button
-        class="text-slate-400 hover:text-slate-200 transition-colors print:hidden"
+        class="flex items-center justify-center p-3 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-white/5 transition-colors print:hidden"
         @click="emit('next')"
       >
         <ChevronRight :size="18" />
@@ -64,7 +64,7 @@ const emit = defineEmits<{
         {{ STATUS_LABELS[currentSchedule.status] }}
       </span>
       <button
-        class="text-slate-400 hover:text-slate-200 transition-colors print:hidden"
+        class="flex items-center justify-center p-3 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-white/5 transition-colors print:hidden"
         title="Tastenkürzel anzeigen (?)"
         @click="emit('show-shortcuts')"
       >

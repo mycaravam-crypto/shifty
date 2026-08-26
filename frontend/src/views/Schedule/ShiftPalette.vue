@@ -56,11 +56,14 @@ const emit = defineEmits<{
         v-if="isDraft"
         type="button"
         title="Mitarbeiter vorschlagen"
-        class="text-slate-500 hover:text-indigo-300 transition-colors"
+        class="relative text-slate-500 hover:text-indigo-300 transition-colors"
         @pointerdown.stop
         @click.stop="emit('suggest', s)"
       >
         <Sparkles :size="13" />
+        <!-- issue #80: invisible hit-slop rather than growing the visible icon — this button
+             sits inline inside a dense palette chip. -->
+        <span class="absolute -inset-3.5" aria-hidden="true"></span>
       </button>
     </div>
     <p v-if="!activeShiftTypes.length" class="text-sm text-slate-500">
