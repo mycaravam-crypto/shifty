@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using ShiftPlanner.Infrastructure.Persistence;
@@ -11,9 +12,11 @@ using ShiftPlanner.Infrastructure.Persistence;
 namespace ShiftPlanner.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260825041129_EndsNextDayFlag")]
+    partial class EndsNextDayFlag
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -555,34 +558,6 @@ namespace ShiftPlanner.Infrastructure.Persistence.Migrations
                     b.ToTable("ShiftTypes");
                 });
 
-            modelBuilder.Entity("ShiftPlanner.Domain.Scheduling.StaffingRequirement", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<int>("DayOfWeek")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("MinimumStaffing")
-                        .HasColumnType("integer");
-
-                    b.Property<Guid>("ShiftTypeId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid?>("TeamId")
-                        .HasColumnType("uuid");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ShiftTypeId");
-
-                    b.HasIndex("TeamId", "ShiftTypeId", "DayOfWeek")
-                        .IsUnique();
-
-                    b.ToTable("StaffingRequirements");
-                });
-
             modelBuilder.Entity("ShiftPlanner.Infrastructure.Persistence.ApplicationUser", b =>
                 {
                     b.Property<string>("Id")
@@ -795,22 +770,6 @@ namespace ShiftPlanner.Infrastructure.Persistence.Migrations
                         .HasForeignKey("ShiftTypeId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
-                });
-
-            modelBuilder.Entity("ShiftPlanner.Domain.Scheduling.StaffingRequirement", b =>
-                {
-                    b.HasOne("ShiftPlanner.Domain.Scheduling.ShiftType", "ShiftType")
-                        .WithMany()
-                        .HasForeignKey("ShiftTypeId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("ShiftPlanner.Domain.Employees.Team", null)
-                        .WithMany()
-                        .HasForeignKey("TeamId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.Navigation("ShiftType");
                 });
 
             modelBuilder.Entity("ShiftPlanner.Domain.Employees.Employee", b =>

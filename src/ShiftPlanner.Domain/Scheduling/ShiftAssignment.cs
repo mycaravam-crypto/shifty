@@ -17,4 +17,18 @@ public class ShiftAssignment
     // that case. When set, it lets WageCalculator subtract the break's own overlap with the
     // night window from the raw shift/night-window overlap for a precise figure.
     public TimeOnly? BreakStartTime { get; set; }
+
+    // issue #81 (step 1 of a "revisit and decide" issue — see the PR description for the full
+    // design analysis): schema-only groundwork for real cross-midnight (overnight) shift
+    // support. Deliberately UNUSED for now — every calculator/validator below still assumes
+    // EndTime > StartTime, and the write boundary (SchedulesController/ShiftTypesController,
+    // issue #11/#101) still rejects EndTime <= StartTime outright, so this column is always
+    // false for every row that can exist today. It exists purely so a later, explicitly-scoped
+    // follow-up issue can (a) start accepting EndTime <= StartTime when this flag is set
+    // without a second migration, and (b) update WorkingTimeCalculator/WageCalculator/
+    // RestTimeValidator/ConsecutiveDaysValidator/ShiftOverlapValidator/GermanPublicHolidays one
+    // at a time against a schema that's already in place. No DTO/controller exposes this field
+    // yet — setting it via the API would currently be meaningless (nothing reads it, and the
+    // controllers still 400 on backwards times regardless of this flag).
+    public bool EndsNextDay { get; set; }
 }
