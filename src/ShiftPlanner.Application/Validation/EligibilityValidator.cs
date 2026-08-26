@@ -24,7 +24,7 @@ public static class EligibilityValidator
                 continue;
 
             result.Errors.Add(new ValidationIssue(
-                "ShiftTypeNotEligible",
+                ValidationIssueCode.ShiftTypeNotEligible,
                 $"{employee.FirstName} {employee.LastName} ist für diese Schichtart nicht freigegeben.",
                 EmployeeId: employee.Id, ShiftAssignmentId: assignment.Id));
         }

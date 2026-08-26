@@ -32,7 +32,7 @@ public class BreakMinutesValidatorTests
         BreakMinutesValidator.Validate([assignment], result);
 
         var error = Assert.Single(result.Errors);
-        Assert.Equal("InsufficientBreak", error.Type);
+        Assert.Equal(ValidationIssueCode.InsufficientBreak, error.Type);
     }
 
     [Fact]
@@ -60,7 +60,7 @@ public class BreakMinutesValidatorTests
         BreakMinutesValidator.Validate([assignment], result);
 
         var error = Assert.Single(result.Errors);
-        Assert.Equal("InsufficientBreak", error.Type);
+        Assert.Equal(ValidationIssueCode.InsufficientBreak, error.Type);
     }
 
     [Fact]

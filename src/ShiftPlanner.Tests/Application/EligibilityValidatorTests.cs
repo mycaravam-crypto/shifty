@@ -46,7 +46,7 @@ public class EligibilityValidatorTests
         EligibilityValidator.Validate([assignment], new Dictionary<Guid, ShiftPlanner.Domain.Employees.Employee> { [employee.Id] = employee }, result);
 
         var error = Assert.Single(result.Errors);
-        Assert.Equal("ShiftTypeNotEligible", error.Type);
+        Assert.Equal(ValidationIssueCode.ShiftTypeNotEligible, error.Type);
     }
 
     [Fact]

@@ -37,9 +37,9 @@ public class ScheduleValidatorTests
             schedule, [assignment], [employee], [shiftType], [contract]);
 
         Assert.False(result.IsValid);
-        Assert.Contains(result.Errors, e => e.Type == "InsufficientBreak");
-        Assert.Contains(result.Errors, e => e.Type == "ContractHoursExceeded");
-        Assert.Contains(result.Warnings, w => w.Type == "Understaffed");
+        Assert.Contains(result.Errors, e => e.Type == ValidationIssueCode.InsufficientBreak);
+        Assert.Contains(result.Errors, e => e.Type == ValidationIssueCode.ContractHoursExceeded);
+        Assert.Contains(result.Warnings, w => w.Type == ValidationIssueCode.Understaffed);
     }
 
     [Fact]
@@ -58,7 +58,7 @@ public class ScheduleValidatorTests
             schedule, [scheduleAssignment], [employee], [shiftType], [],
             historyAssignments: history);
 
-        Assert.Contains(result.Errors, e => e.Type == "InsufficientRest");
+        Assert.Contains(result.Errors, e => e.Type == ValidationIssueCode.InsufficientRest);
     }
 
     [Fact]
@@ -73,6 +73,6 @@ public class ScheduleValidatorTests
         var result = ScheduleValidator.Validate(
             schedule, [assignment], [employee], [shiftType], [], absences: [absence]);
 
-        Assert.Contains(result.Errors, e => e.Type == "AssignedDuringAbsence");
+        Assert.Contains(result.Errors, e => e.Type == ValidationIssueCode.AssignedDuringAbsence);
     }
 }

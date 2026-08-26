@@ -25,7 +25,7 @@ public static class RestTimeValidator
                 if (rest >= TimeSpan.Zero && rest < TimeSpan.FromHours(MinRestHours))
                 {
                     result.Errors.Add(new ValidationIssue(
-                        "InsufficientRest",
+                        ValidationIssueCode.InsufficientRest,
                         $"Ruhezeit von {MinRestHours}h unterschritten ({rest.TotalHours:F1}h).",
                         EmployeeId: group.Key, ShiftAssignmentId: ordered[i].Id));
                 }

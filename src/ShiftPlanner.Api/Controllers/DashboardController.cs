@@ -254,7 +254,7 @@ public class DashboardController(ApplicationDbContext db) : ControllerBase
 
                 var employeeName = issue.EmployeeId is { } id && employeesById.TryGetValue(id, out var e)
                     ? $"{e.FirstName} {e.LastName}" : null;
-                points.Add(new PainPointDto(issue.Type, severity, issue.Message, schedule.Id, schedule.Name, issue.EmployeeId, employeeName));
+                points.Add(new PainPointDto(issue.Type.ToString(), severity, issue.Message, schedule.Id, schedule.Name, issue.EmployeeId, employeeName));
             }
         }
         return points.OrderByDescending(p => p.Severity == PainSeverity.Error).ToList();
