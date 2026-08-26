@@ -22,6 +22,12 @@ import type {
 } from '@/views/Schedule/types'
 import type { useScheduleFilters } from './useScheduleFilters'
 
+export interface Coverage {
+  count: number
+  target: number
+  status: 'ok' | 'under' | 'over'
+}
+
 // Loading + normalized state for the Dienstplan (issue #73's `usePlanningBoard`). Owns every
 // reference/derived dataset the grid needs (employees, teams, shift types, schedules,
 // assignments, contracts, absences, hour balances, holidays, validation) plus month
@@ -90,6 +96,30 @@ export function usePlanningBoard(filters: ReturnType<typeof useScheduleFilters>)
 
   function shiftTypeById(id: string) {
     return shiftTypes.value.find((s) => s.id === id)
+  }
+  // issue #77: inline per-day/shift-type staffing coverage on the grid itself, not only in the
+  // validation panel above it. Only ShiftTypes with a MinStaffing/MaxStaffing target defined are
+  // shown at all — most ShiftTypes have neither set and would just be noise here.
+  // Unlike the backend's StaffingValidator (which only flags (ShiftType, Date) pairs that already
+  // have at least one assignment — see issue #69/StaffingRequirement for the "0 assigned" model
+  // this view still awaits for the *validation panel*), this reads MinStaffing directly off the
+  // ShiftType and the already-loaded `assignments` for the visible month, so it can show a true
+  // "0/3 ⚠" for a day nobody has been placed on yet — no backend change needed.
+  const coverageShiftTypes = computed(() =>
+    activeShiftTypes.value.filter((s) => s.minStaffing !== null || s.maxStaffing !== null),
+  )
+  function coverageFor(shiftTypeId: string, dateIso: string): Coverage {
+    const shiftType = shiftTypeById(shiftTypeId)
+    const count = new Set(
+      assignments.value
+        .filter((a) => a.shiftTypeId === shiftTypeId && a.date === dateIso)
+        .map((a) => a.employeeId),
+    ).size
+    const min = shiftType?.minStaffing ?? null
+    const max = shiftType?.maxStaffing ?? null
+    if (min !== null && count < min) return { count, target: min, status: 'under' }
+    if (max !== null && count > max) return { count, target: max, status: 'over' }
+    return { count, target: min ?? max ?? 0, status: 'ok' }
   }
   function holidayFor(dateIso: string): PublicHoliday | undefined {
     return holidays.value.find((h) => h.date === dateIso)
@@ -275,6 +305,8 @@ export function usePlanningBoard(filters: ReturnType<typeof useScheduleFilters>)
     publishBlockReason,
     days,
     shiftTypeById,
+    coverageShiftTypes,
+    coverageFor,
     holidayFor,
     isWeekend,
     assignmentsFor,

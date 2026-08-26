@@ -4,6 +4,7 @@ import EmployeeScheduleRow from './EmployeeScheduleRow.vue'
 import type { DragPayload, DragState } from './composables/useScheduleDnD'
 import { toIso, weekdayFmt } from './format'
 import type { Assignment, Employee, PublicHoliday, ShiftType } from './types'
+import type { Coverage } from './composables/usePlanningBoard'
 
 defineProps<{
   days: Date[]
@@ -15,6 +16,8 @@ defineProps<{
   highlightKey: string | null
   printEmployeeId: string | null
   shiftTypeById: (id: string) => ShiftType | undefined
+  coverageShiftTypes: ShiftType[]
+  coverageFor: (shiftTypeId: string, dateIso: string) => Coverage
   assignmentsFor: (employeeId: string, dateIso: string) => Assignment[]
   targetHoursFor: (employeeId: string) => number | null
   netHoursFor: (employeeId: string) => number
@@ -78,6 +81,29 @@ defineExpose({ autoScrollTableWrap })
                 class="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0"
               ></span>
             </span>
+            <div
+              v-if="coverageShiftTypes.length"
+              class="mt-1 space-y-0.5 normal-case tracking-normal"
+            >
+              <div
+                v-for="s in coverageShiftTypes"
+                :key="s.id"
+                class="flex items-center gap-1 font-mono text-[10px] font-normal"
+                :class="{
+                  'text-rose-400': coverageFor(s.id, toIso(d)).status === 'under',
+                  'text-amber-400': coverageFor(s.id, toIso(d)).status === 'over',
+                  'text-slate-600': coverageFor(s.id, toIso(d)).status === 'ok',
+                }"
+                :title="`${s.name}: ${coverageFor(s.id, toIso(d)).count} / ${coverageFor(s.id, toIso(d)).target} besetzt`"
+              >
+                <span
+                  class="w-1.5 h-1.5 rounded-full shrink-0"
+                  :style="{ backgroundColor: s.color }"
+                ></span>
+                {{ coverageFor(s.id, toIso(d)).count }}/{{ coverageFor(s.id, toIso(d)).target }}
+                <span v-if="coverageFor(s.id, toIso(d)).status !== 'ok'">⚠</span>
+              </div>
+            </div>
           </th>
         </tr>
       </thead>
