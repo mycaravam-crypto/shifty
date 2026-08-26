@@ -12,11 +12,14 @@ import {
   HelpCircle,
   Sparkles,
   Wand2,
+  CheckCircle2,
+  Archive,
 } from '@lucide/vue'
 import api from '@/services/api'
 import { useToastStore } from '@/stores/toast'
 import { useSettingsStore } from '@/stores/settings'
 import ModalShell from '@/components/ModalShell.vue'
+import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import ShiftAssignmentModal from './ShiftAssignmentModal.vue'
 import ShiftSuggestionModal from './ShiftSuggestionModal.vue'
 import AutoFillModal from './AutoFillModal.vue'
@@ -53,6 +56,17 @@ interface Schedule {
   startDate: string
   endDate: string
   status: number
+  publishedAt: string | null
+  publishedBy: string | null
+}
+// issue #68's ScheduleStatus enum (Domain/Scheduling/Schedule.cs), serialized as its ordinal
+// same as every other backend enum this frontend consumes.
+const SCHEDULE_STATUS_DRAFT = 0
+const SCHEDULE_STATUS_PUBLISHED = 1
+const STATUS_LABELS: Record<number, string> = {
+  0: 'Entwurf',
+  1: 'Veröffentlicht',
+  2: 'Archiviert',
 }
 interface Assignment {
   id: string
@@ -162,6 +176,9 @@ const loading = ref(true)
 const error = ref('')
 const creatingSchedule = ref(false)
 const copyingMonth = ref(false)
+const publishing = ref(false)
+const archiving = ref(false)
+const confirmingArchive = ref(false)
 const search = ref('')
 const teamFilter = ref('')
 const searchInputRef = ref<HTMLInputElement | null>(null)
@@ -192,6 +209,17 @@ const visibleEmployees = computed(() => {
 
 const currentSchedule = computed(() =>
   schedules.value.find((s) => s.startDate === monthStartIso.value),
+)
+// issue #79: the grid is only editable (drag/drop create+move, delete, auto-fill, suggestions)
+// while the Schedule is still Draft — the backend already 409s all of that once it isn't
+// (issue #68), this just keeps the UI from offering actions that would fail.
+const isDraft = computed(() => currentSchedule.value?.status === SCHEDULE_STATUS_DRAFT)
+const isPublished = computed(() => currentSchedule.value?.status === SCHEDULE_STATUS_PUBLISHED)
+const blockingErrorCount = computed(() => validation.value?.errors.length ?? 0)
+const publishBlockReason = computed(() =>
+  blockingErrorCount.value > 0
+    ? `${blockingErrorCount.value} Fehler müssen zuerst behoben werden.`
+    : undefined,
 )
 
 const days = computed(() => {
@@ -479,6 +507,51 @@ async function onCreateSchedule() {
   }
 }
 
+// issue #79: replaces the Schedule in the already-loaded list with the backend's response,
+// rather than a full reload — /publish and /archive don't change anything else about the
+// month (assignments, other schedules), so the rest of the page's already-fetched state stays
+// valid as-is.
+function updateCurrentScheduleFrom(dto: Schedule) {
+  const idx = schedules.value.findIndex((s) => s.id === dto.id)
+  if (idx !== -1) schedules.value[idx] = dto
+}
+
+// issue #68/#79: the button is already disabled while blockingErrorCount > 0, but re-checks
+// the 409 case too (e.g. another manager changed something between page load and this click).
+async function onPublish() {
+  if (!currentSchedule.value) return
+  publishing.value = true
+  try {
+    const res = await api.post(`/schedules/${currentSchedule.value.id}/publish`)
+    updateCurrentScheduleFrom(res.data)
+    toast.success('Dienstplan veröffentlicht.')
+  } catch (err) {
+    if (axios.isAxiosError(err) && err.response?.status === 409) {
+      await loadDetail()
+      toast.error('Veröffentlichen nicht möglich — es bestehen noch ungelöste Fehler.')
+    } else {
+      toast.error('Dienstplan konnte nicht veröffentlicht werden.')
+    }
+  } finally {
+    publishing.value = false
+  }
+}
+
+async function onArchiveConfirmed() {
+  if (!currentSchedule.value) return
+  archiving.value = true
+  try {
+    const res = await api.post(`/schedules/${currentSchedule.value.id}/archive`)
+    updateCurrentScheduleFrom(res.data)
+    toast.success('Dienstplan archiviert.')
+  } catch {
+    toast.error('Dienstplan konnte nicht archiviert werden.')
+  } finally {
+    archiving.value = false
+    confirmingArchive.value = false
+  }
+}
+
 async function onCopyMonth() {
   if (!currentSchedule.value) return
   copyingMonth.value = true
@@ -729,12 +802,47 @@ window.addEventListener('afterprint', () => {
         >
           <ChevronRight :size="18" />
         </button>
+        <span
+          v-if="currentSchedule"
+          class="rounded-full px-2 py-0.5 text-[10px] uppercase tracking-wider font-bold"
+          :class="{
+            'bg-slate-500/15 text-slate-400': currentSchedule.status === 0,
+            'bg-emerald-500/15 text-emerald-400': currentSchedule.status === 1,
+            'bg-violet-500/15 text-violet-400': currentSchedule.status === 2,
+          }"
+          :title="
+            currentSchedule.publishedAt
+              ? `Veröffentlicht am ${new Date(currentSchedule.publishedAt).toLocaleString('de-DE')}${currentSchedule.publishedBy ? ' von ' + currentSchedule.publishedBy : ''}`
+              : undefined
+          "
+        >
+          {{ STATUS_LABELS[currentSchedule.status] }}
+        </span>
         <button
           class="text-slate-400 hover:text-slate-200 transition-colors print:hidden"
           title="Tastenkürzel anzeigen (?)"
           @click="showShortcuts = true"
         >
           <HelpCircle :size="18" />
+        </button>
+        <button
+          v-if="currentSchedule && isDraft"
+          :disabled="publishing || blockingErrorCount > 0"
+          :title="publishBlockReason"
+          class="flex items-center gap-1.5 rounded-lg bg-linear-to-r from-emerald-600 to-emerald-500 px-3 py-1.5 text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed print:hidden"
+          @click="onPublish"
+        >
+          <CheckCircle2 :size="14" />
+          {{ publishing ? 'Veröffentlichen…' : 'Veröffentlichen' }}
+        </button>
+        <button
+          v-if="currentSchedule && isPublished"
+          :disabled="archiving"
+          class="flex items-center gap-1.5 rounded-lg bg-white/5 border border-white/10 px-3 py-1.5 text-sm hover:bg-white/10 transition-colors disabled:opacity-50 print:hidden"
+          @click="confirmingArchive = true"
+        >
+          <Archive :size="14" />
+          Archivieren
         </button>
         <button
           v-if="currentSchedule"
@@ -837,18 +945,21 @@ window.addEventListener('afterprint', () => {
             {{ copyingMonth ? 'Kopiere…' : 'Monat kopieren' }}
           </button>
           <button
-            v-if="activeShiftTypes.length"
+            v-if="activeShiftTypes.length && isDraft"
             class="flex items-center gap-1.5 rounded-lg bg-white/5 border border-white/10 px-3 py-1.5 text-sm hover:bg-white/10 transition-colors"
             @click="showAutoFill = true"
           >
             <Wand2 :size="14" />
             Automatisch füllen
           </button>
+          <!-- issue #79: once the Schedule isn't Draft, these stay visible as a color legend
+               but lose drag-to-create and the suggestion action — both would just 409. -->
           <div
             v-for="s in activeShiftTypes"
             :key="s.id"
-            class="flex items-center gap-2 rounded-lg bg-white/5 border border-white/10 px-3 py-1.5 text-sm cursor-grab touch-none select-none"
-            @pointerdown="onChipPointerDown($event, paletteDragPayload(s))"
+            class="flex items-center gap-2 rounded-lg bg-white/5 border border-white/10 px-3 py-1.5 text-sm touch-none select-none"
+            :class="isDraft ? 'cursor-grab' : 'cursor-default'"
+            @pointerdown="isDraft && onChipPointerDown($event, paletteDragPayload(s))"
           >
             <span
               class="w-2.5 h-2.5 rounded-full shrink-0"
@@ -859,6 +970,7 @@ window.addEventListener('afterprint', () => {
               >{{ s.startTime.slice(0, 5) }}–{{ s.endTime.slice(0, 5) }}</span
             >
             <button
+              v-if="isDraft"
               type="button"
               title="Mitarbeiter vorschlagen"
               class="text-slate-500 hover:text-indigo-300 transition-colors"
@@ -1011,7 +1123,8 @@ window.addEventListener('afterprint', () => {
                         drag.payload.kind === 'assignment' &&
                         drag.payload.assignmentId === a.id,
                     }"
-                    @pointerdown="onChipPointerDown($event, assignmentDragPayload(a))"
+                    @pointerdown="isDraft && onChipPointerDown($event, assignmentDragPayload(a))"
+                    @click="!isDraft && (selectedAssignment = a)"
                   >
                     <div class="flex items-center gap-1.5 text-xs">
                       <span
@@ -1041,8 +1154,18 @@ window.addEventListener('afterprint', () => {
       v-if="selectedAssignment"
       :assignment="selectedAssignment"
       :shift-types="shiftTypes"
+      :readonly="!isDraft"
       @close="selectedAssignment = null"
       @updated="onAssignmentUpdated"
+    />
+
+    <ConfirmDialog
+      v-if="confirmingArchive"
+      title="Dienstplan archivieren"
+      message="Diesen veröffentlichten Dienstplan als archiviert markieren? Er bleibt einsehbar, kann aber nicht mehr bearbeitet werden."
+      confirm-label="Archivieren"
+      @confirm="onArchiveConfirmed"
+      @close="confirmingArchive = false"
     />
 
     <ShiftSuggestionModal
