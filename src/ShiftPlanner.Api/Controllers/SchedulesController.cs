@@ -208,6 +208,10 @@ public class SchedulesController(ApplicationDbContext db) : ControllerBase
     // check /validate already exposes, so a manager can't publish (and thereby freeze) a
     // schedule that's still legally/operationally broken. Returns the full ValidationResult in
     // the 409 body when blocked, reusing the exact shape the validation panel already renders.
+    // issue #97: the Draft-only starting-state check itself now lives on Schedule.Publish (an
+    // InvalidOperationException there is the actual invariant enforcement) — this still checks
+    // Status first so the plain "wrong status" 409 keeps its original message/shape rather than
+    // falling through to the catch below.
     [HttpPost("schedules/{id:guid}/publish")]
     [Authorize(Policy = "ManagerWrite")]
     public async Task<ActionResult<ScheduleDto>> Publish(Guid id)
@@ -223,9 +227,14 @@ public class SchedulesController(ApplicationDbContext db) : ControllerBase
         if (!result.IsValid)
             return Conflict(result);
 
-        schedule.Status = ScheduleStatus.Published;
-        schedule.PublishedAt = DateTimeOffset.UtcNow;
-        schedule.PublishedBy = CurrentUserId();
+        try
+        {
+            schedule.Publish(CurrentUserId(), DateTimeOffset.UtcNow);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(ex.Message);
+        }
         await db.SaveChangesAsync();
 
         return Ok(ToDto(schedule));
@@ -234,6 +243,8 @@ public class SchedulesController(ApplicationDbContext db) : ControllerBase
     // issue #68: Published -> Archived. No validation re-check — a schedule already published
     // can be archived regardless of anything that changed operationally since (e.g. an employee
     // later deactivated), since Archived is a "this period is over" marker, not a quality gate.
+    // issue #97: same pre-check + catch pattern as Publish above, delegating the actual
+    // starting-state invariant to Schedule.Archive.
     [HttpPost("schedules/{id:guid}/archive")]
     [Authorize(Policy = "ManagerWrite")]
     public async Task<ActionResult<ScheduleDto>> Archive(Guid id)
@@ -245,7 +256,14 @@ public class SchedulesController(ApplicationDbContext db) : ControllerBase
         if (schedule.Status != ScheduleStatus.Published)
             return Conflict($"Schedule is {schedule.Status}; only a Published schedule can be archived.");
 
-        schedule.Status = ScheduleStatus.Archived;
+        try
+        {
+            schedule.Archive();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(ex.Message);
+        }
         await db.SaveChangesAsync();
 
         return Ok(ToDto(schedule));
