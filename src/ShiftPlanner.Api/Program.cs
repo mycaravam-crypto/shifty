@@ -19,8 +19,13 @@ var jwtKey = builder.Configuration["Jwt:SigningKey"]
     ?? throw new InvalidOperationException("Missing Jwt:SigningKey (set via env var).");
 
 builder.Services.AddHttpContextAccessor();
-builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseNpgsql(connectionString));
+// AuditSaveChangesInterceptor is stateless over the request-scoped IHttpContextAccessor (itself
+// a singleton backed by AsyncLocal), so it's safe to share as a singleton across DbContext
+// instances rather than constructing one per request.
+builder.Services.AddSingleton<AuditSaveChangesInterceptor>();
+builder.Services.AddDbContext<ApplicationDbContext>((sp, options) =>
+    options.UseNpgsql(connectionString)
+        .AddInterceptors(sp.GetRequiredService<AuditSaveChangesInterceptor>()));
 
 builder.Services
     .AddIdentityCore<ApplicationUser>(options =>
