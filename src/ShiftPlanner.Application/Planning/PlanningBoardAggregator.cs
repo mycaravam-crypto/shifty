@@ -35,10 +35,9 @@ public static class PlanningBoardAggregator
         var employeeContracts = contracts.Where(c => c.EmployeeId == employeeId).ToList();
         var employeeAbsences = absences.Where(a => a.EmployeeId == employeeId).ToList();
 
-        var targetContract = ResolveTargetContract(employeeContracts, from);
-        var targetHours = targetContract is null
+        var targetHours = employeeContracts.Count == 0
             ? (decimal?)null
-            : WorkingTimeCalculator.ExpectedHours(targetContract, employeeAbsences, employeeId, from, to);
+            : WorkingTimeCalculator.ExpectedHours(employeeContracts, employeeAbsences, employeeId, from, to);
 
         var plannedHours = assignmentsInRange.Where(a => a.EmployeeId == employeeId)
             .Sum(a => WorkingTimeCalculator.NetHours(a.StartTime, a.EndTime, a.BreakMinutes));
