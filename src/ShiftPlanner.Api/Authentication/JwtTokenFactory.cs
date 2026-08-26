@@ -75,6 +75,16 @@ public static class JwtTokenFactory
         {
             new(ClaimTypes.NameIdentifier, user.Id),
             new(ClaimTypes.Name, user.Email ?? user.UserName ?? user.Id),
+            // issue #75's integration-test pass surfaced this as a real bug, not just a test
+            // artifact: JwtSecurityToken has no other source of entropy — `exp`/`iat` are both
+            // second-granularity DateTime.UtcNow, so two tokens issued to the same user with the
+            // same roles within the same UTC second (e.g. two rapid logins, a double-clicked
+            // login button, two browser tabs) were byte-for-byte identical. Refresh tokens hash
+            // that byte string as their DB primary lookup key (RefreshToken.TokenHash, unique
+            // index since issue #55) — a same-second collision meant the second login's
+            // INSERT threw a raw 500 (unique constraint violation) instead of succeeding. A
+            // per-token jti guarantees a distinct token (and hash) regardless of timing.
+            new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
         };
         claims.AddRange(extraClaims);
 
