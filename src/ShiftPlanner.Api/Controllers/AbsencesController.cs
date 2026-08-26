@@ -29,6 +29,7 @@ public class AbsencesController(ApplicationDbContext db) : ControllerBase
             return NotFound();
 
         var absences = await db.Absences
+            .AsNoTracking()
             .Where(a => a.EmployeeId == employeeId)
             .OrderByDescending(a => a.From)
             .ToListAsync();
@@ -38,7 +39,7 @@ public class AbsencesController(ApplicationDbContext db) : ControllerBase
     [HttpGet("absences/{id:guid}")]
     public async Task<ActionResult<AbsenceDto>> GetById(Guid id)
     {
-        var absence = await db.Absences.FindAsync(id);
+        var absence = await db.Absences.AsNoTracking().FirstOrDefaultAsync(a => a.Id == id);
         return absence is null ? NotFound() : Ok(ToDto(absence));
     }
 
