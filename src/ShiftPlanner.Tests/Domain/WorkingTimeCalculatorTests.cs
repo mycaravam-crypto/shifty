@@ -165,4 +165,45 @@ public class WorkingTimeCalculatorTests
             contract, absences, employeeId, new DateOnly(2026, 8, 1), new DateOnly(2026, 8, 7));
         Assert.Equal(7m, hours);
     }
+
+    // issue #102: SchedulesController.CopyMonth's day-of-month clamping (extracted here so it's
+    // unit-testable) — pins down the currently-shipped clamp-and-collide behavior explicitly.
+    [Fact]
+    public void ClampDayToMonth_SameLengthMonth_NoClamping()
+    {
+        // August (31 days) -> September (30 days), a mid-month day that exists in both.
+        var date = WorkingTimeCalculator.ClampDayToMonth(new DateOnly(2026, 8, 15), 2026, 9);
+        Assert.Equal(new DateOnly(2026, 9, 15), date);
+    }
+
+    [Fact]
+    public void ClampDayToMonth_Jan31IntoFebruary_NonLeapYear_ClampsTo28()
+    {
+        // 2026 is not a leap year (28-day February).
+        var date = WorkingTimeCalculator.ClampDayToMonth(new DateOnly(2026, 1, 31), 2026, 2);
+        Assert.Equal(new DateOnly(2026, 2, 28), date);
+    }
+
+    [Fact]
+    public void ClampDayToMonth_Jan31IntoFebruary_LeapYear_ClampsTo29()
+    {
+        // 2028 is a leap year (29-day February).
+        var date = WorkingTimeCalculator.ClampDayToMonth(new DateOnly(2028, 1, 31), 2028, 2);
+        Assert.Equal(new DateOnly(2028, 2, 29), date);
+    }
+
+    [Fact]
+    public void ClampDayToMonth_Jan30And31_BothCollideOnFeb28()
+    {
+        // Documents CopyMonth's actual, pre-existing "clamp-and-collide" behavior: two distinct
+        // source dates (30th, 31st) both clamp onto the same target date once the target month
+        // is shorter than both — this is intentional/accepted (see the ClampDayToMonth XML
+        // comment), not a bug this issue is fixing, just a gap this issue is closing.
+        var jan30 = WorkingTimeCalculator.ClampDayToMonth(new DateOnly(2026, 1, 30), 2026, 2);
+        var jan31 = WorkingTimeCalculator.ClampDayToMonth(new DateOnly(2026, 1, 31), 2026, 2);
+
+        Assert.Equal(new DateOnly(2026, 2, 28), jan30);
+        Assert.Equal(new DateOnly(2026, 2, 28), jan31);
+        Assert.Equal(jan30, jan31);
+    }
 }

@@ -1,5 +1,11 @@
 namespace ShiftPlanner.Domain.Scheduling;
 
+// issue #100: bundles the timing-related parameters WageCalculator's surcharge methods need
+// (start/end/break) so they can't be silently transposed against each other or against the
+// decimal netHours/hourlyRate parameters at a call site — a swapped positional TimeOnly/TimeOnly
+// or decimal/decimal pair used to compile fine and silently miscalculate wages.
+public record ShiftTiming(TimeOnly Start, TimeOnly End, int BreakMinutes, TimeOnly? BreakStart);
+
 // Single source of truth for labor cost — mirrors WorkingTimeCalculator (readme.md §14).
 // HourlyRate is optional (Contract.HourlyRate, issue #14), so cost is null when unset.
 public static class WageCalculator
@@ -14,33 +20,40 @@ public static class WageCalculator
     private const int NightStartMinute = 20 * 60; // 20:00
     private const int NightEndMinute = 6 * 60; // 06:00
 
-    public static decimal? LaborCost(decimal netHours, decimal? hourlyRate) =>
+    // issue #100: renamed from the overloaded "LaborCost" (plain multiplication, no surcharges)
+    // to make it unambiguous at every call site which of the two very different calculations is
+    // being invoked.
+    public static decimal? SimpleLaborCost(decimal netHours, decimal? hourlyRate) =>
         hourlyRate is null ? null : netHours * hourlyRate.Value;
 
     // Adds night/Sunday/holiday surcharges on top of the base rate. Sunday and holiday don't
     // stack (holiday wins when a holiday falls on a Sunday) but night stacks with either, matching
     // common German practice. Night hours are the raw StartTime–EndTime overlap with 20:00–06:00.
-    // issue #58: when BreakStartTime is known, the break's own overlap with the night window is
+    // issue #58: when BreakStart is known, the break's own overlap with the night window is
     // subtracted from that raw figure for a precise count; when it's null (unknown/unspecified
     // break timing — the only case before issue #58 existed), this keeps the original
     // approximation exactly as before, so existing data's computed cost doesn't change.
-    public static decimal? LaborCost(TimeOnly startTime, TimeOnly endTime, DayOfWeek dayOfWeek,
-        bool isHoliday, decimal netHours, decimal? hourlyRate, int breakMinutes = 0, TimeOnly? breakStartTime = null) =>
-        Breakdown(startTime, endTime, dayOfWeek, isHoliday, netHours, hourlyRate, breakMinutes, breakStartTime)?.Total;
+    // issue #100: renamed from the overloaded "LaborCost" (full surcharge calculation) to make it
+    // unambiguous at every call site, and timing takes one ShiftTiming instead of four positional
+    // parameters (two TimeOnly, one int, one TimeOnly?) that could otherwise be transposed.
+    public static decimal? LaborCostWithSurcharges(ShiftTiming timing, DayOfWeek dayOfWeek,
+        bool isHoliday, decimal netHours, decimal? hourlyRate) =>
+        Breakdown(timing, dayOfWeek, isHoliday, netHours, hourlyRate)?.Total;
 
-    // issue #56: the per-surcharge-type split behind the total LaborCost above — the dashboard's
-    // cost-breakdown KPI (regular/night/Sunday/holiday) reuses this instead of re-deriving the
-    // surcharge math a second time. Regular + Night + Sunday + Holiday always sums to exactly
-    // what the LaborCost overload above returns (Sunday/Holiday are mutually exclusive per the
-    // same "holiday wins" rule, so at most one of them is non-zero for a given shift).
-    public static LaborCostBreakdown? Breakdown(TimeOnly startTime, TimeOnly endTime, DayOfWeek dayOfWeek,
-        bool isHoliday, decimal netHours, decimal? hourlyRate, int breakMinutes = 0, TimeOnly? breakStartTime = null)
+    // issue #56: the per-surcharge-type split behind the total LaborCostWithSurcharges above —
+    // the dashboard's cost-breakdown KPI (regular/night/Sunday/holiday) reuses this instead of
+    // re-deriving the surcharge math a second time. Regular + Night + Sunday + Holiday always
+    // sums to exactly what LaborCostWithSurcharges above returns (Sunday/Holiday are mutually
+    // exclusive per the same "holiday wins" rule, so at most one of them is non-zero for a given
+    // shift).
+    public static LaborCostBreakdown? Breakdown(ShiftTiming timing, DayOfWeek dayOfWeek,
+        bool isHoliday, decimal netHours, decimal? hourlyRate)
     {
         if (hourlyRate is null)
             return null;
 
         var regular = netHours * hourlyRate.Value;
-        var nightHours = NightOverlapHours(startTime, endTime, breakMinutes, breakStartTime);
+        var nightHours = NightOverlapHours(timing.Start, timing.End, timing.BreakMinutes, timing.BreakStart);
         var night = nightHours * hourlyRate.Value * NightSurchargeRate;
         var holiday = isHoliday ? regular * HolidaySurchargeRate : 0m;
         var sunday = !isHoliday && dayOfWeek == DayOfWeek.Sunday ? regular * SundaySurchargeRate : 0m;

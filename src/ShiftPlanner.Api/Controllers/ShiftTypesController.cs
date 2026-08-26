@@ -39,6 +39,7 @@ public class ShiftTypesController(ApplicationDbContext db) : ControllerBase
     public async Task<ActionResult<IEnumerable<ShiftTypeDto>>> GetAll()
     {
         var shiftTypes = await db.ShiftTypes
+            .AsNoTracking()
             .OrderBy(s => s.StartTime)
             .Select(s => new ShiftTypeDto(s.Id, s.Name, s.StartTime, s.EndTime, s.BreakMinutes, s.Color, s.Active,
                 s.MinStaffing, s.MaxStaffing))

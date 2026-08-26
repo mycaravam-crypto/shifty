@@ -32,7 +32,7 @@ public class BreakMinutesValidatorTests
         BreakMinutesValidator.Validate([assignment], result);
 
         var error = Assert.Single(result.Errors);
-        Assert.Equal("InsufficientBreak", error.Type);
+        Assert.Equal(ValidationIssueCode.InsufficientBreak, error.Type);
     }
 
     [Fact]
@@ -60,7 +60,37 @@ public class BreakMinutesValidatorTests
         BreakMinutesValidator.Validate([assignment], result);
 
         var error = Assert.Single(result.Errors);
-        Assert.Equal("InsufficientBreak", error.Type);
+        Assert.Equal(ValidationIssueCode.InsufficientBreak, error.Type);
+    }
+
+    [Fact]
+    public void ExactlySixHours_NoBreakRequired()
+    {
+        // The >6h check is strict, so a shift lasting exactly 6h gross does not yet cross into
+        // the 30min-minimum bracket — only issue #118's currently-untested boundary.
+        var employee = Employee();
+        var shiftType = ShiftType();
+        var assignment = Assignment(employee.Id, shiftType.Id, new DateOnly(2026, 8, 24), new TimeOnly(8, 0), new TimeOnly(14, 0), breakMinutes: 0);
+
+        var result = new ValidationResult();
+        BreakMinutesValidator.Validate([assignment], result);
+
+        Assert.Empty(result.Errors);
+    }
+
+    [Fact]
+    public void ExactlyNineHours_OnlyThirtyMinuteBreakRequired()
+    {
+        // The >9h check is strict too, so a shift lasting exactly 9h gross still only falls into
+        // the 30min bracket (from >6h), not the 45min one — a 30min break must satisfy it.
+        var employee = Employee();
+        var shiftType = ShiftType();
+        var assignment = Assignment(employee.Id, shiftType.Id, new DateOnly(2026, 8, 24), new TimeOnly(6, 0), new TimeOnly(15, 0), breakMinutes: 30);
+
+        var result = new ValidationResult();
+        BreakMinutesValidator.Validate([assignment], result);
+
+        Assert.Empty(result.Errors);
     }
 
     [Fact]

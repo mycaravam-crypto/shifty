@@ -30,7 +30,7 @@ public record DashboardKpisDto(
 // of truth for what counts as "sufficiently staffed".
 public record CoverageDayDto(
     DateOnly Date, Guid ShiftTypeId, string ShiftTypeName,
-    int Scheduled, int MinStaffing, decimal CoveragePercent, string Status);
+    int Scheduled, int MinStaffing, decimal CoveragePercent, CoverageStatus Status);
 
 public record PlanningStatusDto(
     int DraftCount, int PublishedCount, int ConflictCount, decimal CompletionPercent,
@@ -39,7 +39,7 @@ public record PlanningStatusDto(
 public record ScheduleRefDto(Guid Id, string Name, DateOnly StartDate, ScheduleStatus Status);
 
 public record PainPointDto(
-    string Type, string Severity, string Message, Guid ScheduleId, string ScheduleName,
+    string Type, PainSeverity Severity, string Message, Guid ScheduleId, string ScheduleName,
     Guid? EmployeeId, string? EmployeeName);
 
 // issue #56: regular/overtime/premium/weekend cost breakdown restored from the parent issue's
@@ -83,20 +83,23 @@ public class DashboardController(ApplicationDbContext db) : ControllerBase
         var prevFrom = prevTo.AddDays(-(periodDays - 1));
 
         var schedules = await db.Schedules
+            .AsNoTracking()
             .Where(s => s.StartDate <= periodTo && s.EndDate >= periodFrom)
             .ToListAsync();
         var previousSchedules = await db.Schedules
+            .AsNoTracking()
             .Where(s => s.StartDate <= prevTo && s.EndDate >= prevFrom)
             .ToListAsync();
         var allScheduleIds = schedules.Select(s => s.Id).Union(previousSchedules.Select(s => s.Id)).ToList();
 
         var allAssignments = await db.ShiftAssignments
+            .AsNoTracking()
             .Where(a => allScheduleIds.Contains(a.ScheduleId))
             .ToListAsync();
         var assignmentsByScheduleId = allAssignments.GroupBy(a => a.ScheduleId)
             .ToDictionary(g => g.Key, g => (IReadOnlyList<ShiftAssignment>)g.ToList());
 
-        var employees = await db.Employees.Include(e => e.EligibleShiftTypes).Include(e => e.Team).ToListAsync();
+        var employees = await db.Employees.AsNoTracking().Include(e => e.EligibleShiftTypes).Include(e => e.Team).ToListAsync();
         var employeesById = employees.ToDictionary(e => e.Id);
         bool MatchesTeam(Guid employeeId) =>
             teamId is null || (employeesById.TryGetValue(employeeId, out var e) && e.TeamId == teamId);
@@ -104,9 +107,9 @@ public class DashboardController(ApplicationDbContext db) : ControllerBase
         var employeeIds = allAssignments.Select(a => a.EmployeeId)
             .Union(employees.Where(e => MatchesTeam(e.Id)).Select(e => e.Id))
             .ToList();
-        var contracts = await db.Contracts.Where(c => employeeIds.Contains(c.EmployeeId)).ToListAsync();
-        var absences = await db.Absences.Where(a => employeeIds.Contains(a.EmployeeId)).ToListAsync();
-        var shiftTypes = await db.ShiftTypes.ToListAsync();
+        var contracts = await db.Contracts.AsNoTracking().Where(c => employeeIds.Contains(c.EmployeeId)).ToListAsync();
+        var absences = await db.Absences.AsNoTracking().Where(a => employeeIds.Contains(a.EmployeeId)).ToListAsync();
+        var shiftTypes = await db.ShiftTypes.AsNoTracking().ToListAsync();
         var shiftTypesById = shiftTypes.ToDictionary(s => s.Id);
 
         // issue #56: exact ±6-day historyAssignments lookback, mirroring
@@ -125,6 +128,7 @@ public class DashboardController(ApplicationDbContext db) : ControllerBase
         List<ShiftAssignment> historyPool = schedules.Count == 0
             ? []
             : await db.ShiftAssignments
+                .AsNoTracking()
                 .Where(a => employeeIds.Contains(a.EmployeeId)
                     && a.Date >= historyWindowStart
                     && a.Date <= historyWindowEnd)
@@ -180,7 +184,7 @@ public class DashboardController(ApplicationDbContext db) : ControllerBase
             utilization.UtilizationPercent,
             costTotal, DeltaPercent(costTotal, previousCostTotal),
             planningStatus.CompletionPercent,
-            painPoints.Count, painPoints.Count(p => p.Severity == "Error"),
+            painPoints.Count, painPoints.Count(p => p.Severity == PainSeverity.Error),
             overtimeHours, DeltaPercent(overtimeHours, previousOvertimeHours));
 
         return Ok(new DashboardDto(periodFrom, periodTo, kpis, coverage, planningStatus, painPoints,
@@ -212,7 +216,7 @@ public class DashboardController(ApplicationDbContext db) : ControllerBase
 
             var scheduled = group.Select(a => a.EmployeeId).Distinct().Count();
             var percent = Math.Round(scheduled * 100m / min, 1);
-            var status = percent >= 95 ? "Green" : percent >= 85 ? "Yellow" : "Red";
+            var status = percent >= 95 ? CoverageStatus.Green : percent >= 85 ? CoverageStatus.Yellow : CoverageStatus.Red;
             result.Add(new CoverageDayDto(group.Key.Date, shiftType.Id, shiftType.Name, scheduled, min, percent, status));
         }
         return result.OrderBy(c => c.Date).ThenBy(c => c.ShiftTypeName).ToList();
@@ -242,7 +246,7 @@ public class DashboardController(ApplicationDbContext db) : ControllerBase
             var historyAssignments = historyPool.Where(a => a.Date >= historyStart && a.Date <= historyEnd).ToList();
             var result = ScheduleValidator.Validate(schedule, assignments, employeesById.Values.ToList(), shiftTypes, contracts, historyAssignments, absences);
 
-            foreach (var (issue, severity) in result.Errors.Select(e => (e, "Error")).Concat(result.Warnings.Select(w => (w, "Warning"))))
+            foreach (var (issue, severity) in result.Errors.Select(e => (e, PainSeverity.Error)).Concat(result.Warnings.Select(w => (w, PainSeverity.Warning))))
             {
                 if (teamId is not null && issue.EmployeeId is { } employeeId
                     && employeesById.TryGetValue(employeeId, out var emp) && emp.TeamId != teamId)
@@ -250,15 +254,15 @@ public class DashboardController(ApplicationDbContext db) : ControllerBase
 
                 var employeeName = issue.EmployeeId is { } id && employeesById.TryGetValue(id, out var e)
                     ? $"{e.FirstName} {e.LastName}" : null;
-                points.Add(new PainPointDto(issue.Type, severity, issue.Message, schedule.Id, schedule.Name, issue.EmployeeId, employeeName));
+                points.Add(new PainPointDto(issue.Type.ToString(), severity, issue.Message, schedule.Id, schedule.Name, issue.EmployeeId, employeeName));
             }
         }
-        return points.OrderByDescending(p => p.Severity == "Error").ToList();
+        return points.OrderByDescending(p => p.Severity == PainSeverity.Error).ToList();
     }
 
     private static PlanningStatusDto BuildPlanningStatus(IReadOnlyList<Schedule> schedules, IReadOnlyList<PainPointDto> painPoints)
     {
-        var conflictedScheduleIds = painPoints.Where(p => p.Severity == "Error").Select(p => p.ScheduleId).ToHashSet();
+        var conflictedScheduleIds = painPoints.Where(p => p.Severity == PainSeverity.Error).Select(p => p.ScheduleId).ToHashSet();
         var affected = schedules.Where(s => conflictedScheduleIds.Contains(s.Id))
             .Select(s => new ScheduleRefDto(s.Id, s.Name, s.StartDate, s.Status)).ToList();
         var published = schedules.Count(s => s.Status == ScheduleStatus.Published);
@@ -273,8 +277,9 @@ public class DashboardController(ApplicationDbContext db) : ControllerBase
             .MaxBy(c => c.ValidFrom);
 
     // issue #56: aggregated per-surcharge-type so the dashboard can show a cost breakdown, not
-    // just a total — WageCalculator.Breakdown (not the plain LaborCost total) is the single
-    // source of truth for the split, same as BuildCost always was for the total alone.
+    // just a total — WageCalculator.Breakdown (not the plain SimpleLaborCost/LaborCostWithSurcharges
+    // total) is the single source of truth for the split, same as BuildCost always was for the
+    // total alone.
     private static CostBreakdownDto BuildCostBreakdown(
         IReadOnlyList<ShiftAssignment> assignments, IReadOnlyList<Contract> contracts,
         IReadOnlyDictionary<Guid, Bundesland?> bundeslandByEmployee,
@@ -289,10 +294,10 @@ public class DashboardController(ApplicationDbContext db) : ControllerBase
             var land = bundeslandByEmployee.GetValueOrDefault(a.EmployeeId);
             var isHoliday = (land is { } bl ? holidaysByBundesland[bl] : nationwideHolidays).Contains(a.Date);
             // issue #58: BreakMinutes/BreakStartTime threaded through so the night-surcharge
-            // portion of the breakdown gets the same break-adjusted precision LaborCost's other
-            // call sites already have.
-            var breakdown = WageCalculator.Breakdown(a.StartTime, a.EndTime, a.Date.DayOfWeek, isHoliday, netHours, contract?.HourlyRate,
-                a.BreakMinutes, a.BreakStartTime);
+            // portion of the breakdown gets the same break-adjusted precision LaborCostWithSurcharges'
+            // other call sites already have.
+            var timing = new ShiftTiming(a.StartTime, a.EndTime, a.BreakMinutes, a.BreakStartTime);
+            var breakdown = WageCalculator.Breakdown(timing, a.Date.DayOfWeek, isHoliday, netHours, contract?.HourlyRate);
             if (breakdown is not { } b)
                 continue;
             regular += b.Regular;
