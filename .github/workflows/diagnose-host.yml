@@ -1,13 +1,22 @@
 name: Diagnose Deploy Host
 
-# Manual, read-only diagnostics against the deploy VPS. Does not touch any
-# application state — checks the shared Caddy instance, the shifty compose
-# stack, and basic reachability so a failed/incomplete deploy can be told
-# apart from a host- or Caddy-level outage. Safe to delete once its job is
-# done; not meant to be a permanent addition.
+# Manual diagnostics (+ an opt-in Caddy restart) against the deploy VPS.
+# The diagnostics step is read-only — checks the shared Caddy instance, the
+# shifty compose stack, and basic reachability so a failed/incomplete
+# deploy can be told apart from a host- or Caddy-level outage. The restart
+# step only runs when explicitly requested via the restart_caddy input, and
+# only restarts the shared systemd Caddy service (not any docker container)
+# — used after diagnostics confirmed Caddy was OOM-killed and sitting in
+# `failed` state. Safe to delete once its job is done; not meant to be a
+# permanent addition.
 
 on:
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      restart_caddy:
+        description: "Restart the host's systemd caddy service"
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -61,4 +70,22 @@ jobs:
 
             echo "--- shifty compose stack status ---"
             cd "'"$SHIFTPLANNER_DEPLOY_PATH"'" 2>/dev/null && docker compose ps || echo "could not cd into shifty deploy path"
+          '
+
+      - name: Restart Caddy (opt-in)
+        if: ${{ inputs.restart_caddy }}
+        env:
+          SHIFTPLANNER_DEPLOY_HOST: ${{ secrets.SHIFTPLANNER_DEPLOY_HOST }}
+        run: |
+          ssh "$SHIFTPLANNER_DEPLOY_HOST" '
+            set -x
+            echo "--- restarting caddy ---"
+            (sudo -n systemctl restart caddy 2>&1) || systemctl restart caddy
+
+            echo "--- caddy status after restart ---"
+            sleep 2
+            systemctl status caddy --no-pager || true
+
+            echo "--- local reachability after restart: shifty (127.0.0.1:8090) ---"
+            curl -sS -o /dev/null -w "http_code=%{http_code} time_total=%{time_total}\n" http://127.0.0.1:8090 || echo "curl failed"
           '
