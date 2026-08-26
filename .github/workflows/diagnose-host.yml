@@ -1,0 +1,64 @@
+name: Diagnose Deploy Host
+
+# Manual, read-only diagnostics against the deploy VPS. Does not touch any
+# application state — checks the shared Caddy instance, the shifty compose
+# stack, and basic reachability so a failed/incomplete deploy can be told
+# apart from a host- or Caddy-level outage. Safe to delete once its job is
+# done; not meant to be a permanent addition.
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SHIFTPLANNER_DEPLOY_SSH_KEY }}
+
+      - name: Trust server host key
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H vi0lins.de >> ~/.ssh/known_hosts
+
+      - name: Host / Caddy / compose diagnostics
+        env:
+          SHIFTPLANNER_DEPLOY_HOST: ${{ secrets.SHIFTPLANNER_DEPLOY_HOST }}
+          SHIFTPLANNER_DEPLOY_PATH: ${{ secrets.SHIFTPLANNER_DEPLOY_PATH }}
+        run: |
+          ssh "$SHIFTPLANNER_DEPLOY_HOST" '
+            set -x
+            echo "--- uptime / load ---"
+            uptime
+
+            echo "--- disk space ---"
+            df -h /
+
+            echo "--- caddy service status ---"
+            systemctl status caddy --no-pager || true
+
+            echo "--- caddy recent logs ---"
+            journalctl -u caddy -n 60 --no-pager || true
+
+            echo "--- caddy listening sockets ---"
+            ss -tlnp 2>/dev/null | grep -i caddy || ss -tlnp | grep -E ":80|:443" || true
+
+            echo "--- local reachability: shifty (127.0.0.1:8090) ---"
+            curl -sS -o /dev/null -w "http_code=%{http_code} time_total=%{time_total}\n" http://127.0.0.1:8090 || echo "curl failed"
+
+            echo "--- local reachability: vanspace3d, guessing common ports ---"
+            for p in 8080 8081 8082 8091; do
+              echo "port $p:"
+              curl -sS -o /dev/null -w "  http_code=%{http_code} time_total=%{time_total}\n" -m 3 http://127.0.0.1:$p || echo "  curl failed"
+            done
+
+            echo "--- docker: all containers ---"
+            docker ps -a
+
+            echo "--- shifty compose stack status ---"
+            cd "'"$SHIFTPLANNER_DEPLOY_PATH"'" 2>/dev/null && docker compose ps || echo "could not cd into shifty deploy path"
+          '
