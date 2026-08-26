@@ -29,8 +29,10 @@ public class DashboardAggregatorTests
             Assignment(e1.Id, unconstrained.Id, date, new TimeOnly(8, 0), new TimeOnly(16, 0)),
         };
         var shiftTypesById = new[] { fullyStaffed, understaffed, unconstrained }.ToDictionary(s => s.Id);
+        var employeesById = new[] { e1, e2 }.ToDictionary(e => e.Id);
 
-        var coverage = DashboardAggregator.BuildCoverage(assignments, shiftTypesById);
+        var coverage = DashboardAggregator.BuildCoverage(
+            assignments, shiftTypesById, [], employeesById, date, date, teamId: null, shiftTypeId: null);
 
         Assert.Equal(2, coverage.Count); // the unconstrained ShiftType never produces a row
         var full = Assert.Single(coverage, c => c.ShiftTypeId == fullyStaffed.Id);
@@ -81,11 +83,11 @@ public class DashboardAggregatorTests
         var employeesById = new[] { employee, otherTeamEmployee }.ToDictionary(e => e.Id);
 
         var allPoints = DashboardAggregator.BuildPainPoints(
-            [schedule], assignmentsByScheduleId, [violating, clean], employeesById, [shiftType], [], [], teamId: null);
+            [schedule], assignmentsByScheduleId, [violating, clean], employeesById, [shiftType], [], [], [], teamId: null);
         Assert.Contains(allPoints, p => p.Type == "InsufficientBreak" && p.EmployeeId == employee.Id);
 
         var filteredToOtherTeam = DashboardAggregator.BuildPainPoints(
-            [schedule], assignmentsByScheduleId, [violating, clean], employeesById, [shiftType], [], [], teamId: otherTeamEmployee.TeamId);
+            [schedule], assignmentsByScheduleId, [violating, clean], employeesById, [shiftType], [], [], [], teamId: otherTeamEmployee.TeamId);
         Assert.DoesNotContain(filteredToOtherTeam, p => p.EmployeeId == employee.Id);
     }
 
