@@ -4,14 +4,21 @@ import { paletteDragPayload, type DragPayload } from './composables/useScheduleD
 import { currencyFmt } from './format'
 import type { ShiftType } from './types'
 
-defineProps<{
-  activeShiftTypes: ShiftType[]
-  hasAssignments: boolean
-  copyingMonth: boolean
-  totalLaborCost: number | null
-  isDraft: boolean
-  chipPointerDown: (e: PointerEvent, payload: DragPayload) => void
-}>()
+withDefaults(
+  defineProps<{
+    activeShiftTypes: ShiftType[]
+    hasAssignments: boolean
+    copyingMonth: boolean
+    totalLaborCost: number | null
+    isDraft: boolean
+    chipPointerDown: (e: PointerEvent, payload: DragPayload) => void
+    // issue #74: month-copy/auto-fill are month-scoped actions (they operate on the whole
+    // month-scoped Schedule) — the week-scoped ScheduleView.vue hides them here since they now
+    // live in MonthOverviewView.vue instead.
+    showMonthActions?: boolean
+  }>(),
+  { showMonthActions: true },
+)
 const emit = defineEmits<{
   'copy-month': []
   'open-auto-fill': []
@@ -22,7 +29,7 @@ const emit = defineEmits<{
 <template>
   <div class="flex flex-wrap items-center gap-2 mb-4 print:hidden">
     <button
-      v-if="hasAssignments"
+      v-if="showMonthActions && hasAssignments"
       :disabled="copyingMonth"
       class="flex items-center gap-1.5 rounded-lg bg-white/5 border border-white/10 px-3 py-1.5 text-sm hover:bg-white/10 transition-colors disabled:opacity-50"
       @click="emit('copy-month')"
@@ -31,7 +38,7 @@ const emit = defineEmits<{
       {{ copyingMonth ? 'Kopiere…' : 'Monat kopieren' }}
     </button>
     <button
-      v-if="activeShiftTypes.length && isDraft"
+      v-if="showMonthActions && activeShiftTypes.length && isDraft"
       class="flex items-center gap-1.5 rounded-lg bg-white/5 border border-white/10 px-3 py-1.5 text-sm hover:bg-white/10 transition-colors"
       @click="emit('open-auto-fill')"
     >

@@ -1,13 +1,13 @@
 <script setup lang="ts">
-import { nextTick, onMounted, onUnmounted, ref } from 'vue'
-import { Search } from '@lucide/vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { ChevronsLeft, Search } from '@lucide/vue'
 import api from '@/services/api'
 import { useToastStore } from '@/stores/toast'
 import ModalShell from '@/components/ModalShell.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import ShiftAssignmentModal from './ShiftAssignmentModal.vue'
 import ShiftSuggestionModal from './ShiftSuggestionModal.vue'
-import AutoFillModal from './AutoFillModal.vue'
 import PlanningToolbar from './PlanningToolbar.vue'
 import ShiftPalette from './ShiftPalette.vue'
 import ValidationSummary from './ValidationSummary.vue'
@@ -17,14 +17,23 @@ import { usePlanningBoard } from './composables/usePlanningBoard'
 import { usePlanningActions } from './composables/usePlanningActions'
 import { useScheduleDnD } from './composables/useScheduleDnD'
 import { useGridKeyboardNav } from './composables/useGridKeyboardNav'
-import type { Assignment, ShiftType, ValidationIssue } from './types'
+import { addDays, parseIso, startOfWeek, toIso } from './format'
+import type { Assignment, ShiftType, ValidationIssue, ValidationResult } from './types'
 
 const toast = useToastStore()
+const route = useRoute()
+const router = useRouter()
 
 // issue #73: this file is orchestration only now — every DTO/date-math/formatting helper,
 // data-loading concern, drag-and-drop mechanic, and mutation call that used to live here
 // directly has moved into the composables/components imported above. Behavior is unchanged;
 // see each file's own header comment for what it owns.
+//
+// issue #74: this view is week-scoped — the route's `:date` param is any date within the
+// displayed week (MonthOverviewView.vue always passes the week's first visible day). `Schedule`
+// itself stays month-scoped server-side (usePlanningBoard's `days`/`currentSchedule` are
+// unchanged), only the *displayed* grid columns narrow to one week here.
+const dayMonthFmt = new Intl.DateTimeFormat('de-DE', { day: '2-digit', month: '2-digit' })
 
 const filters = useScheduleFilters()
 const { search, teamFilter, searchInputRef } = filters
@@ -36,7 +45,6 @@ const {
   assignments,
   validation,
   monthStartIso,
-  monthEndIso,
   monthLabel,
   activeEmployees,
   activeShiftTypes,
@@ -62,36 +70,97 @@ const {
   error,
   load,
   loadDetail,
-  prevMonth,
-  nextMonth,
 } = board
 
 const actions = usePlanningActions(board)
 const {
   creatingSchedule,
-  copyingMonth,
   publishing,
   archiving,
   confirmingArchive,
   onCreateSchedule,
   onPublish,
   onArchiveConfirmed,
-  onCopyMonth,
   performDrop,
   onAssignmentUpdated,
 } = actions
+
+// The route's `:date` drives which month's Schedule is active (board.anchorDate) — the same
+// single-date resolution the old full-month grid used, just fed a week-anchor date instead of
+// always "today". Set eagerly (immediate) so it's already correct before board.load() runs.
+const routeDateIso = computed(() => {
+  const raw = route.params.date
+  return typeof raw === 'string' ? raw : toIso(new Date())
+})
+watch(
+  routeDateIso,
+  (iso) => {
+    board.anchorDate.value = parseIso(iso)
+  },
+  { immediate: true },
+)
+const weekStart = computed(() => startOfWeek(parseIso(routeDateIso.value)))
+const weekEnd = computed(() => addDays(weekStart.value, 6))
+const weekDays = computed(() =>
+  days.value.filter((d) => d >= weekStart.value && d <= weekEnd.value),
+)
+const weekLabel = computed(() => {
+  if (!weekDays.value.length)
+    return `${dayMonthFmt.format(weekStart.value)}–${dayMonthFmt.format(weekEnd.value)}`
+  const first = weekDays.value[0]
+  const last = weekDays.value[weekDays.value.length - 1]
+  return `${dayMonthFmt.format(first)}–${dayMonthFmt.format(last)} ${last.getFullYear()}`
+})
+// A week straddling two calendar months only shows the portion belonging to this month's
+// Schedule (weekDays is clamped against board.days, which is itself clamped to the Schedule's
+// own span) — surface that plainly rather than silently truncating.
+const isPartialWeek = computed(() => weekDays.value.length > 0 && weekDays.value.length < 7)
+
+function goToWeek(date: Date) {
+  router.push({ name: 'schedule-week', params: { date: toIso(date) }, query: route.query })
+}
+function prevWeek() {
+  goToWeek(addDays(weekStart.value, -7))
+}
+function nextWeek() {
+  goToWeek(addDays(weekStart.value, 7))
+}
+// Back to the compact month overview (issue #74's other half) — month-copy/auto-fill live
+// there now, not per-week, since both operate on the whole (month-scoped) Schedule.
+function goToOverview() {
+  router.push({ name: 'schedule', query: { ...route.query, month: monthStartIso.value } })
+}
+
+// issue #74: the validation panel here only shows issues relevant to the displayed week — a
+// schedule-wide issue with no specific assignment (e.g. ContractHoursExceeded) still shows in
+// every week of its Schedule (it isn't tied to one date), but an issue tied to a specific
+// assignment (e.g. InsufficientRest, InsufficientBreak) only shows in the week that assignment
+// actually falls in. ScheduleValidator's output shape itself is unchanged.
+const weekDayIsoSet = computed(() => new Set(weekDays.value.map(toIso)))
+function issueInWeek(issue: ValidationIssue): boolean {
+  if (!issue.shiftAssignmentId) return true
+  const assignment = assignments.value.find((a) => a.id === issue.shiftAssignmentId)
+  return assignment ? weekDayIsoSet.value.has(assignment.date) : true
+}
+const weekValidation = computed<ValidationResult | null>(() => {
+  if (!validation.value) return null
+  return {
+    isValid: validation.value.isValid,
+    errors: validation.value.errors.filter(issueInWeek),
+    warnings: validation.value.warnings.filter(issueInWeek),
+  }
+})
 
 const selectedAssignment = ref<Assignment | null>(null)
 const deletingAssignment = ref<Assignment | null>(null)
 const showShortcuts = ref(false)
 const highlightKey = ref<string | null>(null)
 const suggestingShiftType = ref<ShiftType | null>(null)
-const showAutoFill = ref(false)
 
 const { isFocusableCell, cellAriaLabel, onCellFocus, focusedGridCellEl, onGridCellKeydown } =
   useGridKeyboardNav({
     visibleEmployees: () => visibleEmployees.value,
-    days: () => days.value,
+    days: () => weekDays.value,
     assignmentsFor,
     shiftTypeById,
     onOpen: (assignment) => {
@@ -183,9 +252,9 @@ function onKeydown(e: KeyboardEvent) {
     return
   }
   if (e.key === 'ArrowLeft' && !isTyping()) {
-    prevMonth()
+    prevWeek()
   } else if (e.key === 'ArrowRight' && !isTyping()) {
-    nextMonth()
+    nextWeek()
   }
 }
 
@@ -227,8 +296,17 @@ window.addEventListener('afterprint', () => {
       <span class="font-mono text-slate-500 text-xs">{{ drag.payload.time }}</span>
     </div>
 
+    <button
+      class="flex items-center gap-1 text-xs text-slate-500 hover:text-slate-300 transition-colors print:hidden mb-2"
+      title="Zur Monatsübersicht"
+      @click="goToOverview"
+    >
+      <ChevronsLeft :size="12" />
+      Monatsübersicht
+    </button>
+
     <PlanningToolbar
-      :month-label="monthLabel"
+      :month-label="weekLabel"
       :current-schedule="currentSchedule ?? null"
       :is-draft="!!isDraft"
       :is-published="!!isPublished"
@@ -236,8 +314,8 @@ window.addEventListener('afterprint', () => {
       :archiving="archiving"
       :blocking-error-count="blockingErrorCount"
       :publish-block-reason="publishBlockReason"
-      @prev="prevMonth"
-      @next="nextMonth"
+      @prev="prevWeek"
+      @next="nextWeek"
       @show-shortcuts="showShortcuts = true"
       @export-all="exportAllPdf"
       @publish="onPublish"
@@ -256,7 +334,9 @@ window.addEventListener('afterprint', () => {
 
     <template v-else>
       <div v-if="!currentSchedule" class="glass rounded-xl p-8 text-center">
-        <p class="text-sm text-slate-500 mb-4">Für diesen Monat existiert noch kein Dienstplan.</p>
+        <p class="text-sm text-slate-500 mb-4">
+          Für diesen Monat ({{ monthLabel }}) existiert noch kein Dienstplan.
+        </p>
         <button
           :disabled="creatingSchedule"
           class="rounded-lg bg-linear-to-r from-blue-600 to-indigo-600 px-4 py-2 text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
@@ -267,17 +347,20 @@ window.addEventListener('afterprint', () => {
       </div>
 
       <template v-else>
-        <ValidationSummary :validation="validation" @focus="focusIssue" />
+        <p v-if="isPartialWeek" class="text-xs text-slate-500 mb-3 print:hidden">
+          Diese Woche liegt teilweise in einem anderen Monat — hier wird nur der Teil im
+          {{ monthLabel }}-Dienstplan angezeigt.
+        </p>
+        <ValidationSummary :validation="weekValidation" @focus="focusIssue" />
 
         <ShiftPalette
           :active-shift-types="activeShiftTypes"
           :has-assignments="assignments.length > 0"
-          :copying-month="copyingMonth"
+          :copying-month="false"
           :total-labor-cost="totalLaborCost"
           :is-draft="!!isDraft"
+          :show-month-actions="false"
           :chip-pointer-down="onChipPointerDown"
-          @copy-month="onCopyMonth"
-          @open-auto-fill="showAutoFill = true"
           @suggest="suggestingShiftType = $event"
         />
 
@@ -303,7 +386,7 @@ window.addEventListener('afterprint', () => {
 
         <PlanningGrid
           ref="gridRef"
-          :days="days"
+          :days="weekDays"
           :visible-employees="visibleEmployees"
           :active-employees-count="activeEmployees.length"
           :holiday-for="holidayFor"
@@ -359,24 +442,14 @@ window.addEventListener('afterprint', () => {
     />
 
     <ShiftSuggestionModal
-      v-if="suggestingShiftType && currentSchedule"
+      v-if="suggestingShiftType && currentSchedule && weekDays.length"
       :schedule-id="currentSchedule.id"
       :shift-type="suggestingShiftType"
-      :default-date="monthStartIso"
-      :min-date="monthStartIso"
-      :max-date="monthEndIso"
+      :default-date="toIso(weekDays[0])"
+      :min-date="toIso(weekDays[0])"
+      :max-date="toIso(weekDays[weekDays.length - 1])"
       @close="suggestingShiftType = null"
       @assigned="loadDetail"
-    />
-
-    <AutoFillModal
-      v-if="showAutoFill && currentSchedule"
-      :schedule-id="currentSchedule.id"
-      :month-start="monthStartIso"
-      :month-end="monthEndIso"
-      :shift-types="shiftTypes"
-      @close="showAutoFill = false"
-      @committed="loadDetail"
     />
 
     <ModalShell v-if="showShortcuts" title="Tastenkürzel" @close="showShortcuts = false">
@@ -386,11 +459,11 @@ window.addEventListener('afterprint', () => {
           <kbd class="font-mono text-xs rounded bg-white/10 px-1.5 py-0.5">/</kbd>
         </li>
         <li class="flex items-center justify-between py-2">
-          <span class="text-slate-400">Vorheriger Monat (außerhalb des Rasters)</span>
+          <span class="text-slate-400">Vorherige Woche (außerhalb des Rasters)</span>
           <kbd class="font-mono text-xs rounded bg-white/10 px-1.5 py-0.5">←</kbd>
         </li>
         <li class="flex items-center justify-between py-2">
-          <span class="text-slate-400">Nächster Monat (außerhalb des Rasters)</span>
+          <span class="text-slate-400">Nächste Woche (außerhalb des Rasters)</span>
           <kbd class="font-mono text-xs rounded bg-white/10 px-1.5 py-0.5">→</kbd>
         </li>
         <li class="flex items-center justify-between py-2">

@@ -208,6 +208,14 @@ export function usePlanningBoard(filters: ReturnType<typeof useScheduleFilters>)
     }
     return Math.round(total * 10) / 10
   }
+  // issue #74: the month-overview grid needs a plain per-cell absence marker (independent of
+  // the AbsenceValidator's own ValidationIssue, which only fires for an actual conflicting
+  // assignment) — exposed here since absencesByEmployee itself is internal state.
+  function isAbsentOn(employeeId: string, dateIso: string): boolean {
+    return (absencesByEmployee.value.get(employeeId) ?? []).some(
+      (a) => a.from <= dateIso && dateIso <= a.to,
+    )
+  }
   function carriedOverFor(employeeId: string): number {
     return Math.round((balanceByEmployee.value.get(employeeId) ?? 0) * 10) / 10
   }
@@ -341,6 +349,7 @@ export function usePlanningBoard(filters: ReturnType<typeof useScheduleFilters>)
     coverageFor,
     holidayFor,
     isWeekend,
+    isAbsentOn,
     assignmentsFor,
     netHoursFor,
     targetHoursFor,
