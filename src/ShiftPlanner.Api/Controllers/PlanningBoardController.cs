@@ -105,19 +105,12 @@ public class PlanningBoardController(ApplicationDbContext db) : ControllerBase
         return Ok(new PlanningBoardDto(from, to, result));
     }
 
-    // issue #14: the contract valid on the assignment's own date, not the period's start — a
-    // period can span a month, long enough for a mid-month rate change. Same helper shape as
-    // SchedulesController.HourlyRateOn.
-    private static decimal? HourlyRateOn(IReadOnlyList<Contract> contracts, Guid employeeId, DateOnly date) =>
-        contracts.Where(c => c.EmployeeId == employeeId && c.ValidFrom <= date && (c.ValidTo is null || c.ValidTo >= date))
-            .MaxBy(c => c.ValidFrom)?.HourlyRate;
-
     private static ShiftAssignmentDto ToAssignmentDto(ShiftAssignment a, IReadOnlyList<Contract> contracts, HashSet<DateOnly> holidays)
     {
         var netHours = WorkingTimeCalculator.NetHours(a.StartTime, a.EndTime, a.BreakMinutes);
-        var hourlyRate = HourlyRateOn(contracts, a.EmployeeId, a.Date);
-        var laborCost = WageCalculator.LaborCost(a.StartTime, a.EndTime, a.Date.DayOfWeek, holidays.Contains(a.Date),
-            netHours, hourlyRate, a.BreakMinutes, a.BreakStartTime);
+        var hourlyRate = Contract.ActiveOn(contracts, a.EmployeeId, a.Date)?.HourlyRate;
+        var timing = new ShiftTiming(a.StartTime, a.EndTime, a.BreakMinutes, a.BreakStartTime);
+        var laborCost = WageCalculator.LaborCostWithSurcharges(timing, a.Date.DayOfWeek, holidays.Contains(a.Date), netHours, hourlyRate);
         return new(a.Id, a.ScheduleId, a.EmployeeId, a.ShiftTypeId, a.Date, a.StartTime, a.EndTime, a.BreakMinutes,
             a.BreakStartTime, netHours, laborCost);
     }
