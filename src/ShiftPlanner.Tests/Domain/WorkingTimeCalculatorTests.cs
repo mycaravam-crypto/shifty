@@ -7,6 +7,29 @@ namespace ShiftPlanner.Tests.Domain;
 
 public class WorkingTimeCalculatorTests
 {
+    // issue #101: IsValidShiftTiming is the central "is this shift's timing the supported
+    // same-day kind" check — cross-midnight shifts (EndTime <= StartTime) are rejected at the
+    // write boundary (issue #11) and out of scope for v1 (issue #81 covers real overnight
+    // support). This is a direct TimeOnly comparison, so both the exact-equal-times case and a
+    // genuinely-backwards EndTime < StartTime are correctly identified as invalid.
+    [Fact]
+    public void IsValidShiftTiming_EndAfterStart_ReturnsTrue()
+    {
+        Assert.True(WorkingTimeCalculator.IsValidShiftTiming(new TimeOnly(8, 0), new TimeOnly(16, 30)));
+    }
+
+    [Fact]
+    public void IsValidShiftTiming_EndEqualsStart_ReturnsFalse()
+    {
+        Assert.False(WorkingTimeCalculator.IsValidShiftTiming(new TimeOnly(8, 0), new TimeOnly(8, 0)));
+    }
+
+    [Fact]
+    public void IsValidShiftTiming_EndBeforeStart_ReturnsFalse()
+    {
+        Assert.False(WorkingTimeCalculator.IsValidShiftTiming(new TimeOnly(22, 0), new TimeOnly(6, 0)));
+    }
+
     [Fact]
     public void NetHours_SubtractsBreakFromSpan()
     {
@@ -26,6 +49,32 @@ public class WorkingTimeCalculatorTests
     {
         var hours = WorkingTimeCalculator.NetHours(new TimeOnly(6, 0), new TimeOnly(14, 0), 0);
         Assert.Equal(8m, hours);
+    }
+
+    // issue #101: locks down NetHours' current (unchanged) behavior on the two cross-midnight
+    // shapes it can be handed, since neither is guarded by IsValidShiftTiming — the write
+    // boundary (SchedulesController/ShiftTypesController) is what actually prevents this data,
+    // NetHours itself has no opinion.
+    [Fact]
+    public void NetHours_ZeroLengthShift_ClampsToZero()
+    {
+        // EndTime == StartTime -> gross span is exactly 0 minutes -> Math.Max(0, -breakMinutes)
+        // clamps to 0. This is the one shape that actually matches the "returns 0 hours"
+        // description of NetHours' cross-midnight handling.
+        var hours = WorkingTimeCalculator.NetHours(new TimeOnly(8, 0), new TimeOnly(8, 0), 30);
+        Assert.Equal(0m, hours);
+    }
+
+    [Fact]
+    public void NetHours_GenuinelyBackwardsShift_WrapsToPositiveDuration_DoesNotReturnZero()
+    {
+        // TimeOnly's `-` operator (unlike its `<`/`>` comparison operators, which IsValidShiftTiming
+        // uses) wraps a negative difference by adding a full day, so a genuinely-backwards
+        // EndTime < StartTime does NOT clamp to 0 the way the exact-equal-times case above does
+        // — it silently computes as if it were a real overnight span instead. 22:00 -> 06:00 is
+        // an 8h wrapped span, minus a 30min break = 7.5h.
+        var hours = WorkingTimeCalculator.NetHours(new TimeOnly(22, 0), new TimeOnly(6, 0), 30);
+        Assert.Equal(7.5m, hours);
     }
 
     [Theory]

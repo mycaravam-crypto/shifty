@@ -6,6 +6,21 @@ namespace ShiftPlanner.Domain.Scheduling;
 // Single source of truth for net worked hours — readme.md §14.
 public static class WorkingTimeCalculator
 {
+    // issue #101: the single central place to check whether a shift's times are the
+    // "supported" same-day kind — cross-midnight shifts (EndTime <= StartTime) are rejected
+    // outright at the write boundary (issue #11, SchedulesController/ShiftTypesController) and
+    // are out of scope for v1 (real overnight-shift support is the separate issue #81). Several
+    // read-side consumers (RestTimeValidator, ShiftSuggestionEngine, and BreakMinutesValidator's
+    // own related-but-not-identical check — see its file) independently duplicated an
+    // `EndTime > StartTime` comparison as defense-in-depth for pre-existing/malformed data —
+    // this gives the controllers and the two exactly-equivalent validators one place to
+    // reference instead of three copy-pasted comparisons. This is a direct TimeOnly comparison
+    // (no wraparound): `TimeOnly`'s `<`/`>` operators compare ticks directly, unlike its `-`
+    // operator (used by NetHours below), which wraps a negative result by adding a full day —
+    // so this correctly identifies EndTime == StartTime *and* a genuinely-backwards
+    // EndTime < StartTime as invalid.
+    public static bool IsValidShiftTiming(TimeOnly start, TimeOnly end) => end > start;
+
     public static decimal NetHours(TimeOnly start, TimeOnly end, int breakMinutes)
     {
         var minutes = (end - start).TotalMinutes - breakMinutes;

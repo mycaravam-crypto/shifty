@@ -94,7 +94,7 @@ public class ScheduleValidatorTests
         var spaet = ShiftType(new TimeOnly(14, 0), new TimeOnly(22, 0));
 
         var anna = Employee("Anna", "Schmidt");
-        anna.EligibleShiftTypes = [normal]; // not spaet -> ShiftTypeNotEligible below
+        anna.AddEligibleShiftType(normal); // not spaet -> ShiftTypeNotEligible below
         var ben = Employee("Ben", "Krause");
 
         var schedule = Schedule(new DateOnly(2026, 8, 1), new DateOnly(2026, 8, 10));
@@ -144,23 +144,23 @@ public class ScheduleValidatorTests
         Assert.False(result.IsValid);
 
         // All 8 distinct issue types fire in the same combined result...
-        Assert.Contains(result.Warnings, w => w.Type == "ShiftOverlap");
-        Assert.Contains(result.Warnings, w => w.Type == "Understaffed");
-        Assert.Contains(result.Errors, e => e.Type == "ShiftTypeNotEligible");
-        Assert.Contains(result.Errors, e => e.Type == "InsufficientBreak");
-        Assert.Contains(result.Errors, e => e.Type == "ContractHoursExceeded");
-        Assert.Contains(result.Errors, e => e.Type == "AssignedDuringAbsence");
-        Assert.Contains(result.Errors, e => e.Type == "InsufficientRest");
-        Assert.Contains(result.Errors, e => e.Type == "TooManyConsecutiveDays");
+        Assert.Contains(result.Warnings, w => w.Type == ValidationIssueCode.ShiftOverlap);
+        Assert.Contains(result.Warnings, w => w.Type == ValidationIssueCode.Understaffed);
+        Assert.Contains(result.Errors, e => e.Type == ValidationIssueCode.ShiftTypeNotEligible);
+        Assert.Contains(result.Errors, e => e.Type == ValidationIssueCode.InsufficientBreak);
+        Assert.Contains(result.Errors, e => e.Type == ValidationIssueCode.ContractHoursExceeded);
+        Assert.Contains(result.Errors, e => e.Type == ValidationIssueCode.AssignedDuringAbsence);
+        Assert.Contains(result.Errors, e => e.Type == ValidationIssueCode.InsufficientRest);
+        Assert.Contains(result.Errors, e => e.Type == ValidationIssueCode.TooManyConsecutiveDays);
 
         // ...and every per-employee one of them is actually scoped to Anna, not just present
         // somewhere in the result.
-        Assert.Contains(result.Errors, e => e.Type == "ShiftTypeNotEligible" && e.EmployeeId == anna.Id);
-        Assert.Contains(result.Errors, e => e.Type == "InsufficientBreak" && e.EmployeeId == anna.Id);
-        Assert.Contains(result.Errors, e => e.Type == "ContractHoursExceeded" && e.EmployeeId == anna.Id);
-        Assert.Contains(result.Errors, e => e.Type == "AssignedDuringAbsence" && e.EmployeeId == anna.Id);
-        Assert.Contains(result.Errors, e => e.Type == "InsufficientRest" && e.EmployeeId == anna.Id);
-        Assert.Contains(result.Errors, e => e.Type == "TooManyConsecutiveDays" && e.EmployeeId == anna.Id);
+        Assert.Contains(result.Errors, e => e.Type == ValidationIssueCode.ShiftTypeNotEligible && e.EmployeeId == anna.Id);
+        Assert.Contains(result.Errors, e => e.Type == ValidationIssueCode.InsufficientBreak && e.EmployeeId == anna.Id);
+        Assert.Contains(result.Errors, e => e.Type == ValidationIssueCode.ContractHoursExceeded && e.EmployeeId == anna.Id);
+        Assert.Contains(result.Errors, e => e.Type == ValidationIssueCode.AssignedDuringAbsence && e.EmployeeId == anna.Id);
+        Assert.Contains(result.Errors, e => e.Type == ValidationIssueCode.InsufficientRest && e.EmployeeId == anna.Id);
+        Assert.Contains(result.Errors, e => e.Type == ValidationIssueCode.TooManyConsecutiveDays && e.EmployeeId == anna.Id);
 
         // Ben shares the understaffed ShiftType/dates with Anna and is otherwise clean,
         // well-rested, and well under his own contract — none of Anna's per-employee
