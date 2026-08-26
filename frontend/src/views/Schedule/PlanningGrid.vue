@@ -26,6 +26,9 @@ defineProps<{
   drag: DragState | null
   isDraft: boolean
   chipPointerDown: (e: PointerEvent, payload: DragPayload) => void
+  isFocusableCell: (employeeId: string, dateIso: string) => boolean
+  cellAriaLabel: (employeeId: string, dateIso: string) => string
+  onCellFocus: (employeeId: string, dateIso: string) => void
 }>()
 const emit = defineEmits<{
   'export-employee-pdf': [employeeId: string]
@@ -126,6 +129,9 @@ defineExpose({ autoScrollTableWrap })
           :drag="drag"
           :is-draft="isDraft"
           :chip-pointer-down="chipPointerDown"
+          :is-focusable-cell="isFocusableCell"
+          :cell-aria-label="cellAriaLabel"
+          :on-cell-focus="onCellFocus"
           @export-pdf="emit('export-employee-pdf', $event)"
           @view-readonly="emit('view-readonly', $event)"
         />

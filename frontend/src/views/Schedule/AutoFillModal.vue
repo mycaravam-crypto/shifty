@@ -131,10 +131,13 @@ async function onConfirm() {
               v-if="!dropped.has(i)"
               type="button"
               title="Vorschlag verwerfen"
-              class="shrink-0 text-slate-500 hover:text-rose-400 transition-colors"
+              class="relative shrink-0 text-slate-500 hover:text-rose-400 transition-colors"
               @click="drop(i)"
             >
               <Trash2 :size="15" />
+              <!-- issue #80: invisible hit-slop rather than a visually larger icon — this
+                   button sits inline in a dense proposal row. -->
+              <span class="absolute -inset-3.5" aria-hidden="true"></span>
             </button>
           </li>
           <li v-if="!proposals.length" class="text-sm text-slate-500 text-center py-6">

@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { nextTick, onMounted, onUnmounted, ref } from 'vue'
 import { Search } from '@lucide/vue'
+import api from '@/services/api'
+import { useToastStore } from '@/stores/toast'
 import ModalShell from '@/components/ModalShell.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import ShiftAssignmentModal from './ShiftAssignmentModal.vue'
@@ -14,7 +16,10 @@ import { useScheduleFilters } from './composables/useScheduleFilters'
 import { usePlanningBoard } from './composables/usePlanningBoard'
 import { usePlanningActions } from './composables/usePlanningActions'
 import { useScheduleDnD } from './composables/useScheduleDnD'
+import { useGridKeyboardNav } from './composables/useGridKeyboardNav'
 import type { Assignment, ShiftType, ValidationIssue } from './types'
+
+const toast = useToastStore()
 
 // issue #73: this file is orchestration only now — every DTO/date-math/formatting helper,
 // data-loading concern, drag-and-drop mechanic, and mutation call that used to live here
@@ -77,10 +82,41 @@ const {
 } = actions
 
 const selectedAssignment = ref<Assignment | null>(null)
+const deletingAssignment = ref<Assignment | null>(null)
 const showShortcuts = ref(false)
 const highlightKey = ref<string | null>(null)
 const suggestingShiftType = ref<ShiftType | null>(null)
 const showAutoFill = ref(false)
+
+const { isFocusableCell, cellAriaLabel, onCellFocus, focusedGridCellEl, onGridCellKeydown } =
+  useGridKeyboardNav({
+    visibleEmployees: () => visibleEmployees.value,
+    days: () => days.value,
+    assignmentsFor,
+    shiftTypeById,
+    onOpen: (assignment) => {
+      selectedAssignment.value = assignment
+    },
+    onDelete: (assignment) => {
+      deletingAssignment.value = assignment
+    },
+  })
+
+// issue #80: Delete/Backspace on a focused grid cell — the same delete call and toast pattern
+// ShiftAssignmentModal's own delete button uses, just reachable without opening the edit modal
+// first.
+async function onDeleteAssignmentConfirmed() {
+  if (!deletingAssignment.value) return
+  try {
+    await api.delete(`/assignments/${deletingAssignment.value.id}`)
+    toast.success('Schicht gelöscht.')
+    await loadDetail()
+  } catch {
+    toast.error('Schicht konnte nicht gelöscht werden.')
+  } finally {
+    deletingAssignment.value = null
+  }
+}
 
 const gridRef = ref<InstanceType<typeof PlanningGrid> | null>(null)
 const { drag, dragOverKey, onChipPointerDown } = useScheduleDnD({
@@ -128,13 +164,25 @@ function isTyping(): boolean {
   return tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA'
 }
 function onKeydown(e: KeyboardEvent) {
-  if (selectedAssignment.value || showShortcuts.value) return
+  if (selectedAssignment.value || showShortcuts.value || deletingAssignment.value) return
   if (e.key === '/' && !isTyping()) {
     e.preventDefault()
     searchInputRef.value?.focus()
-  } else if (e.key === '?' && !isTyping()) {
+    return
+  }
+  if (e.key === '?' && !isTyping()) {
     showShortcuts.value = true
-  } else if (e.key === 'ArrowLeft' && !isTyping()) {
+    return
+  }
+  // issue #80: keyboard nav for the grid coexists with month-nav below — it only fires once a
+  // day cell already has keyboard focus (Tab into the grid, or click a cell); otherwise the
+  // pre-existing ArrowLeft/Right month-nav applies as before.
+  const gridCell = focusedGridCellEl()
+  if (gridCell) {
+    onGridCellKeydown(e, gridCell.dataset.employeeId!, gridCell.dataset.date!)
+    return
+  }
+  if (e.key === 'ArrowLeft' && !isTyping()) {
     prevMonth()
   } else if (e.key === 'ArrowRight' && !isTyping()) {
     nextMonth()
@@ -274,6 +322,9 @@ window.addEventListener('afterprint', () => {
           :drag="drag"
           :is-draft="!!isDraft"
           :chip-pointer-down="onChipPointerDown"
+          :is-focusable-cell="isFocusableCell"
+          :cell-aria-label="cellAriaLabel"
+          :on-cell-focus="onCellFocus"
           @export-employee-pdf="exportEmployeePdf"
           @view-readonly="viewAssignmentReadonly"
         />
@@ -296,6 +347,15 @@ window.addEventListener('afterprint', () => {
       confirm-label="Archivieren"
       @confirm="onArchiveConfirmed"
       @close="confirmingArchive = false"
+    />
+
+    <!-- issue #80: Delete/Backspace on a focused grid cell -->
+    <ConfirmDialog
+      v-if="deletingAssignment"
+      title="Schicht löschen"
+      message="Diese Schicht wirklich löschen?"
+      @confirm="onDeleteAssignmentConfirmed"
+      @close="deletingAssignment = null"
     />
 
     <ShiftSuggestionModal
@@ -326,11 +386,11 @@ window.addEventListener('afterprint', () => {
           <kbd class="font-mono text-xs rounded bg-white/10 px-1.5 py-0.5">/</kbd>
         </li>
         <li class="flex items-center justify-between py-2">
-          <span class="text-slate-400">Vorheriger Monat</span>
+          <span class="text-slate-400">Vorheriger Monat (außerhalb des Rasters)</span>
           <kbd class="font-mono text-xs rounded bg-white/10 px-1.5 py-0.5">←</kbd>
         </li>
         <li class="flex items-center justify-between py-2">
-          <span class="text-slate-400">Nächster Monat</span>
+          <span class="text-slate-400">Nächster Monat (außerhalb des Rasters)</span>
           <kbd class="font-mono text-xs rounded bg-white/10 px-1.5 py-0.5">→</kbd>
         </li>
         <li class="flex items-center justify-between py-2">
@@ -340,6 +400,26 @@ window.addEventListener('afterprint', () => {
         <li class="flex items-center justify-between py-2">
           <span class="text-slate-400">Dialog schließen</span>
           <kbd class="font-mono text-xs rounded bg-white/10 px-1.5 py-0.5">Esc</kbd>
+        </li>
+        <li class="flex items-center justify-between py-2">
+          <span class="text-slate-400">Zwischen Tageszellen bewegen (nach Fokus im Raster)</span>
+          <span class="flex gap-1">
+            <kbd class="font-mono text-xs rounded bg-white/10 px-1.5 py-0.5">↑</kbd>
+            <kbd class="font-mono text-xs rounded bg-white/10 px-1.5 py-0.5">↓</kbd>
+            <kbd class="font-mono text-xs rounded bg-white/10 px-1.5 py-0.5">←</kbd>
+            <kbd class="font-mono text-xs rounded bg-white/10 px-1.5 py-0.5">→</kbd>
+          </span>
+        </li>
+        <li class="flex items-center justify-between py-2">
+          <span class="text-slate-400">Schicht der fokussierten Zelle öffnen</span>
+          <kbd class="font-mono text-xs rounded bg-white/10 px-1.5 py-0.5">Enter</kbd>
+        </li>
+        <li class="flex items-center justify-between py-2">
+          <span class="text-slate-400">Schicht der fokussierten Zelle löschen</span>
+          <span class="flex gap-1">
+            <kbd class="font-mono text-xs rounded bg-white/10 px-1.5 py-0.5">Entf</kbd>
+            <kbd class="font-mono text-xs rounded bg-white/10 px-1.5 py-0.5">⌫</kbd>
+          </span>
         </li>
       </ul>
     </ModalShell>
