@@ -38,7 +38,7 @@ public class RestTimeValidatorTests
         RestTimeValidator.Validate(assignments, result);
 
         var error = Assert.Single(result.Errors);
-        Assert.Equal("InsufficientRest", error.Type);
+        Assert.Equal(ValidationIssueCode.InsufficientRest, error.Type);
     }
 
     [Fact]
@@ -73,6 +73,27 @@ public class RestTimeValidatorTests
         var result = new ValidationResult();
         RestTimeValidator.Validate(assignments, result);
 
+        Assert.Empty(result.Errors);
+    }
+
+    [Fact]
+    public void CrossMidnightAssignment_ExcludedWithoutThrowing()
+    {
+        // A cross-midnight EndTime <= StartTime assignment is rejected by the write endpoints
+        // (issue #11), but the validator itself still filters it out defensively via its own
+        // EndTime > StartTime check. Construct one directly (bypassing that normal validation)
+        // to confirm it's silently excluded rather than crashing or corrupting the rest-time math.
+        var employee = Employee();
+        var shiftType = ShiftType();
+        var crossMidnight = Assignment(employee.Id, shiftType.Id, new DateOnly(2026, 8, 24), new TimeOnly(22, 0), new TimeOnly(6, 0));
+        var normal = Assignment(employee.Id, shiftType.Id, new DateOnly(2026, 8, 25), new TimeOnly(8, 0), new TimeOnly(16, 0));
+
+        var result = new ValidationResult();
+        var exception = Record.Exception(() => RestTimeValidator.Validate([crossMidnight, normal], result));
+
+        Assert.Null(exception);
+        // Only the normal assignment survives the filter — with a single remaining assignment
+        // per employee, there's no adjacent pair to compare, so no error is produced.
         Assert.Empty(result.Errors);
     }
 }

@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using ShiftPlanner.Api.Authentication;
 using ShiftPlanner.Domain.Common;
 using ShiftPlanner.Infrastructure.Persistence;
@@ -19,7 +20,7 @@ public record AccessTokenResponse(string AccessToken);
 [ApiController]
 [Route("api/v1/auth")]
 [EnableRateLimiting("auth")]
-public class AuthController(UserManager<ApplicationUser> userManager, ApplicationDbContext db, IConfiguration config) : ControllerBase
+public class AuthController(UserManager<ApplicationUser> userManager, ApplicationDbContext db, IOptions<JwtOptions> jwtOptions) : ControllerBase
 {
     private const string RefreshCookieName = "refreshToken";
 
@@ -31,12 +32,12 @@ public class AuthController(UserManager<ApplicationUser> userManager, Applicatio
             return Unauthorized();
 
         var roles = await userManager.GetRolesAsync(user);
-        var refreshToken = JwtTokenFactory.CreateRefreshToken(user, config);
+        var refreshToken = JwtTokenFactory.CreateRefreshToken(user, jwtOptions.Value);
         db.RefreshTokens.Add(JwtTokenFactory.CreateRefreshTokenRecord(refreshToken, user.Id));
         await db.SaveChangesAsync();
 
         SetRefreshCookie(refreshToken);
-        return Ok(new AccessTokenResponse(JwtTokenFactory.CreateAccessToken(user, roles, config)));
+        return Ok(new AccessTokenResponse(JwtTokenFactory.CreateAccessToken(user, roles, jwtOptions.Value)));
     }
 
     [HttpPost("refresh")]
@@ -47,7 +48,7 @@ public class AuthController(UserManager<ApplicationUser> userManager, Applicatio
 
         // Both the JWT itself (signature/expiry/token_use claim) and its DB-backed row (exists,
         // not revoked, not expired) must check out — see JwtTokenFactory's own comment for why.
-        var validated = await JwtTokenFactory.ValidateRefreshTokenAsync(refreshToken, config, db);
+        var validated = await JwtTokenFactory.ValidateRefreshTokenAsync(refreshToken, jwtOptions.Value, db);
         if (validated is null)
             return Unauthorized();
 
@@ -64,12 +65,12 @@ public class AuthController(UserManager<ApplicationUser> userManager, Applicatio
         validated.Record.RevokedAt = DateTimeOffset.UtcNow;
 
         var roles = await userManager.GetRolesAsync(user);
-        var newRefreshToken = JwtTokenFactory.CreateRefreshToken(user, config);
+        var newRefreshToken = JwtTokenFactory.CreateRefreshToken(user, jwtOptions.Value);
         db.RefreshTokens.Add(JwtTokenFactory.CreateRefreshTokenRecord(newRefreshToken, user.Id));
         await db.SaveChangesAsync();
 
         SetRefreshCookie(newRefreshToken);
-        return Ok(new AccessTokenResponse(JwtTokenFactory.CreateAccessToken(user, roles, config)));
+        return Ok(new AccessTokenResponse(JwtTokenFactory.CreateAccessToken(user, roles, jwtOptions.Value)));
     }
 
     // Revokes the DB-backed row for *this* refresh token only ("log out this device"). Requires

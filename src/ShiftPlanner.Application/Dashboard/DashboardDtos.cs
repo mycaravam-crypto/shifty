@@ -23,7 +23,7 @@ public record DashboardKpisDto(
 // of truth for what counts as "sufficiently staffed".
 public record CoverageDayDto(
     DateOnly Date, Guid ShiftTypeId, string ShiftTypeName,
-    int Scheduled, int MinStaffing, decimal CoveragePercent, string Status);
+    int Scheduled, int MinStaffing, decimal CoveragePercent, CoverageStatus Status);
 
 public record PlanningStatusDto(
     int DraftCount, int PublishedCount, int ConflictCount, decimal CompletionPercent,
@@ -32,7 +32,7 @@ public record PlanningStatusDto(
 public record ScheduleRefDto(Guid Id, string Name, DateOnly StartDate, ScheduleStatus Status);
 
 public record PainPointDto(
-    string Type, string Severity, string Message, Guid ScheduleId, string ScheduleName,
+    string Type, PainSeverity Severity, string Message, Guid ScheduleId, string ScheduleName,
     Guid? EmployeeId, string? EmployeeName);
 
 // issue #56: regular/overtime/premium/weekend cost breakdown restored from the parent issue's

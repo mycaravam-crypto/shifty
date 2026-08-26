@@ -36,7 +36,7 @@ public static class DashboardAggregator
 
             var scheduled = group.Select(a => a.EmployeeId).Distinct().Count();
             var percent = Math.Round(scheduled * 100m / min, 1);
-            var status = percent >= 95 ? "Green" : percent >= 85 ? "Yellow" : "Red";
+            var status = percent >= 95 ? CoverageStatus.Green : percent >= 85 ? CoverageStatus.Yellow : CoverageStatus.Red;
             result.Add(new CoverageDayDto(group.Key.Date, shiftType.Id, shiftType.Name, scheduled, min, percent, status));
         }
         return result.OrderBy(c => c.Date).ThenBy(c => c.ShiftTypeName).ToList();
@@ -72,7 +72,7 @@ public static class DashboardAggregator
             var historyAssignments = historyPool.Where(a => a.Date >= historyStart && a.Date <= historyEnd).ToList();
             var result = ScheduleValidator.Validate(schedule, assignments, employeesById.Values.ToList(), shiftTypes, contracts, historyAssignments, absences);
 
-            foreach (var (issue, severity) in result.Errors.Select(e => (e, "Error")).Concat(result.Warnings.Select(w => (w, "Warning"))))
+            foreach (var (issue, severity) in result.Errors.Select(e => (e, PainSeverity.Error)).Concat(result.Warnings.Select(w => (w, PainSeverity.Warning))))
             {
                 if (teamId is not null && issue.EmployeeId is { } employeeId
                     && employeesById.TryGetValue(employeeId, out var emp) && emp.TeamId != teamId)
@@ -80,15 +80,15 @@ public static class DashboardAggregator
 
                 var employeeName = issue.EmployeeId is { } id && employeesById.TryGetValue(id, out var e)
                     ? $"{e.FirstName} {e.LastName}" : null;
-                points.Add(new PainPointDto(issue.Type, severity, issue.Message, schedule.Id, schedule.Name, issue.EmployeeId, employeeName));
+                points.Add(new PainPointDto(issue.Type.ToString(), severity, issue.Message, schedule.Id, schedule.Name, issue.EmployeeId, employeeName));
             }
         }
-        return points.OrderByDescending(p => p.Severity == "Error").ToList();
+        return points.OrderByDescending(p => p.Severity == PainSeverity.Error).ToList();
     }
 
     public static PlanningStatusDto BuildPlanningStatus(IReadOnlyList<Schedule> schedules, IReadOnlyList<PainPointDto> painPoints)
     {
-        var conflictedScheduleIds = painPoints.Where(p => p.Severity == "Error").Select(p => p.ScheduleId).ToHashSet();
+        var conflictedScheduleIds = painPoints.Where(p => p.Severity == PainSeverity.Error).Select(p => p.ScheduleId).ToHashSet();
         var affected = schedules.Where(s => conflictedScheduleIds.Contains(s.Id))
             .Select(s => new ScheduleRefDto(s.Id, s.Name, s.StartDate, s.Status)).ToList();
         var published = schedules.Count(s => s.Status == ScheduleStatus.Published);
@@ -119,10 +119,10 @@ public static class DashboardAggregator
             var land = bundeslandByEmployee.GetValueOrDefault(a.EmployeeId);
             var isHoliday = (land is { } bl ? holidaysByBundesland[bl] : nationwideHolidays).Contains(a.Date);
             // issue #58: BreakMinutes/BreakStartTime threaded through so the night-surcharge
-            // portion of the breakdown gets the same break-adjusted precision LaborCost's other
-            // call sites already have.
-            var breakdown = WageCalculator.Breakdown(a.StartTime, a.EndTime, a.Date.DayOfWeek, isHoliday, netHours, contract?.HourlyRate,
-                a.BreakMinutes, a.BreakStartTime);
+            // portion of the breakdown gets the same break-adjusted precision LaborCostWithSurcharges'
+            // other call sites already have.
+            var timing = new ShiftTiming(a.StartTime, a.EndTime, a.BreakMinutes, a.BreakStartTime);
+            var breakdown = WageCalculator.Breakdown(timing, a.Date.DayOfWeek, isHoliday, netHours, contract?.HourlyRate);
             if (breakdown is not { } b)
                 continue;
             regular += b.Regular;

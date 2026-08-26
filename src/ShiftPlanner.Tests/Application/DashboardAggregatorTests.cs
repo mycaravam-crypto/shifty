@@ -36,11 +36,11 @@ public class DashboardAggregatorTests
         var full = Assert.Single(coverage, c => c.ShiftTypeId == fullyStaffed.Id);
         Assert.Equal(2, full.Scheduled);
         Assert.Equal(100m, full.CoveragePercent);
-        Assert.Equal("Green", full.Status);
+        Assert.Equal(CoverageStatus.Green, full.Status);
         var partial = Assert.Single(coverage, c => c.ShiftTypeId == understaffed.Id);
         Assert.Equal(1, partial.Scheduled);
         Assert.Equal(25m, partial.CoveragePercent);
-        Assert.Equal("Red", partial.Status);
+        Assert.Equal(CoverageStatus.Red, partial.Status);
     }
 
     [Fact]
@@ -51,9 +51,9 @@ public class DashboardAggregatorTests
         var shiftType = ShiftType();
         var rows = new List<CoverageDayDto>
         {
-            new(new DateOnly(2026, 8, 1), shiftType.Id, shiftType.Name, 2, 2, 100m, "Green"),
+            new(new DateOnly(2026, 8, 1), shiftType.Id, shiftType.Name, 2, 2, 100m, CoverageStatus.Green),
             // Overstaffed (150%) is capped at 100% so it can't mask an understaffed row elsewhere.
-            new(new DateOnly(2026, 8, 2), shiftType.Id, shiftType.Name, 3, 2, 150m, "Green"),
+            new(new DateOnly(2026, 8, 2), shiftType.Id, shiftType.Name, 3, 2, 150m, CoverageStatus.Green),
         };
 
         Assert.Equal(100m, DashboardAggregator.CoveragePercent(rows));
@@ -100,8 +100,8 @@ public class DashboardAggregatorTests
 
         var painPoints = new List<PainPointDto>
         {
-            new("ContractHoursExceeded", "Error", "boom", conflicted.Id, conflicted.Name, null, null),
-            new("Understaffed", "Warning", "meh", draft.Id, draft.Name, null, null),
+            new("ContractHoursExceeded", PainSeverity.Error, "boom", conflicted.Id, conflicted.Name, null, null),
+            new("Understaffed", PainSeverity.Warning, "meh", draft.Id, draft.Name, null, null),
         };
 
         var status = DashboardAggregator.BuildPlanningStatus([draft, published, conflicted], painPoints);
@@ -130,7 +130,8 @@ public class DashboardAggregatorTests
             [assignment], [contract], bundeslandByEmployee, new Dictionary<Bundesland, HashSet<DateOnly>>(), []);
 
         var netHours = WorkingTimeCalculator.NetHours(assignment.StartTime, assignment.EndTime, assignment.BreakMinutes);
-        var expected = WageCalculator.Breakdown(assignment.StartTime, assignment.EndTime, sunday.DayOfWeek, false, netHours, contract.HourlyRate);
+        var timing = new ShiftTiming(assignment.StartTime, assignment.EndTime, assignment.BreakMinutes, assignment.BreakStartTime);
+        var expected = WageCalculator.Breakdown(timing, sunday.DayOfWeek, false, netHours, contract.HourlyRate);
 
         Assert.NotNull(expected);
         Assert.Equal(expected.Value.Regular, breakdown.Regular);

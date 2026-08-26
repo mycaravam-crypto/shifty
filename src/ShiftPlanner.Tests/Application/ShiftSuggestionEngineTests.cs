@@ -23,11 +23,11 @@ public class ShiftSuggestionEngineTests
         IReadOnlyList<ShiftTypePreference>? shiftTypePrefs = null,
         IReadOnlyList<WeekdayPreference>? weekdayPrefs = null) =>
         ShiftSuggestionEngine.Suggest(
-            date, shiftType, employees,
-            history ?? [], absences ?? [],
-            ScheduleStart, ScheduleEnd,
-            scheduleAssignments ?? [], contracts ?? [],
-            shiftTypePrefs ?? [], weekdayPrefs ?? []);
+            date, shiftType,
+            new SchedulingContext(
+                ScheduleStart, ScheduleEnd, employees,
+                scheduleAssignments ?? [], history ?? [], absences ?? [],
+                contracts ?? [], shiftTypePrefs ?? [], weekdayPrefs ?? []));
 
     [Fact]
     public void UnrestrictedEmployee_WithNoData_IsEligibleWithZeroScore()
@@ -48,7 +48,7 @@ public class ShiftSuggestionEngineTests
     {
         var otherShiftType = ShiftType();
         var employee = Employee();
-        employee.EligibleShiftTypes.Add(otherShiftType);
+        employee.AddEligibleShiftType(otherShiftType);
         var shiftType = ShiftType();
 
         var result = Suggest(new DateOnly(2026, 8, 10), shiftType, [employee]);
@@ -201,7 +201,7 @@ public class ShiftSuggestionEngineTests
     {
         var ineligible = Employee("Ina", "Eligible");
         var otherShiftType = ShiftType();
-        ineligible.EligibleShiftTypes.Add(otherShiftType);
+        ineligible.AddEligibleShiftType(otherShiftType);
         var lowScore = Employee("Lena", "LowScore");
         var highScore = Employee("Hana", "HighScore");
         var shiftType = ShiftType();

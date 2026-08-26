@@ -36,20 +36,23 @@ public class DashboardController(ApplicationDbContext db) : ControllerBase
         var prevFrom = prevTo.AddDays(-(periodDays - 1));
 
         var schedules = await db.Schedules
+            .AsNoTracking()
             .Where(s => s.StartDate <= periodTo && s.EndDate >= periodFrom)
             .ToListAsync();
         var previousSchedules = await db.Schedules
+            .AsNoTracking()
             .Where(s => s.StartDate <= prevTo && s.EndDate >= prevFrom)
             .ToListAsync();
         var allScheduleIds = schedules.Select(s => s.Id).Union(previousSchedules.Select(s => s.Id)).ToList();
 
         var allAssignments = await db.ShiftAssignments
+            .AsNoTracking()
             .Where(a => allScheduleIds.Contains(a.ScheduleId))
             .ToListAsync();
         var assignmentsByScheduleId = allAssignments.GroupBy(a => a.ScheduleId)
             .ToDictionary(g => g.Key, g => (IReadOnlyList<ShiftAssignment>)g.ToList());
 
-        var employees = await db.Employees.Include(e => e.EligibleShiftTypes).Include(e => e.Team).ToListAsync();
+        var employees = await db.Employees.AsNoTracking().Include(e => e.EligibleShiftTypes).Include(e => e.Team).ToListAsync();
         var employeesById = employees.ToDictionary(e => e.Id);
         bool MatchesTeam(Guid employeeId) =>
             teamId is null || (employeesById.TryGetValue(employeeId, out var e) && e.TeamId == teamId);
@@ -57,9 +60,9 @@ public class DashboardController(ApplicationDbContext db) : ControllerBase
         var employeeIds = allAssignments.Select(a => a.EmployeeId)
             .Union(employees.Where(e => MatchesTeam(e.Id)).Select(e => e.Id))
             .ToList();
-        var contracts = await db.Contracts.Where(c => employeeIds.Contains(c.EmployeeId)).ToListAsync();
-        var absences = await db.Absences.Where(a => employeeIds.Contains(a.EmployeeId)).ToListAsync();
-        var shiftTypes = await db.ShiftTypes.ToListAsync();
+        var contracts = await db.Contracts.AsNoTracking().Where(c => employeeIds.Contains(c.EmployeeId)).ToListAsync();
+        var absences = await db.Absences.AsNoTracking().Where(a => employeeIds.Contains(a.EmployeeId)).ToListAsync();
+        var shiftTypes = await db.ShiftTypes.AsNoTracking().ToListAsync();
         var shiftTypesById = shiftTypes.ToDictionary(s => s.Id);
 
         // issue #56: exact ±6-day historyAssignments lookback, mirroring
@@ -78,6 +81,7 @@ public class DashboardController(ApplicationDbContext db) : ControllerBase
         List<ShiftAssignment> historyPool = schedules.Count == 0
             ? []
             : await db.ShiftAssignments
+                .AsNoTracking()
                 .Where(a => employeeIds.Contains(a.EmployeeId)
                     && a.Date >= historyWindowStart
                     && a.Date <= historyWindowEnd)
@@ -129,7 +133,7 @@ public class DashboardController(ApplicationDbContext db) : ControllerBase
             utilization.UtilizationPercent,
             costTotal, DashboardAggregator.DeltaPercent(costTotal, previousCostTotal),
             planningStatus.CompletionPercent,
-            painPoints.Count, painPoints.Count(p => p.Severity == "Error"),
+            painPoints.Count, painPoints.Count(p => p.Severity == PainSeverity.Error),
             overtimeHours, DashboardAggregator.DeltaPercent(overtimeHours, previousOvertimeHours));
 
         return Ok(new DashboardDto(periodFrom, periodTo, kpis, coverage, planningStatus, painPoints,
