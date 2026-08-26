@@ -94,7 +94,7 @@ public class ScheduleValidatorTests
         var spaet = ShiftType(new TimeOnly(14, 0), new TimeOnly(22, 0));
 
         var anna = Employee("Anna", "Schmidt");
-        anna.EligibleShiftTypes = [normal]; // not spaet -> ShiftTypeNotEligible below
+        anna.AddEligibleShiftType(normal); // not spaet -> ShiftTypeNotEligible below
         var ben = Employee("Ben", "Krause");
 
         var schedule = Schedule(new DateOnly(2026, 8, 1), new DateOnly(2026, 8, 10));
