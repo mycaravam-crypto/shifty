@@ -24,7 +24,7 @@ public class EligibilityValidatorTests
     {
         var shiftType = ShiftType();
         var employee = Employee();
-        employee.EligibleShiftTypes.Add(shiftType);
+        employee.AddEligibleShiftType(shiftType);
         var assignment = Assignment(employee.Id, shiftType.Id, new DateOnly(2026, 8, 24), new TimeOnly(8, 0), new TimeOnly(16, 0));
 
         var result = new ValidationResult();
@@ -39,14 +39,14 @@ public class EligibilityValidatorTests
         var eligibleShiftType = ShiftType();
         var otherShiftType = ShiftType();
         var employee = Employee();
-        employee.EligibleShiftTypes.Add(eligibleShiftType);
+        employee.AddEligibleShiftType(eligibleShiftType);
         var assignment = Assignment(employee.Id, otherShiftType.Id, new DateOnly(2026, 8, 24), new TimeOnly(8, 0), new TimeOnly(16, 0));
 
         var result = new ValidationResult();
         EligibilityValidator.Validate([assignment], new Dictionary<Guid, ShiftPlanner.Domain.Employees.Employee> { [employee.Id] = employee }, result);
 
         var error = Assert.Single(result.Errors);
-        Assert.Equal("ShiftTypeNotEligible", error.Type);
+        Assert.Equal(ValidationIssueCode.ShiftTypeNotEligible, error.Type);
     }
 
     [Fact]

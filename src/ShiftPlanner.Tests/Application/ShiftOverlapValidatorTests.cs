@@ -40,7 +40,7 @@ public class ShiftOverlapValidatorTests
         ShiftOverlapValidator.Validate(assignments, result);
 
         var warning = Assert.Single(result.Warnings);
-        Assert.Equal("ShiftOverlap", warning.Type);
+        Assert.Equal(ValidationIssueCode.ShiftOverlap, warning.Type);
         Assert.Empty(result.Errors);
     }
 

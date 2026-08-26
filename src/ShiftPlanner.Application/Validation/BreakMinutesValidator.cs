@@ -12,6 +12,19 @@ public static class BreakMinutesValidator
             var grossMinutes = (a.EndTime - a.StartTime).TotalMinutes;
             if (grossMinutes <= 0)
                 continue; // cross-midnight shifts are unsupported for now — issue #11
+                // Deliberately NOT centralized via WorkingTimeCalculator.IsValidShiftTiming
+                // (issue #101), unlike RestTimeValidator/ShiftSuggestionEngine's identical-
+                // looking filters: TimeOnly's `-` operator (used above for grossMinutes) wraps
+                // a negative result by adding a full day, so this check is only ever true when
+                // EndTime == StartTime exactly — a genuinely-backwards EndTime < StartTime
+                // instead wraps to a *positive* grossMinutes and falls through to the normal
+                // break-minutes check below (see ZeroLengthShift_SkippedDefensively and
+                // GenuinelyBackwardsShift_NotSkipped_ProcessedWithWrappedDuration in
+                // BreakMinutesValidatorTests for the two cases spelled out). Switching this to
+                // `!IsValidShiftTiming(...)` would change behavior (skip real cross-midnight
+                // rows too), which issue #101 explicitly scopes out — the write boundary
+                // (SchedulesController/ShiftTypesController) is what actually rejects such
+                // data before it ever reaches this validator.
 
             var required = grossMinutes switch
             {
@@ -22,9 +35,9 @@ public static class BreakMinutesValidator
             if (a.BreakMinutes < required)
             {
                 result.Errors.Add(new ValidationIssue(
-                    "InsufficientBreak",
+                    ValidationIssueCode.InsufficientBreak,
                     $"Mindestpause von {required}min unterschritten ({a.BreakMinutes}min).",
-                    a.EmployeeId, a.Id));
+                    EmployeeId: a.EmployeeId, ShiftAssignmentId: a.Id));
             }
         }
     }
