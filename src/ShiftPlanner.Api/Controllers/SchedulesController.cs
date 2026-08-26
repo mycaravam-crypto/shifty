@@ -77,10 +77,10 @@ public class SchedulesController(ApplicationDbContext db) : ControllerBase
 
     // issue #14: the contract valid on the assignment's own date, not the schedule's start —
     // a schedule can span a month, long enough for a mid-month contract/rate change.
+    // issue #70: Contract.ActiveOn centralizes the "which contract applies on date X" lookup
+    // this used to duplicate inline (one of five independent copies found by a code review).
     private static decimal? HourlyRateOn(IReadOnlyList<Contract> contracts, Guid employeeId, DateOnly date) =>
-        contracts
-            .Where(c => c.EmployeeId == employeeId && c.ValidFrom <= date && (c.ValidTo is null || c.ValidTo >= date))
-            .MaxBy(c => c.ValidFrom)?.HourlyRate;
+        Contract.ActiveOn(contracts, employeeId, date)?.HourlyRate;
 
     [HttpGet("schedules")]
     public async Task<ActionResult<IEnumerable<ScheduleDto>>> GetAll()

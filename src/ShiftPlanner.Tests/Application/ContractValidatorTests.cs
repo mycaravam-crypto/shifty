@@ -89,6 +89,31 @@ public class ContractValidatorTests
         Assert.Single(result.Errors);
     }
 
+    // issue #70: used to resolve the contract active at the schedule's *start* date only and
+    // scale the whole span by that one contract's WeeklyHours — wrong once a Contract changes
+    // mid-schedule (a month-long Schedule easily outlives a raise/hours change).
+    [Fact]
+    public void ContractChangesMidSchedule_BlendsBothSegments_DoesNotFalseFlag()
+    {
+        var employee = Employee();
+        var shiftType = ShiftType();
+        var schedule = Schedule(new DateOnly(2026, 8, 1), new DateOnly(2026, 8, 31)); // 31 days
+        var earlier = Contract(employee.Id, new DateOnly(2026, 1, 1), weeklyHours: 20m, validTo: new DateOnly(2026, 8, 15));
+        var later = Contract(employee.Id, new DateOnly(2026, 8, 16), weeklyHours: 40m);
+        // 15 shifts * 8h = 120h planned. Old (buggy) behavior scaled the whole 31-day span by
+        // the 20h/week contract active on Aug 1 -> ~88.57h expected, which would incorrectly
+        // flag this as ContractHoursExceeded. Correctly blending both segments (20h/week for
+        // 15 days + 40h/week for 16 days) -> ~134.29h expected, so 120h planned must NOT flag.
+        var assignments = Enumerable.Range(1, 15)
+            .Select(day => Assignment(employee.Id, shiftType.Id, new DateOnly(2026, 8, day), new TimeOnly(8, 0), new TimeOnly(16, 0), breakMinutes: 0))
+            .ToArray();
+
+        var result = new ValidationResult();
+        ContractValidator.Validate(schedule, assignments, [earlier, later], null, result);
+
+        Assert.Empty(result.Errors);
+    }
+
     [Fact]
     public void NoContractCoveringSchedule_Skipped()
     {

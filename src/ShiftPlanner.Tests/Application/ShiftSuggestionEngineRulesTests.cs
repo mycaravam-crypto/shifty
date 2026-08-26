@@ -223,10 +223,8 @@ public class ShiftSuggestionEngineRulesTests
     {
         var employee = Employee();
         var contract = Contract(employee.Id, ScheduleStart, weeklyHours: 40);
-        var scheduleDays = ScheduleEnd.DayNumber - ScheduleStart.DayNumber + 1;
-
         var outcome = ShiftSuggestionEngine.EvaluateContractTarget(
-            employee, ScheduleStart, ScheduleEnd, scheduleDays, [], [contract], []);
+            employee, ScheduleStart, ScheduleEnd, [], [contract], []);
 
         Assert.Equal(1m, outcome.ScoreDelta);
         Assert.Equal(SuggestionReasonCode.UnderContractTarget, outcome.Reason!.Code);
@@ -236,10 +234,8 @@ public class ShiftSuggestionEngineRulesTests
     public void EvaluateContractTarget_NoContract_NoBonus()
     {
         var employee = Employee();
-        var scheduleDays = ScheduleEnd.DayNumber - ScheduleStart.DayNumber + 1;
-
         var outcome = ShiftSuggestionEngine.EvaluateContractTarget(
-            employee, ScheduleStart, ScheduleEnd, scheduleDays, [], [], []);
+            employee, ScheduleStart, ScheduleEnd, [], [], []);
 
         Assert.Equal(0m, outcome.ScoreDelta);
         Assert.Null(outcome.Reason);
@@ -256,10 +252,8 @@ public class ShiftSuggestionEngineRulesTests
         {
             Assignment(employee.Id, shiftType.Id, new DateOnly(2026, 8, 1), shiftType.StartTime, shiftType.EndTime),
         };
-        var scheduleDays = ScheduleEnd.DayNumber - ScheduleStart.DayNumber + 1;
-
         var outcome = ShiftSuggestionEngine.EvaluateContractTarget(
-            employee, ScheduleStart, ScheduleEnd, scheduleDays, [], [contract], scheduleAssignments);
+            employee, ScheduleStart, ScheduleEnd, [], [contract], scheduleAssignments);
 
         Assert.Equal(0m, outcome.ScoreDelta);
         Assert.Null(outcome.Reason);

@@ -66,6 +66,13 @@ public class ContractsController(ApplicationDbContext db) : ControllerBase
         if (await db.Contracts.AnyAsync(c => c.EmployeeId == employeeId && c.ValidFrom == request.ValidFrom))
             return Conflict($"Employee already has a contract valid from {request.ValidFrom}.");
 
+        // issue #70: today's unique index only rejects an exact ValidFrom clash — two contracts
+        // whose ranges otherwise overlap were picked silently by every ActiveOn call site's
+        // MaxBy(ValidFrom), hiding what's almost certainly a data-entry mistake.
+        var existingForEmployee = await db.Contracts.Where(c => c.EmployeeId == employeeId).ToListAsync();
+        if (existingForEmployee.Any(c => Contract.Overlaps(c.ValidFrom, c.ValidTo, request.ValidFrom, request.ValidTo)))
+            return Conflict("Contract validity range overlaps an existing contract for this employee.");
+
         Contract contract;
         try
         {
@@ -93,6 +100,13 @@ public class ContractsController(ApplicationDbContext db) : ControllerBase
 
         if (await db.Contracts.AnyAsync(c => c.EmployeeId == contract.EmployeeId && c.ValidFrom == request.ValidFrom && c.Id != id))
             return Conflict($"Employee already has a contract valid from {request.ValidFrom}.");
+
+        // issue #70: same overlap check as Create, excluding this contract's own current row.
+        var othersForEmployee = await db.Contracts
+            .Where(c => c.EmployeeId == contract.EmployeeId && c.Id != id)
+            .ToListAsync();
+        if (othersForEmployee.Any(c => Contract.Overlaps(c.ValidFrom, c.ValidTo, request.ValidFrom, request.ValidTo)))
+            return Conflict("Contract validity range overlaps an existing contract for this employee.");
 
         contract.ValidFrom = request.ValidFrom;
         contract.ValidTo = request.ValidTo;

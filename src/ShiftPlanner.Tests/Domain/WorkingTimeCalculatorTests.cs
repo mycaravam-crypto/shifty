@@ -101,11 +101,16 @@ public class WorkingTimeCalculatorTests
     // issue #56: ExpectedHours is the formula ContractValidator, HoursBalanceCalculator, and
     // now DashboardController's per-employee utilization all share — extracted here once a 3rd/
     // 4th caller needed it, same reasoning OverlapDays itself was extracted for.
+    //
+    // issue #70: signature changed from a single already-resolved Contract to the full
+    // contracts list — ExpectedHours now resolves the applicable one PER DAY internally via
+    // Contract.ActiveOn, fixing the mid-schedule contract-change bug (see the dedicated tests
+    // below) rather than scaling the whole span by whichever contract was active on day 1.
     [Fact]
-    public void ExpectedHours_NullContract_ReturnsZero()
+    public void ExpectedHours_NoContractForEmployee_ReturnsZero()
     {
         var hours = WorkingTimeCalculator.ExpectedHours(
-            null, [], Guid.NewGuid(), new DateOnly(2026, 8, 1), new DateOnly(2026, 8, 7));
+            [], [], Guid.NewGuid(), new DateOnly(2026, 8, 1), new DateOnly(2026, 8, 7));
         Assert.Equal(0m, hours);
     }
 
@@ -122,8 +127,8 @@ public class WorkingTimeCalculatorTests
         // 31-day span (a month) -> 40 * 31/7 = 177.14h (pinned literal, not re-derived via
         // production's own formula), not the raw 40h a naive 7-day assumption would give.
         var hours = WorkingTimeCalculator.ExpectedHours(
-            contract, [], employeeId, new DateOnly(2026, 8, 1), new DateOnly(2026, 8, 31));
-        Assert.Equal(177.14m, Math.Round(hours, 2));
+            [contract], [], employeeId, new DateOnly(2026, 8, 1), new DateOnly(2026, 8, 31));
+        Assert.Equal(Math.Round(40m * 31 / 7, 2), Math.Round(hours, 2));
     }
 
     [Fact]
@@ -142,7 +147,7 @@ public class WorkingTimeCalculatorTests
         };
 
         var hours = WorkingTimeCalculator.ExpectedHours(
-            contract, absences, employeeId, new DateOnly(2026, 8, 1), new DateOnly(2026, 8, 7));
+            [contract], absences, employeeId, new DateOnly(2026, 8, 1), new DateOnly(2026, 8, 7));
         Assert.Equal(5m, hours);
     }
 
@@ -162,8 +167,63 @@ public class WorkingTimeCalculatorTests
         };
 
         var hours = WorkingTimeCalculator.ExpectedHours(
-            contract, absences, employeeId, new DateOnly(2026, 8, 1), new DateOnly(2026, 8, 7));
+            [contract], absences, employeeId, new DateOnly(2026, 8, 1), new DateOnly(2026, 8, 7));
         Assert.Equal(7m, hours);
+    }
+
+    // issue #70: the core bug fix — a Contract that changes mid-span must blend both segments'
+    // WeeklyHours, not scale the whole span by whichever contract was active on day 1.
+    [Fact]
+    public void ExpectedHours_ContractChangesMidSpan_BlendsBothSegments()
+    {
+        var employeeId = Guid.NewGuid();
+        // 20h/week through Aug 15, then 40h/week from Aug 16 -- a 31-day August schedule spans
+        // both. Old (buggy) behavior: resolves the contract active on Aug 1 (20h/week) and
+        // scales that across all 31 days -> 20*31/7 ~= 88.57h, ignoring the raise entirely.
+        var earlier = new Contract
+        {
+            Id = Guid.NewGuid(), EmployeeId = employeeId, ValidFrom = new DateOnly(2026, 1, 1),
+            ValidTo = new DateOnly(2026, 8, 15), WeeklyHours = 20m, WorkingDaysPerWeek = 3, DailyTargetHours = 6.67m,
+        };
+        var later = new Contract
+        {
+            Id = Guid.NewGuid(), EmployeeId = employeeId, ValidFrom = new DateOnly(2026, 8, 16),
+            WeeklyHours = 40m, WorkingDaysPerWeek = 5, DailyTargetHours = 8m,
+        };
+
+        var hours = WorkingTimeCalculator.ExpectedHours(
+            [earlier, later], [], employeeId, new DateOnly(2026, 8, 1), new DateOnly(2026, 8, 31));
+
+        // 15 days at 20h/week + 16 days at 40h/week.
+        var expected = (20m * 15 / 7m) + (40m * 16 / 7m);
+        Assert.Equal(Math.Round(expected, 4), Math.Round(hours, 4));
+        // Sanity check this actually differs from the old single-contract-at-start behavior.
+        Assert.NotEqual(Math.Round(20m * 31 / 7m, 4), Math.Round(hours, 4));
+    }
+
+    [Fact]
+    public void ExpectedHours_GapBetweenContracts_ContributesZeroForUncoveredDays()
+    {
+        var employeeId = Guid.NewGuid();
+        // A 3-day gap (Aug 10-12) between two contracts should contribute 0 expected hours for
+        // those days, not silently fall back to either neighboring contract.
+        var earlier = new Contract
+        {
+            Id = Guid.NewGuid(), EmployeeId = employeeId, ValidFrom = new DateOnly(2026, 1, 1),
+            ValidTo = new DateOnly(2026, 8, 9), WeeklyHours = 21m, WorkingDaysPerWeek = 3, DailyTargetHours = 7m,
+        };
+        var later = new Contract
+        {
+            Id = Guid.NewGuid(), EmployeeId = employeeId, ValidFrom = new DateOnly(2026, 8, 13),
+            WeeklyHours = 35m, WorkingDaysPerWeek = 5, DailyTargetHours = 7m,
+        };
+
+        var hours = WorkingTimeCalculator.ExpectedHours(
+            [earlier, later], [], employeeId, new DateOnly(2026, 8, 1), new DateOnly(2026, 8, 20));
+
+        // Aug 1-9 (9 days) at 21h/week + Aug 13-20 (8 days) at 35h/week; Aug 10-12 contribute 0.
+        var expected = (21m * 9 / 7m) + (35m * 8 / 7m);
+        Assert.Equal(Math.Round(expected, 4), Math.Round(hours, 4));
     }
 
     // issue #102: SchedulesController.CopyMonth's day-of-month clamping (extracted here so it's
