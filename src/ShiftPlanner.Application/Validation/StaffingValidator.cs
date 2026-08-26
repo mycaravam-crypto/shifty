@@ -74,7 +74,7 @@ public static class StaffingValidator
                 if (count < requirement.MinimumStaffing)
                 {
                     result.Warnings.Add(new ValidationIssue(
-                        "Understaffed",
+                        ValidationIssueCode.Understaffed,
                         $"{shiftType.Name} am {date:yyyy-MM-dd}: {count}/{requirement.MinimumStaffing} besetzt (Bedarf)."));
                 }
             }
