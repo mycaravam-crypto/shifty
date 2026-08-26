@@ -13,7 +13,11 @@ public static class RestTimeValidator
         foreach (var group in assignments.GroupBy(a => a.EmployeeId))
         {
             var ordered = group
-                .Where(a => a.EndTime > a.StartTime) // cross-midnight shifts unsupported — issue #11
+                // cross-midnight shifts unsupported — issue #11; centralized via
+                // WorkingTimeCalculator.IsValidShiftTiming (issue #101) for consistency with
+                // ShiftSuggestionEngine's identical filter and the controller-level rejection —
+                // no behavior change here, this is the exact same TimeOnly comparison.
+                .Where(a => WorkingTimeCalculator.IsValidShiftTiming(a.StartTime, a.EndTime))
                 .OrderBy(a => a.Date).ThenBy(a => a.StartTime)
                 .ToList();
 
@@ -25,9 +29,9 @@ public static class RestTimeValidator
                 if (rest >= TimeSpan.Zero && rest < TimeSpan.FromHours(MinRestHours))
                 {
                     result.Errors.Add(new ValidationIssue(
-                        "InsufficientRest",
+                        ValidationIssueCode.InsufficientRest,
                         $"Ruhezeit von {MinRestHours}h unterschritten ({rest.TotalHours:F1}h).",
-                        group.Key, ordered[i].Id));
+                        EmployeeId: group.Key, ShiftAssignmentId: ordered[i].Id));
                 }
             }
         }

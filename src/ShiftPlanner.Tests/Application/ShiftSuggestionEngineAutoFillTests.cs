@@ -28,11 +28,11 @@ public class ShiftSuggestionEngineAutoFillTests
         IReadOnlyList<ShiftTypePreference>? shiftTypePrefs = null,
         IReadOnlyList<WeekdayPreference>? weekdayPrefs = null) =>
         ShiftSuggestionEngine.AutoFill(
-            rangeStart, rangeEnd, shiftTypes, employees,
-            history ?? [], absences ?? [],
-            ScheduleStart, ScheduleEnd,
-            scheduleAssignments ?? [], contracts ?? [],
-            shiftTypePrefs ?? [], weekdayPrefs ?? []);
+            rangeStart, rangeEnd, shiftTypes,
+            new SchedulingContext(
+                ScheduleStart, ScheduleEnd, employees,
+                scheduleAssignments ?? [], history ?? [], absences ?? [],
+                contracts ?? [], shiftTypePrefs ?? [], weekdayPrefs ?? []));
 
     [Fact]
     public void OneOpenSlot_FillsWithTopEligibleCandidate()
@@ -61,7 +61,7 @@ public class ShiftSuggestionEngineAutoFillTests
         var shiftType = ShiftType(minStaffing: 1);
         var otherShiftType = ShiftType();
         var employee = Employee();
-        employee.EligibleShiftTypes.Add(otherShiftType); // restricted away from `shiftType`
+        employee.AddEligibleShiftType(otherShiftType); // restricted away from `shiftType`
         var date = new DateOnly(2026, 8, 10);
 
         var proposals = AutoFill(date, date, [shiftType], [employee]);

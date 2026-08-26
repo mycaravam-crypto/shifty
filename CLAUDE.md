@@ -49,7 +49,16 @@ whole codebase; several have landed since (issues #55/#57/#56 above, issue #71's
 refresh-token-as-Bearer fix, issue #82's atomic month-copy, issues #76/#78 on the Dienstplan
 grid — see below for all of these), and issue #68 (enforcing the Schedule Draft/Published/
 Archived lifecycle server-side, flagged by that review as the single most impactful integrity
-gap in the app) is now built too.
+gap in the app) is now built too. Issue #79 then followed up on #68 by surfacing that lifecycle
+in the UI itself — a Draft/Published/Archived status badge, a "Veröffentlichen"/"Archivieren"
+action pair, and a read-only Dienstplan grid once a schedule isn't Draft — see below. Of the
+batch's remaining issues, several are still open: #61 (verify the compose stack against a real
+deployment — needs actual VPS access this environment doesn't have), #69 (model staffing demand
+independently of assignments), #70 (centralize Sollstunden/contract-segment handling), #72
+(a Planning-Board read model), #73 (decompose `ScheduleView.vue`), #74 (split the Dienstplan
+into week/month views), #75 (integration/E2E/concurrency test coverage), #77 (inline staffing
+coverage — depends on #69), #80 (touch targets/keyboard nav), and #81 (cross-midnight shifts,
+explicitly flagged as needing its own separate decision).
 What's built:
 
 - **Backend** (`src/`): 4-project skeleton (Domain → Application → Infrastructure → Api)
@@ -1114,6 +1123,43 @@ What's built:
     `ValidationIssue` in the body; confirmed `/copy` 409s against a Published target; and
     401/404 on unauthenticated/nonexistent-schedule requests. Test data deleted again
     afterward to leave the dev DB clean.
+- **Make Schedule publish a primary, lifecycle-aware action in the UI** (issue #79,
+    frontend-only — the backend from issue #68 above needed no changes) — `ScheduleView.vue`
+    previously treated `Schedule.Status` as an incidental field never even sent to the API
+    (issue #68 removed it from `PUT` entirely); this surfaces the Draft/Published/Archived
+    lifecycle directly rather than relying on the backend's 409s to be the only thing stopping
+    a manager from trying to edit a frozen schedule. A status badge (Entwurf/Veröffentlicht/
+    Archiviert, colored slate/emerald/violet, `title` showing the `publishedAt`/`publishedBy`
+    once set) sits next to the month label. A "Veröffentlichen" button (`POST
+    /schedules/{id}/publish`) appears while Draft, disabled with an inline `title` reason
+    ("N Fehler müssen zuerst behoben werden") whenever the already-fetched `/validate` result
+    has blocking Errors — mirrors the backend's own gate exactly rather than guessing at it
+    independently, and still handles a 409 from a race (e.g. another manager's concurrent edit)
+    by refetching `/validate` and toasting rather than trusting the disabled state alone. An
+    "Archivieren" button (`POST /schedules/{id}/archive`, gated behind the existing
+    `ConfirmDialog` component per issue #37's pattern rather than a native `confirm()`) appears
+    once Published. The grid itself becomes read-only once the Schedule isn't Draft: the
+    ShiftType palette chips stay visible as a color legend but lose their drag-to-create
+    (`onChipPointerDown` only attaches `v-if`-style when `isDraft`) and their "Vorschlagen"
+    Sparkles button, "Automatisch füllen" is hidden, and clicking an existing assignment chip
+    swaps from the drag-detecting pointer handler to a plain `@click` that opens
+    `ShiftAssignmentModal` in a new `readonly` mode (inputs `disabled`, Save/Delete buttons
+    hidden, title reads "Schicht ansehen" instead of "Schicht bearbeiten", with an inline note
+    explaining why). "Monat kopieren" is deliberately left available regardless of the *current*
+    schedule's status — issue #82's `/copy` endpoint only requires the *target* month to be
+    Draft-or-nonexistent, not the source, so copying out of a Published month into a fresh Draft
+    next month is still a legitimate action. Verified via `npm run lint` (0 errors) and
+    `npm run build` (`vue-tsc -b` + `vite build`, clean), and — this session's sandbox had no
+    live backend, so `playwright` was installed transiently (`npm install --no-save`, not added
+    to `package.json`) and pointed at this environment's pre-installed Chromium binary directly
+    — actually clicked through in real headless Chromium against the dev server with `/api/*`
+    mocked at the network layer: a Draft schedule's "Veröffentlichen" button renders disabled
+    while a mocked blocking Error exists and becomes enabled once it's cleared; clicking it
+    flips the badge to "Veröffentlicht" and hides "Automatisch füllen"/the Sparkles button;
+    clicking an assignment chip opens the modal titled "Schicht ansehen" with no Save/Delete
+    buttons visible; and confirming "Archivieren" flips the badge to "Archiviert" — no console
+    errors beyond the pre-existing benign 401 `stores/auth.ts`'s silent-refresh-on-boot already
+    produces elsewhere in this file.
 - **Docker/deploy**: `docker-compose.yml` (db/api/web) validated with `docker compose config`,
   never actually deployed. No `.env` exists anywhere yet (only `.env.example`).
 - **Versioning**: same scheme as vanspace3d. `frontend/package.json`'s `version` is shown

@@ -18,7 +18,7 @@ public class StaffingValidatorTests
         StaffingValidator.Validate([assignment], new Dictionary<Guid, ShiftType> { [shiftType.Id] = shiftType }, result);
 
         var warning = Assert.Single(result.Warnings);
-        Assert.Equal("Understaffed", warning.Type);
+        Assert.Equal(ValidationIssueCode.Understaffed, warning.Type);
     }
 
     [Fact]
@@ -38,7 +38,7 @@ public class StaffingValidatorTests
         StaffingValidator.Validate(assignments, new Dictionary<Guid, ShiftType> { [shiftType.Id] = shiftType }, result);
 
         var warning = Assert.Single(result.Warnings);
-        Assert.Equal("Overstaffed", warning.Type);
+        Assert.Equal(ValidationIssueCode.Overstaffed, warning.Type);
     }
 
     [Fact]
@@ -97,6 +97,24 @@ public class StaffingValidatorTests
         StaffingValidator.Validate(assignments, new Dictionary<Guid, ShiftType> { [shiftType.Id] = shiftType }, result);
 
         var warning = Assert.Single(result.Warnings);
-        Assert.Equal("Understaffed", warning.Type);
+        Assert.Equal(ValidationIssueCode.Understaffed, warning.Type);
+    }
+
+    [Fact]
+    public void AssignmentReferencingUnknownShiftType_SkippedWithoutThrowing()
+    {
+        // A ShiftType id not present in the staffing dictionary (e.g. deleted after the
+        // assignment was made) must be skipped defensively, not throw or misreport staffing.
+        var knownShiftType = ShiftType(minStaffing: 5);
+        var unknownShiftTypeId = Guid.NewGuid();
+        var employee = Employee();
+        var assignment = Assignment(employee.Id, unknownShiftTypeId, new DateOnly(2026, 8, 24), new TimeOnly(8, 0), new TimeOnly(16, 0));
+
+        var result = new ValidationResult();
+        var exception = Record.Exception(() =>
+            StaffingValidator.Validate([assignment], new Dictionary<Guid, ShiftType> { [knownShiftType.Id] = knownShiftType }, result));
+
+        Assert.Null(exception);
+        Assert.Empty(result.Warnings);
     }
 }
