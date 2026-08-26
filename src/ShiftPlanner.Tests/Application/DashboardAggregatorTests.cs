@@ -94,9 +94,9 @@ public class DashboardAggregatorTests
     {
         var draft = Schedule(new DateOnly(2026, 8, 1), new DateOnly(2026, 8, 7));
         var published = Schedule(new DateOnly(2026, 8, 8), new DateOnly(2026, 8, 14));
-        published.Status = ScheduleStatus.Published;
+        published.Publish("test", DateTimeOffset.UtcNow);
         var conflicted = Schedule(new DateOnly(2026, 8, 15), new DateOnly(2026, 8, 21));
-        conflicted.Status = ScheduleStatus.Published;
+        conflicted.Publish("test", DateTimeOffset.UtcNow);
 
         var painPoints = new List<PainPointDto>
         {
