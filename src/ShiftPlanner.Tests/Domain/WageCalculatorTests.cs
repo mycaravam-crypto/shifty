@@ -235,4 +235,20 @@ public class WageCalculatorTests
         // base: 3.5h * 10 = 35; night surcharge: 1.75h * 10 * 0.25 = 4.375
         Assert.Equal(39.375m, cost);
     }
+
+    [Fact]
+    public void LaborCost_BreakSpanningPastMidnight_ClampsToEndOfDay()
+    {
+        // 20:00-23:30 shift, entirely within the night window (3.5h raw night overlap). A 90min
+        // break starting at 23:00 would compute an unclamped end of 24:30 (breakStartMinute +
+        // breakMinutes = 1470 > 24*60) — NightOverlapHours clamps that to 24:00 (1440) before
+        // computing the break's own night-window overlap.
+        var cost = WageCalculator.LaborCost(
+            new TimeOnly(20, 0), new TimeOnly(23, 30), DayOfWeek.Thursday, isHoliday: false, netHours: 2m, hourlyRate: 10m,
+            breakMinutes: 90, breakStartTime: new TimeOnly(23, 0));
+        // raw shift night overlap: 3.5h. Break's own night overlap (23:00 up to the clamped
+        // 24:00) is 1h, leaving 2.5h net night overlap.
+        // base: 2h * 10 = 20; night surcharge: 2.5h * 10 * 0.25 = 6.25
+        Assert.Equal(26.25m, cost);
+    }
 }

@@ -22,11 +22,11 @@ public static class JwtTokenFactory
     private const string TokenUseClaim = "token_use";
     public static readonly TimeSpan RefreshTokenLifetime = TimeSpan.FromDays(7);
 
-    public static string CreateAccessToken(ApplicationUser user, IEnumerable<string> roles, IConfiguration config) =>
-        Create(user, config, TimeSpan.FromMinutes(15), [new Claim(TokenUseClaim, "access"), .. roles.Select(r => new Claim(ClaimTypes.Role, r))]);
+    public static string CreateAccessToken(ApplicationUser user, IEnumerable<string> roles, JwtOptions options) =>
+        Create(user, options, TimeSpan.FromMinutes(15), [new Claim(TokenUseClaim, "access"), .. roles.Select(r => new Claim(ClaimTypes.Role, r))]);
 
-    public static string CreateRefreshToken(ApplicationUser user, IConfiguration config) =>
-        Create(user, config, RefreshTokenLifetime, [new Claim(TokenUseClaim, "refresh")]);
+    public static string CreateRefreshToken(ApplicationUser user, JwtOptions options) =>
+        Create(user, options, RefreshTokenLifetime, [new Claim(TokenUseClaim, "refresh")]);
 
     // Builds the DB-backed row for a refresh token just issued via CreateRefreshToken above —
     // caller is responsible for adding it to the DbContext and saving. Kept as a separate step
@@ -45,9 +45,9 @@ public static class JwtTokenFactory
         };
     }
 
-    public static ClaimsPrincipal? ValidateRefreshToken(string token, IConfiguration config)
+    public static ClaimsPrincipal? ValidateRefreshToken(string token, JwtOptions options)
     {
-        var principal = Validate(token, config);
+        var principal = Validate(token, options);
         return principal?.FindFirstValue(TokenUseClaim) == "refresh" ? principal : null;
     }
 
@@ -55,9 +55,9 @@ public static class JwtTokenFactory
     // (not revoked, not expired) DB row for the same user. Both must pass. Does not revoke or
     // rotate the row itself — that's the caller's decision (see AuthController.Refresh/Logout).
     public static async Task<RefreshTokenValidationResult?> ValidateRefreshTokenAsync(
-        string token, IConfiguration config, ApplicationDbContext db)
+        string token, JwtOptions options, ApplicationDbContext db)
     {
-        var principal = ValidateRefreshToken(token, config);
+        var principal = ValidateRefreshToken(token, options);
         var userId = principal?.FindFirstValue(ClaimTypes.NameIdentifier);
         if (userId is null)
             return null;
@@ -69,9 +69,8 @@ public static class JwtTokenFactory
         return record is not null && record.IsActive ? new RefreshTokenValidationResult(userId, record) : null;
     }
 
-    private static string Create(ApplicationUser user, IConfiguration config, TimeSpan lifetime, IEnumerable<Claim> extraClaims)
+    private static string Create(ApplicationUser user, JwtOptions options, TimeSpan lifetime, IEnumerable<Claim> extraClaims)
     {
-        var key = config["Jwt:SigningKey"] ?? throw new InvalidOperationException("Missing Jwt:SigningKey.");
         var claims = new List<Claim>
         {
             new(ClaimTypes.NameIdentifier, user.Id),
@@ -80,28 +79,27 @@ public static class JwtTokenFactory
         claims.AddRange(extraClaims);
 
         var token = new JwtSecurityToken(
-            issuer: config["Jwt:Issuer"],
-            audience: config["Jwt:Audience"],
+            issuer: options.Issuer,
+            audience: options.Audience,
             claims: claims,
             expires: DateTime.UtcNow.Add(lifetime),
             signingCredentials: new SigningCredentials(
-                new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key)), SecurityAlgorithms.HmacSha256));
+                new SymmetricSecurityKey(Encoding.UTF8.GetBytes(options.SigningKey)), SecurityAlgorithms.HmacSha256));
 
         return new JwtSecurityTokenHandler().WriteToken(token);
     }
 
-    private static ClaimsPrincipal? Validate(string token, IConfiguration config)
+    private static ClaimsPrincipal? Validate(string token, JwtOptions options)
     {
-        var key = config["Jwt:SigningKey"] ?? throw new InvalidOperationException("Missing Jwt:SigningKey.");
         var parameters = new TokenValidationParameters
         {
             ValidateIssuer = true,
             ValidateAudience = true,
             ValidateLifetime = true,
             ValidateIssuerSigningKey = true,
-            ValidIssuer = config["Jwt:Issuer"],
-            ValidAudience = config["Jwt:Audience"],
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key)),
+            ValidIssuer = options.Issuer,
+            ValidAudience = options.Audience,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(options.SigningKey)),
         };
 
         try
