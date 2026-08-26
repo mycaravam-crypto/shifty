@@ -243,9 +243,9 @@ public class WageCalculatorTests
         // break starting at 23:00 would compute an unclamped end of 24:30 (breakStartMinute +
         // breakMinutes = 1470 > 24*60) — NightOverlapHours clamps that to 24:00 (1440) before
         // computing the break's own night-window overlap.
-        var cost = WageCalculator.LaborCost(
-            new TimeOnly(20, 0), new TimeOnly(23, 30), DayOfWeek.Thursday, isHoliday: false, netHours: 2m, hourlyRate: 10m,
-            breakMinutes: 90, breakStartTime: new TimeOnly(23, 0));
+        var timing = new ShiftTiming(new TimeOnly(20, 0), new TimeOnly(23, 30), 90, new TimeOnly(23, 0));
+        var cost = WageCalculator.LaborCostWithSurcharges(
+            timing, DayOfWeek.Thursday, isHoliday: false, netHours: 2m, hourlyRate: 10m);
         // raw shift night overlap: 3.5h. Break's own night overlap (23:00 up to the clamped
         // 24:00) is 1h, leaving 2.5h net night overlap.
         // base: 2h * 10 = 20; night surcharge: 2.5h * 10 * 0.25 = 6.25
