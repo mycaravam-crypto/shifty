@@ -116,8 +116,8 @@ public class PlanningBoardController(ApplicationDbContext db) : ControllerBase
     {
         var netHours = WorkingTimeCalculator.NetHours(a.StartTime, a.EndTime, a.BreakMinutes);
         var hourlyRate = HourlyRateOn(contracts, a.EmployeeId, a.Date);
-        var laborCost = WageCalculator.LaborCost(a.StartTime, a.EndTime, a.Date.DayOfWeek, holidays.Contains(a.Date),
-            netHours, hourlyRate, a.BreakMinutes, a.BreakStartTime);
+        var timing = new ShiftTiming(a.StartTime, a.EndTime, a.BreakMinutes, a.BreakStartTime);
+        var laborCost = WageCalculator.LaborCostWithSurcharges(timing, a.Date.DayOfWeek, holidays.Contains(a.Date), netHours, hourlyRate);
         return new(a.Id, a.ScheduleId, a.EmployeeId, a.ShiftTypeId, a.Date, a.StartTime, a.EndTime, a.BreakMinutes,
             a.BreakStartTime, netHours, laborCost);
     }
