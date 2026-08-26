@@ -43,6 +43,8 @@ const {
   publishBlockReason,
   days,
   shiftTypeById,
+  coverageShiftTypes,
+  coverageFor,
   holidayFor,
   isWeekend,
   assignmentsFor,
@@ -262,6 +264,8 @@ window.addEventListener('afterprint', () => {
           :highlight-key="highlightKey"
           :print-employee-id="printEmployeeId"
           :shift-type-by-id="shiftTypeById"
+          :coverage-shift-types="coverageShiftTypes"
+          :coverage-for="coverageFor"
           :assignments-for="assignmentsFor"
           :target-hours-for="targetHoursFor"
           :net-hours-for="netHoursFor"

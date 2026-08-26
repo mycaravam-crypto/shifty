@@ -23,6 +23,8 @@ export interface ShiftType {
   breakMinutes: number
   color: string
   active: boolean
+  minStaffing: number | null
+  maxStaffing: number | null
 }
 export interface Schedule {
   id: string
