@@ -69,8 +69,8 @@ public class SchedulesController(ApplicationDbContext db) : ControllerBase
     private static ShiftAssignmentDto ToAssignmentDto(ShiftAssignment a, decimal? hourlyRate, bool isHoliday)
     {
         var netHours = WorkingTimeCalculator.NetHours(a.StartTime, a.EndTime, a.BreakMinutes);
-        var laborCost = WageCalculator.LaborCost(a.StartTime, a.EndTime, a.Date.DayOfWeek, isHoliday, netHours, hourlyRate,
-            a.BreakMinutes, a.BreakStartTime);
+        var timing = new ShiftTiming(a.StartTime, a.EndTime, a.BreakMinutes, a.BreakStartTime);
+        var laborCost = WageCalculator.LaborCostWithSurcharges(timing, a.Date.DayOfWeek, isHoliday, netHours, hourlyRate);
         return new(a.Id, a.ScheduleId, a.EmployeeId, a.ShiftTypeId, a.Date, a.StartTime, a.EndTime, a.BreakMinutes, a.BreakStartTime,
             netHours, laborCost);
     }
