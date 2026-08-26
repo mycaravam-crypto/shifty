@@ -61,7 +61,7 @@ public class ShiftSuggestionEngineAutoFillTests
         var shiftType = ShiftType(minStaffing: 1);
         var otherShiftType = ShiftType();
         var employee = Employee();
-        employee.EligibleShiftTypes.Add(otherShiftType); // restricted away from `shiftType`
+        employee.AddEligibleShiftType(otherShiftType); // restricted away from `shiftType`
         var date = new DateOnly(2026, 8, 10);
 
         var proposals = AutoFill(date, date, [shiftType], [employee]);

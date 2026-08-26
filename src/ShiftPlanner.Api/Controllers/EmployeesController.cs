@@ -166,7 +166,7 @@ public class EmployeesController(ApplicationDbContext db) : ControllerBase
         if (shiftTypes.Count != shiftTypeIds.Distinct().Count())
             return BadRequest("One or more shift type ids do not exist.");
 
-        employee.EligibleShiftTypes = shiftTypes;
+        employee.ReplaceEligibleShiftTypes(shiftTypes);
         await db.SaveChangesAsync();
         return NoContent();
     }
