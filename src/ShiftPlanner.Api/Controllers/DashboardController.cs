@@ -65,6 +65,11 @@ public class DashboardController(ApplicationDbContext db) : ControllerBase
         var shiftTypes = await db.ShiftTypes.AsNoTracking().ToListAsync();
         var shiftTypesById = shiftTypes.ToDictionary(s => s.Id);
 
+        // issue #69: loaded unconditionally (not scoped to employeeIds/schedules like the
+        // queries above) — the whole point of a StaffingRequirement is to surface a slot with
+        // *zero* assignments, so it can't be discovered by starting from existing rows.
+        var staffingRequirements = await db.StaffingRequirements.ToListAsync();
+
         // issue #56: exact ±6-day historyAssignments lookback, mirroring
         // SchedulesController's /validate endpoint exactly, instead of omitting it — fetched once
         // as a pool spanning every schedule in view, then sliced back to each schedule's own
@@ -111,10 +116,10 @@ public class DashboardController(ApplicationDbContext db) : ControllerBase
         var current = allAssignments.Where(a => a.Date >= periodFrom && a.Date <= periodTo && InScope(a)).ToList();
         var previous = allAssignments.Where(a => a.Date >= prevFrom && a.Date <= prevTo && InScope(a)).ToList();
 
-        var coverage = DashboardAggregator.BuildCoverage(current, shiftTypesById);
+        var coverage = DashboardAggregator.BuildCoverage(current, shiftTypesById, staffingRequirements, employeesById, periodFrom, periodTo, teamId, shiftTypeId);
         var coveragePercent = DashboardAggregator.CoveragePercent(coverage);
 
-        var painPoints = DashboardAggregator.BuildPainPoints(schedules, assignmentsByScheduleId, historyPool, employeesById, shiftTypes, contracts, absences, teamId);
+        var painPoints = DashboardAggregator.BuildPainPoints(schedules, assignmentsByScheduleId, historyPool, employeesById, shiftTypes, contracts, absences, staffingRequirements, teamId);
         var planningStatus = DashboardAggregator.BuildPlanningStatus(schedules, painPoints);
 
         var costBreakdown = DashboardAggregator.BuildCostBreakdown(current, contracts, bundeslandByEmployee, holidaysByBundesland, nationwideHolidays);

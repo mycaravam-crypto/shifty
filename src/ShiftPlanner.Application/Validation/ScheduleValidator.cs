@@ -15,7 +15,8 @@ public static class ScheduleValidator
         IReadOnlyList<ShiftType> shiftTypes,
         IReadOnlyList<Contract> contracts,
         IReadOnlyList<ShiftAssignment>? historyAssignments = null,
-        IReadOnlyList<Absence>? absences = null)
+        IReadOnlyList<Absence>? absences = null,
+        IReadOnlyList<StaffingRequirement>? staffingRequirements = null)
     {
         var result = new ValidationResult();
         var employeesById = employees.ToDictionary(e => e.Id);
@@ -25,6 +26,9 @@ public static class ScheduleValidator
         EligibilityValidator.Validate(assignments, employeesById, result);
         BreakMinutesValidator.Validate(assignments, result);
         StaffingValidator.Validate(assignments, shiftTypesById, result);
+        StaffingValidator.ValidateRequirements(
+            schedule.StartDate, schedule.EndDate, assignments, shiftTypesById, employeesById,
+            staffingRequirements ?? [], result);
         ContractValidator.Validate(schedule, assignments, contracts, absences, result);
         AbsenceValidator.Validate(assignments, absences ?? [], employeesById, result);
 
