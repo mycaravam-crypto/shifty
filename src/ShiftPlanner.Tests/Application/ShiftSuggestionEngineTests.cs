@@ -196,6 +196,30 @@ public class ShiftSuggestionEngineTests
         Assert.DoesNotContain(suggestion.Reasons, r => r.Code == SuggestionReasonCode.UnderContractTarget);
     }
 
+    // issue #101: pins down the pre-existing `EndTime > StartTime` filter on the history
+    // neighbours list (now centralized via WorkingTimeCalculator.IsValidShiftTiming) — a
+    // cross-midnight history row is excluded from the rest-time check entirely. Mirrors
+    // InsufficientRestBeforeHypotheticalShift_IsIneligible above, but with the prior day's shift
+    // stored as a genuinely-backwards (EndTime < StartTime, unsupported per issue #11) row: if it
+    // were NOT filtered out, its EndTime (22:00 on the 9th) would sit only 8h before the
+    // hypothetical shift's 06:00 start on the 10th and would incorrectly trip InsufficientRest.
+    [Fact]
+    public void CrossMidnightHistoryEntry_ExcludedFromRestTimeCheck_StaysEligible()
+    {
+        var employee = Employee();
+        var shiftType = ShiftType(new TimeOnly(6, 0), new TimeOnly(14, 0));
+        var history = new[]
+        {
+            Assignment(employee.Id, shiftType.Id, new DateOnly(2026, 8, 9), new TimeOnly(23, 0), new TimeOnly(22, 0)),
+        };
+
+        var result = Suggest(new DateOnly(2026, 8, 10), shiftType, [employee], history: history);
+
+        var suggestion = Assert.Single(result);
+        Assert.True(suggestion.Eligible);
+        Assert.DoesNotContain(suggestion.Reasons, r => r.Code == SuggestionReasonCode.InsufficientRest);
+    }
+
     [Fact]
     public void Results_OrderedByEligibleThenScoreDescending()
     {

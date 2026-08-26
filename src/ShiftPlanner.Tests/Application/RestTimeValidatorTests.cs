@@ -76,6 +76,32 @@ public class RestTimeValidatorTests
         Assert.Empty(result.Errors);
     }
 
+    // issue #101: pins down the pre-existing `EndTime > StartTime` filter (now centralized via
+    // WorkingTimeCalculator.IsValidShiftTiming) — cross-midnight rows are excluded from the
+    // rest-time comparison entirely, not just treated as if they had zero duration. Proven by a
+    // scenario where, if the invalid row were left in, its (wrong-but-present) EndTime would put
+    // it right next to the valid shift with less than 11h between them and would incorrectly
+    // trip InsufficientRest.
+    [Fact]
+    public void CrossMidnightAssignment_ExcludedFromRestTimeCheck_NoFalseViolation()
+    {
+        var employee = Employee();
+        var shiftType = ShiftType();
+        var assignments = new[]
+        {
+            // Genuinely backwards (EndTime < StartTime) — unsupported, issue #11. If this were
+            // NOT filtered out, ordering would place its EndTime (22:00 on the 9th) 8h before
+            // the valid shift's StartTime (06:00 on the 10th) — under the 11h minimum.
+            Assignment(employee.Id, shiftType.Id, new DateOnly(2026, 8, 9), new TimeOnly(23, 0), new TimeOnly(22, 0)),
+            Assignment(employee.Id, shiftType.Id, new DateOnly(2026, 8, 10), new TimeOnly(6, 0), new TimeOnly(14, 0)),
+        };
+
+        var result = new ValidationResult();
+        RestTimeValidator.Validate(assignments, result);
+
+        Assert.Empty(result.Errors);
+    }
+
     [Fact]
     public void CrossMidnightAssignment_ExcludedWithoutThrowing()
     {
