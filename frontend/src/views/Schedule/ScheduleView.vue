@@ -81,16 +81,20 @@ interface Assignment {
   netHours: number
   laborCost: number | null
 }
-interface Contract {
-  employeeId: string
-  validFrom: string
-  validTo: string | null
-  weeklyHours: number
+// issue #72: one GET /planning-board response replaces the old per-employee contracts/
+// absences/hours-balance N+1 requests — target/planned/balance hours arrive precomputed
+// instead of being derived client-side from raw Contract/Absence rows.
+interface PlanningBoardEntry {
+  targetHours: number | null
+  plannedHours: number
+  balanceHours: number
 }
-interface Absence {
+interface PlanningBoardEmployeeApi {
   employeeId: string
-  from: string
-  to: string
+  assignments: Assignment[]
+  targetHours: number | null
+  plannedHours: number
+  balanceHours: number
 }
 interface PublicHoliday {
   date: string
@@ -163,9 +167,8 @@ const employees = ref<Employee[]>([])
 const teams = ref<Team[]>([])
 const shiftTypes = ref<ShiftType[]>([])
 const schedules = ref<Schedule[]>([])
-const contractsByEmployee = ref<Map<string, Contract[]>>(new Map())
-const absencesByEmployee = ref<Map<string, Absence[]>>(new Map())
-const balanceByEmployee = ref<Map<string, number>>(new Map())
+const planningBoard = ref<Map<string, PlanningBoardEntry>>(new Map())
+const assignmentsByEmployeeAndDate = ref<Map<string, Map<string, Assignment[]>>>(new Map())
 const holidays = ref<PublicHoliday[]>([])
 const assignments = ref<Assignment[]>([])
 const validation = ref<ValidationResult | null>(null)
@@ -259,35 +262,14 @@ async function loadHolidays() {
   holidays.value = res.data
 }
 function assignmentsFor(employeeId: string, dateIso: string) {
-  return assignments.value.filter((a) => a.employeeId === employeeId && a.date === dateIso)
+  return assignmentsByEmployeeAndDate.value.get(employeeId)?.get(dateIso) ?? []
 }
 function netHoursFor(employeeId: string) {
-  return assignments.value
-    .filter((a) => a.employeeId === employeeId)
-    .reduce((sum, a) => sum + a.netHours, 0)
-}
-// Mirrors ContractValidator.OverlapDays (backend) — days of [from, to] that fall within the
-// visible month, so a week of vacation doesn't count toward the expected hours.
-function overlapDays(from: string, to: string): number {
-  const start = from > monthStartIso.value ? from : monthStartIso.value
-  const end = to < monthEndIso.value ? to : monthEndIso.value
-  if (end < start) return 0
-  return Math.round((parseIso(end).getTime() - parseIso(start).getTime()) / 86400000) + 1
+  return planningBoard.value.get(employeeId)?.plannedHours ?? 0
 }
 function targetHoursFor(employeeId: string): number | null {
-  const contracts = contractsByEmployee.value.get(employeeId) ?? []
-  if (!contracts.length) return null
-  const start = monthStartIso.value
-  const active = contracts.find((c) => c.validFrom <= start && (!c.validTo || c.validTo >= start))
-  const contract =
-    active ?? [...contracts].sort((a, b) => b.validFrom.localeCompare(a.validFrom))[0]
-  const daysInMonth = monthEnd.value.getDate()
-  const absenceDays = (absencesByEmployee.value.get(employeeId) ?? []).reduce(
-    (sum, a) => sum + overlapDays(a.from, a.to),
-    0,
-  )
-  const effectiveDays = Math.max(0, daysInMonth - absenceDays)
-  return Math.round(((contract.weeklyHours * effectiveDays) / 7) * 10) / 10
+  const target = planningBoard.value.get(employeeId)?.targetHours
+  return target == null ? null : Math.round(target * 10) / 10
 }
 function barWidth(employeeId: string) {
   const target = targetHoursFor(employeeId)
@@ -295,16 +277,44 @@ function barWidth(employeeId: string) {
   return Math.min(100, (netHoursFor(employeeId) / target) * 100)
 }
 function carriedOverFor(employeeId: string): number {
-  return Math.round((balanceByEmployee.value.get(employeeId) ?? 0) * 10) / 10
+  return Math.round((planningBoard.value.get(employeeId)?.balanceHours ?? 0) * 10) / 10
 }
-async function loadBalances() {
-  if (!activeEmployees.value.length) return
-  const results = await Promise.all(
-    activeEmployees.value.map((e) =>
-      api.get(`/employees/${e.id}/hours-balance`, { params: { before: monthStartIso.value } }),
-    ),
-  )
-  balanceByEmployee.value = new Map(activeEmployees.value.map((e, i) => [e.id, results[i].data]))
+// issue #72: one GET /planning-board request for every employee in the schedule's date range,
+// replacing the old per-employee contracts/absences/hours-balance N+1 calls. Normalizes the
+// response once into assignmentsByEmployeeAndDate (for the grid's per-cell lookups) and
+// planningBoard (for the per-employee target/planned/balance readouts) instead of filtering
+// flat arrays repeatedly.
+async function loadPlanningBoard() {
+  if (!currentSchedule.value) {
+    assignments.value = []
+    assignmentsByEmployeeAndDate.value = new Map()
+    planningBoard.value = new Map()
+    return
+  }
+  const res = await api.get('/planning-board', {
+    params: { from: currentSchedule.value.startDate, to: currentSchedule.value.endDate },
+  })
+  const flatAssignments: Assignment[] = []
+  const byEmployeeAndDate = new Map<string, Map<string, Assignment[]>>()
+  const board = new Map<string, PlanningBoardEntry>()
+  for (const e of res.data.employees as PlanningBoardEmployeeApi[]) {
+    flatAssignments.push(...e.assignments)
+    const byDate = new Map<string, Assignment[]>()
+    for (const a of e.assignments) {
+      const list = byDate.get(a.date) ?? []
+      list.push(a)
+      byDate.set(a.date, list)
+    }
+    byEmployeeAndDate.set(e.employeeId, byDate)
+    board.set(e.employeeId, {
+      targetHours: e.targetHours,
+      plannedHours: e.plannedHours,
+      balanceHours: e.balanceHours,
+    })
+  }
+  assignments.value = flatAssignments
+  assignmentsByEmployeeAndDate.value = byEmployeeAndDate
+  planningBoard.value = board
 }
 const currencyFmt = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' })
 function sumLaborCost(list: Assignment[]): number | null {
@@ -318,15 +328,15 @@ const totalLaborCost = computed(() => sumLaborCost(assignments.value))
 
 async function loadDetail() {
   if (!currentSchedule.value) {
-    assignments.value = []
+    await loadPlanningBoard()
     validation.value = null
     return
   }
-  const [detailRes, validationRes] = await Promise.all([
-    api.get(`/schedules/${currentSchedule.value.id}`),
-    api.get(`/schedules/${currentSchedule.value.id}/validate`),
+  const scheduleId = currentSchedule.value.id
+  const [, validationRes] = await Promise.all([
+    loadPlanningBoard(),
+    api.get(`/schedules/${scheduleId}/validate`),
   ])
-  assignments.value = detailRes.data.assignments
   validation.value = validationRes.data
 }
 watch(currentSchedule, loadDetail, { immediate: true })
@@ -381,17 +391,7 @@ async function load() {
       router.replace({ query: filterQuery() })
     }
 
-    const [contractsResults, absencesResults] = await Promise.all([
-      Promise.all(employees.value.map((e) => api.get(`/employees/${e.id}/contracts`))),
-      Promise.all(employees.value.map((e) => api.get(`/employees/${e.id}/absences`))),
-    ])
-    contractsByEmployee.value = new Map(
-      employees.value.map((e, i) => [e.id, contractsResults[i].data]),
-    )
-    absencesByEmployee.value = new Map(
-      employees.value.map((e, i) => [e.id, absencesResults[i].data]),
-    )
-    await Promise.all([loadBalances(), loadHolidays()])
+    await loadHolidays()
   } catch {
     error.value = 'Dienstplan konnte nicht geladen werden.'
   } finally {
@@ -472,10 +472,7 @@ onMounted(() => window.addEventListener('keydown', onKeydown))
 onUnmounted(cleanupDrag)
 onUnmounted(() => window.removeEventListener('keydown', onKeydown))
 watch(monthStartIso, () => {
-  if (!loading.value) {
-    loadBalances()
-    loadHolidays()
-  }
+  if (!loading.value) loadHolidays()
 })
 // issue #57: re-resolve the (at most one) Bundesland the holiday dots use when the team
 // filter changes, independent of the month-nav watch above.
