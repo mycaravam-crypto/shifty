@@ -5,6 +5,6 @@ namespace ShiftPlanner.Domain.Employees;
 // the two poles ShiftSuggestionEngine scores on.
 public enum PreferenceLevel
 {
-    Avoid = -1,
-    Preferred = 1,
+    Avoid,
+    Preferred,
 }

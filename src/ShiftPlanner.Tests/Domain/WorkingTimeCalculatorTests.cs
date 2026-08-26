@@ -70,11 +70,11 @@ public class WorkingTimeCalculatorTests
             WeeklyHours = 40m, WorkingDaysPerWeek = 5, DailyTargetHours = 8m,
         };
 
-        // 31-day span (a month) -> 40 * 31/7 ~= 177.14h, not the raw 40h a naive 7-day
-        // assumption would give.
+        // 31-day span (a month) -> 40 * 31/7 = 177.14h (pinned literal, not re-derived via
+        // production's own formula), not the raw 40h a naive 7-day assumption would give.
         var hours = WorkingTimeCalculator.ExpectedHours(
             contract, [], employeeId, new DateOnly(2026, 8, 1), new DateOnly(2026, 8, 31));
-        Assert.Equal(Math.Round(40m * 31 / 7, 2), Math.Round(hours, 2));
+        Assert.Equal(177.14m, Math.Round(hours, 2));
     }
 
     [Fact]
