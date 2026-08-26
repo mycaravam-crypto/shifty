@@ -47,10 +47,11 @@ public class ContractValidatorTests
         Assert.Equal(ValidationIssueCode.ContractHoursExceeded, error.Type);
     }
 
+    // A month-long schedule (31 days) should scale the weekly limit up, not flag every month
+    // by assuming a 7-day span.
     [Fact]
-    public void ScalesLimitByScheduleSpan_NotAssumingSevenDays()
+    public void ScalesLimitByScheduleSpan()
     {
-        // A month-long schedule (31 days) should scale the weekly limit up, not flag every month.
         var employee = Employee();
         var shiftType = ShiftType();
         var schedule = Schedule(new DateOnly(2026, 8, 1), new DateOnly(2026, 8, 31)); // 31 days
@@ -66,8 +67,10 @@ public class ContractValidatorTests
         Assert.Empty(result.Errors);
     }
 
+    // Chosen so the *unscaled* day-count would pass but the *absence-scaled* one fails,
+    // confirming the day-subtraction is actually applied, not just present in the code.
     [Fact]
-    public void AbsenceDays_ReduceExpectedHours_SoUnscaledPassButScaledFails()
+    public void AbsenceDays_ReduceExpectedHours()
     {
         var employee = Employee();
         var shiftType = ShiftType();
