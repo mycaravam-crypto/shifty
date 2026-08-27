@@ -52,6 +52,7 @@ const {
   currentSchedule,
   isDraft,
   isPublished,
+  isEditable,
   blockingErrorCount,
   publishBlockReason,
   days,
@@ -358,7 +359,7 @@ window.addEventListener('afterprint', () => {
           :has-assignments="assignments.length > 0"
           :copying-month="false"
           :total-labor-cost="totalLaborCost"
-          :is-draft="!!isDraft"
+          :is-editable="!!isEditable"
           :show-month-actions="false"
           :chip-pointer-down="onChipPointerDown"
           @suggest="suggestingShiftType = $event"
@@ -403,7 +404,7 @@ window.addEventListener('afterprint', () => {
           :carried-over-for="carriedOverFor"
           :labor-cost-for="laborCostFor"
           :drag="drag"
-          :is-draft="!!isDraft"
+          :is-editable="!!isEditable"
           :chip-pointer-down="onChipPointerDown"
           :is-focusable-cell="isFocusableCell"
           :cell-aria-label="cellAriaLabel"
@@ -418,7 +419,7 @@ window.addEventListener('afterprint', () => {
       v-if="selectedAssignment"
       :assignment="selectedAssignment"
       :shift-types="shiftTypes"
-      :readonly="!isDraft"
+      :readonly="!isEditable"
       @close="selectedAssignment = null"
       @updated="handleAssignmentUpdated"
     />

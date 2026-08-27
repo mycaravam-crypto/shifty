@@ -33,8 +33,8 @@ export const helpTopics: HelpTopic[] = [
         p: 'Jeder Dienstplan durchläuft drei Zustände:',
         ul: [
           'Entwurf — der normale Bearbeitungszustand. Schichten können frei per Drag & Drop angelegt, verschoben oder gelöscht werden.',
-          'Veröffentlicht — der Dienstplan wurde final freigegeben. Ab diesem Zeitpunkt ist er schreibgeschützt: keine neuen Schichten, kein Verschieben, kein Löschen. Veröffentlichen ist nur möglich, wenn keine blockierenden Fehler mehr offen sind.',
-          'Archiviert — ein veröffentlichter Dienstplan, dessen Zeitraum abgeschlossen ist. Bleibt weiterhin einsehbar (z. B. für Auswertungen), ist aber ebenfalls nicht mehr bearbeitbar.',
+          'Veröffentlicht — der Dienstplan wurde final freigegeben. Er bleibt bearbeitbar, weil Schichten in der Praxis auch nach der Veröffentlichung noch getauscht werden — Drag & Drop, Löschen und "Automatisch füllen" funktionieren weiterhin. Veröffentlichen selbst ist nur möglich, wenn keine blockierenden Fehler mehr offen sind.',
+          'Archiviert — ein veröffentlichter Dienstplan, dessen Zeitraum abgeschlossen ist. Bleibt weiterhin einsehbar (z. B. für Auswertungen), ist aber nicht mehr bearbeitbar.',
         ],
       },
       {
@@ -162,7 +162,7 @@ export const helpTopics: HelpTopic[] = [
       },
       {
         h: 'Veröffentlichen / Archivieren',
-        p: 'Solange der Dienstplan im Entwurf ist, kann er über "Veröffentlichen" freigegeben werden — der Button ist deaktiviert (mit Begründung als Tooltip), solange noch blockierende Fehler offen sind. Nach der Veröffentlichung wird die Ansicht schreibgeschützt: Schichten lassen sich nur noch ansehen, die Palette verliert Ziehen/Vorschlagen, "Automatisch füllen" ist ausgeblendet. "Archivieren" markiert einen veröffentlichten Dienstplan als abgeschlossen; er bleibt einsehbar.',
+        p: 'Solange der Dienstplan im Entwurf ist, kann er über "Veröffentlichen" freigegeben werden — der Button ist deaktiviert (mit Begründung als Tooltip), solange noch blockierende Fehler offen sind. Nach der Veröffentlichung bleibt die Bearbeitung möglich (für kurzfristige Schichttausche), erst "Archivieren" markiert einen veröffentlichten Dienstplan als abgeschlossen und schreibgeschützt.',
       },
       {
         h: 'PDF-Export und Tastenkürzel',

@@ -70,13 +70,16 @@ export function usePlanningBoard(filters: ReturnType<typeof useScheduleFilters>)
     schedules.value.find((s) => s.startDate === monthStartIso.value),
   )
 
-  // issue #79: the grid is only editable (drag/drop create+move, delete, auto-fill, suggestions)
-  // while the Schedule is still Draft — the backend already 409s all of that once it isn't
-  // (issue #68), this just keeps the UI from offering actions that would fail.
   const SCHEDULE_STATUS_DRAFT = 0
   const SCHEDULE_STATUS_PUBLISHED = 1
+  const SCHEDULE_STATUS_ARCHIVED = 2
   const isDraft = computed(() => currentSchedule.value?.status === SCHEDULE_STATUS_DRAFT)
   const isPublished = computed(() => currentSchedule.value?.status === SCHEDULE_STATUS_PUBLISHED)
+  // Shifts get swapped after publishing in reality, so the grid stays editable (drag/drop
+  // create+move, delete, auto-fill, suggestions) on a Published schedule too — the backend
+  // (SchedulesController) only 409s these once the schedule is Archived, so this mirrors that
+  // exact boundary rather than issue #79's original Draft-only one.
+  const isEditable = computed(() => currentSchedule.value?.status !== SCHEDULE_STATUS_ARCHIVED)
   const blockingErrorCount = computed(() => validation.value?.errors.length ?? 0)
   const publishBlockReason = computed(() =>
     blockingErrorCount.value > 0
@@ -341,6 +344,7 @@ export function usePlanningBoard(filters: ReturnType<typeof useScheduleFilters>)
     currentSchedule,
     isDraft,
     isPublished,
+    isEditable,
     blockingErrorCount,
     publishBlockReason,
     days,
