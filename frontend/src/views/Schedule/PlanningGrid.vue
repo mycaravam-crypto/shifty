@@ -24,7 +24,7 @@ defineProps<{
   carriedOverFor: (employeeId: string) => number
   laborCostFor: (employeeId: string) => number | null
   drag: DragState | null
-  isDraft: boolean
+  isEditable: boolean
   chipPointerDown: (e: PointerEvent, payload: DragPayload) => void
   isFocusableCell: (employeeId: string, dateIso: string) => boolean
   cellAriaLabel: (employeeId: string, dateIso: string) => string
@@ -127,7 +127,7 @@ defineExpose({ autoScrollTableWrap })
           :carried-over-for="carriedOverFor"
           :labor-cost-for="laborCostFor"
           :drag="drag"
-          :is-draft="isDraft"
+          :is-editable="isEditable"
           :chip-pointer-down="chipPointerDown"
           :is-focusable-cell="isFocusableCell"
           :cell-aria-label="cellAriaLabel"

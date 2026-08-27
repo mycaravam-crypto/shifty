@@ -10,7 +10,7 @@ withDefaults(
     hasAssignments: boolean
     copyingMonth: boolean
     totalLaborCost: number | null
-    isDraft: boolean
+    isEditable: boolean
     chipPointerDown: (e: PointerEvent, payload: DragPayload) => void
     // issue #74: month-copy/auto-fill are month-scoped actions (they operate on the whole
     // month-scoped Schedule) — the week-scoped ScheduleView.vue hides them here since they now
@@ -38,21 +38,22 @@ const emit = defineEmits<{
       {{ copyingMonth ? 'Kopiere…' : 'Monat kopieren' }}
     </button>
     <button
-      v-if="showMonthActions && activeShiftTypes.length && isDraft"
+      v-if="showMonthActions && activeShiftTypes.length && isEditable"
       class="flex items-center gap-1.5 rounded-lg bg-white/5 border border-white/10 px-3 py-1.5 text-sm hover:bg-white/10 transition-colors"
       @click="emit('open-auto-fill')"
     >
       <Wand2 :size="14" />
       Automatisch füllen
     </button>
-    <!-- issue #79: once the Schedule isn't Draft, these stay visible as a color legend but lose
-         drag-to-create and the suggestion action — both would just 409. -->
+    <!-- issue #79: once the Schedule is Archived, these stay visible as a color legend but lose
+         drag-to-create and the suggestion action — both would just 409. Published stays editable
+         (shifts get swapped after publishing in reality). -->
     <div
       v-for="s in activeShiftTypes"
       :key="s.id"
       class="flex items-center gap-2 rounded-lg bg-white/5 border border-white/10 px-3 py-1.5 text-sm touch-none select-none"
-      :class="isDraft ? 'cursor-grab' : 'cursor-default'"
-      @pointerdown="isDraft && chipPointerDown($event, paletteDragPayload(s))"
+      :class="isEditable ? 'cursor-grab' : 'cursor-default'"
+      @pointerdown="isEditable && chipPointerDown($event, paletteDragPayload(s))"
     >
       <span class="w-2.5 h-2.5 rounded-full shrink-0" :style="{ backgroundColor: s.color }"></span>
       {{ s.name }}
@@ -60,7 +61,7 @@ const emit = defineEmits<{
         >{{ s.startTime.slice(0, 5) }}–{{ s.endTime.slice(0, 5) }}</span
       >
       <button
-        v-if="isDraft"
+        v-if="isEditable"
         type="button"
         title="Mitarbeiter vorschlagen"
         class="relative text-slate-500 hover:text-indigo-300 transition-colors"

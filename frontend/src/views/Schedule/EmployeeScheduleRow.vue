@@ -22,7 +22,7 @@ const props = defineProps<{
   carriedOverFor: (employeeId: string) => number
   laborCostFor: (employeeId: string) => number | null
   drag: DragState | null
-  isDraft: boolean
+  isEditable: boolean
   chipPointerDown: (e: PointerEvent, payload: DragPayload) => void
   isFocusableCell: (employeeId: string, dateIso: string) => boolean
   cellAriaLabel: (employeeId: string, dateIso: string) => string
@@ -129,9 +129,10 @@ function barWidth(employeeId: string): number {
             drag.payload.assignmentId === a.id,
         }"
         @pointerdown="
-          isDraft && chipPointerDown($event, assignmentDragPayload(a, shiftTypeById(a.shiftTypeId)))
+          isEditable &&
+          chipPointerDown($event, assignmentDragPayload(a, shiftTypeById(a.shiftTypeId)))
         "
-        @click="!isDraft && emit('view-readonly', a)"
+        @click="!isEditable && emit('view-readonly', a)"
       >
         <div class="flex items-center gap-1.5 text-xs">
           <span

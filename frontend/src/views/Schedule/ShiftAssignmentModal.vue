@@ -97,7 +97,7 @@ async function onDeleteConfirmed() {
 <template>
   <ModalShell :title="readonly ? 'Schicht ansehen' : 'Schicht bearbeiten'" @close="emit('close')">
     <p v-if="readonly" class="mb-3 text-sm text-slate-500">
-      Dieser Dienstplan ist veröffentlicht oder archiviert und kann nicht mehr bearbeitet werden.
+      Dieser Dienstplan ist archiviert und kann nicht mehr bearbeitet werden.
     </p>
     <form class="grid grid-cols-2 gap-3" @submit.prevent="onSave">
       <select

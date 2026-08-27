@@ -66,11 +66,12 @@ public class ScheduleFlowTests(IntegrationTestFixture fixture)
         var published = await publishResponse.Content.ReadFromJsonAsync<ScheduleDto>(TestJson.Options);
         Assert.Equal(1 /* Published */, published!.Status);
 
-        // issue #68: a Published schedule's assignments are frozen.
-        var blockedCreate = await admin.PostAsJsonAsync($"/api/schedules/{schedule.Id}/assignments",
+        // Shifts get swapped after publishing in reality — a Published schedule's assignments
+        // stay writable (only /publish itself, and archiving, are gated by status).
+        var swapAfterPublish = await admin.PostAsJsonAsync($"/api/schedules/{schedule.Id}/assignments",
             new { EmployeeId = employee.Id, ShiftTypeId = shiftType.Id, Date = "2026-09-03", StartTime = "08:00:00", EndTime = "16:00:00", BreakMinutes = 30 },
             TestJson.Options);
-        Assert.Equal(HttpStatusCode.Conflict, blockedCreate.StatusCode);
+        Assert.Equal(HttpStatusCode.Created, swapAfterPublish.StatusCode);
 
         var republish = await admin.PostAsync($"/api/schedules/{schedule.Id}/publish", content: null);
         Assert.Equal(HttpStatusCode.Conflict, republish.StatusCode);
@@ -79,6 +80,12 @@ public class ScheduleFlowTests(IntegrationTestFixture fixture)
         Assert.Equal(HttpStatusCode.OK, archiveResponse.StatusCode);
         var archived = await archiveResponse.Content.ReadFromJsonAsync<ScheduleDto>(TestJson.Options);
         Assert.Equal(2 /* Archived */, archived!.Status);
+
+        // issue #68 (relaxed above): assignments freeze only once the schedule is Archived.
+        var blockedAfterArchive = await admin.PostAsJsonAsync($"/api/schedules/{schedule.Id}/assignments",
+            new { EmployeeId = employee.Id, ShiftTypeId = shiftType.Id, Date = "2026-09-04", StartTime = "08:00:00", EndTime = "16:00:00", BreakMinutes = 30 },
+            TestJson.Options);
+        Assert.Equal(HttpStatusCode.Conflict, blockedAfterArchive.StatusCode);
     }
 
     [Fact]

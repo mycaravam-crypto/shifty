@@ -460,8 +460,10 @@ public class SchedulesController(ApplicationDbContext db) : ControllerBase
         if (schedule is null)
             return NotFound();
 
-        if (schedule.Status != ScheduleStatus.Draft)
-            return Conflict($"Schedule is {schedule.Status}; assignments can only be committed to a Draft schedule.");
+        // Shifts get swapped after publishing in reality, so assignment writes stay allowed on a
+        // Published schedule too — only Archived (a closed-out period) is frozen.
+        if (schedule.Status == ScheduleStatus.Archived)
+            return Conflict($"Schedule is {schedule.Status}; assignments can no longer be committed.");
 
         if (request.Assignments.Count == 0)
             return Ok(Array.Empty<ShiftAssignmentDto>());
@@ -517,12 +519,12 @@ public class SchedulesController(ApplicationDbContext db) : ControllerBase
         if (schedule is null)
             return NotFound();
 
-        // issue #68: writes are only allowed while the owning Schedule is still Draft, and an
-        // assignment's Date must fall within the Schedule's own span — neither was enforced
-        // server-side before, so a stale UI (or a direct API call) could silently corrupt an
-        // already-published schedule or place a shift outside the period it belongs to.
-        if (schedule.Status != ScheduleStatus.Draft)
-            return Conflict($"Schedule is {schedule.Status}; assignments can only be added to a Draft schedule.");
+        // issue #68: an assignment's Date must fall within the Schedule's own span — wasn't
+        // enforced server-side before, so a stale UI (or a direct API call) could place a shift
+        // outside the period it belongs to. Writes themselves stay blocked only once Archived —
+        // shifts get swapped after publishing in reality, so Published stays editable.
+        if (schedule.Status == ScheduleStatus.Archived)
+            return Conflict($"Schedule is {schedule.Status}; assignments can no longer be added.");
 
         if (request.Date < schedule.StartDate || request.Date > schedule.EndDate)
             return BadRequest("Date is outside the schedule's range.");
@@ -576,8 +578,8 @@ public class SchedulesController(ApplicationDbContext db) : ControllerBase
         if (schedule is null)
             return NotFound();
 
-        if (schedule.Status != ScheduleStatus.Draft)
-            return Conflict($"Schedule is {schedule.Status}; assignments can only be edited on a Draft schedule.");
+        if (schedule.Status == ScheduleStatus.Archived)
+            return Conflict($"Schedule is {schedule.Status}; assignments can no longer be edited.");
 
         if (request.Date < schedule.StartDate || request.Date > schedule.EndDate)
             return BadRequest("Date is outside the schedule's range.");
@@ -615,8 +617,8 @@ public class SchedulesController(ApplicationDbContext db) : ControllerBase
         if (schedule is null)
             return NotFound();
 
-        if (schedule.Status != ScheduleStatus.Draft)
-            return Conflict($"Schedule is {schedule.Status}; assignments can only be deleted from a Draft schedule.");
+        if (schedule.Status == ScheduleStatus.Archived)
+            return Conflict($"Schedule is {schedule.Status}; assignments can no longer be deleted.");
 
         db.ShiftAssignments.Remove(assignment);
         await db.SaveChangesAsync();
