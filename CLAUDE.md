@@ -58,7 +58,10 @@ independently of assignments), #70 (centralize Sollstunden/contract-segment hand
 (a Planning-Board read model), #73 (decompose `ScheduleView.vue`), #74 (split the Dienstplan
 into week/month views), #75 (integration/E2E/concurrency test coverage), #77 (inline staffing
 coverage — depends on #69), #80 (touch targets/keyboard nav), and #81 (cross-midnight shifts,
-explicitly flagged as needing its own separate decision).
+explicitly flagged as needing its own separate decision). A German in-app user-help system (no
+issue filed, requested directly for an upcoming stakeholder demo) has also since landed — a
+global "Hilfe" entry point in `AppShell.vue` opening a topic-based explanation modal, covering
+every view non-technically for people testing the app for the first time — see below.
 What's built:
 
 - **Backend** (`src/`): 4-project skeleton (Domain → Application → Infrastructure → Api)
@@ -789,6 +792,31 @@ What's built:
     glass, Inter, blue→indigo accent) — a functional cut of
     [issue #5](https://github.com/mycaravam-crypto/shifty/issues/5), not the full pm-tool2/
     vanspace3d component-level parity pass.
+  - **German in-app user help** (no issue filed — requested directly ahead of a stakeholder demo,
+    since several features aren't self-explanatory to someone testing the app for the first
+    time) — a new `components/HelpModal.vue` (built on the existing `ModalShell` pattern) shows
+    non-technical German explanations grouped into topics (Allgemein incl. the Entwurf/
+    Veröffentlicht/Archiviert lifecycle and every validation rule in plain language, Übersicht,
+    Dienstplan-Monatsübersicht, Dienstplan-Wochenansicht, Mitarbeiter, Stammdaten, Einstellungen),
+    content sourced from a new `data/helpTopics.ts` kept separate from the component so it can
+    grow independently. `AppShell.vue` gets a global "Hilfe" entry point reachable from every
+    page — a sidebar button (desktop) and a "?" icon button in the mobile top bar — rather than
+    a per-view button, since the same modal serves every view; opening it auto-selects the topic
+    matching the page it was opened from (`topicIdForRoute`, matched against the current route
+    name) via a topic list on the left, so a stakeholder testing e.g. the Wochenansicht doesn't
+    have to hunt for the relevant section. Deliberately separate from the Dienstplan's
+    pre-existing "Tastenkürzel" panel (issue #42, still its own `HelpCircle` button in
+    `PlanningToolbar.vue`) — that one lists keyboard shortcuts for the week editor specifically,
+    this one explains what the features across the whole app actually do and mean. Verified via
+    `npm run lint`/`npm run build` (`vue-tsc -b` + `vite build`, both clean) and a scratch
+    Playwright script driving the real dev server with `/api/*` mocked at the network layer (same
+    technique this file's other frontend-only sessions used): logged in, opened Hilfe from the
+    sidebar on the Dienstplan month-overview page and confirmed it auto-selected "Dienstplan —
+    Monatsübersicht" (not the first topic in the list), switched to "Mitarbeiter" and confirmed
+    its content rendered, and confirmed `Escape` closes it (the same `ModalShell` keyboard
+    handling every other modal in this app already gets) — no console errors beyond the
+    pre-existing benign 401 `stores/auth.ts`'s silent-refresh-on-boot already produces elsewhere
+    in this file.
   - `views/Settings/SettingsView.vue` ([issue #43](https://github.com/mycaravam-crypto/shifty/issues/43))
     — no longer just the account-info placeholder: a first real, scoped-down cut per the
     issue's own "pick what's actually useful" framing. Only one setting landed — a default
