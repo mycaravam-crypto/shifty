@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import axios from 'axios'
 import { Trash2 } from '@lucide/vue'
 import api from '@/services/api'
 import { useToastStore } from '@/stores/toast'
@@ -26,6 +27,9 @@ interface Assignment {
   endTime: string
   breakMinutes: number
   breakStartTime: string | null
+  // issue #156: echoed back on update/delete so the backend can 409 on a stale write instead of
+  // silently overwriting a change made by someone else in the meantime.
+  rowVersion: number
 }
 
 // issue #79: once the owning Schedule is Published/Archived, the backend already 409s any
@@ -70,12 +74,22 @@ async function onSave() {
       endTime: `${form.value.endTime}:00`,
       breakMinutes: form.value.breakMinutes,
       breakStartTime: form.value.breakStartTime ? `${form.value.breakStartTime}:00` : null,
+      rowVersion: props.assignment.rowVersion,
     })
     toast.success('Schicht gespeichert.')
     emit('updated')
-  } catch {
-    error.value = 'Speichern fehlgeschlagen.'
-    toast.error(error.value)
+  } catch (err) {
+    // issue #156: someone else changed this assignment since the modal opened — reload the grid
+    // instead of retrying the same now-stale write, same pattern the Publish button uses for its
+    // own 409 race.
+    if (axios.isAxiosError(err) && err.response?.status === 409) {
+      toast.error('Diese Schicht wurde inzwischen von jemand anderem geändert. Bitte neu laden.')
+      emit('updated')
+      emit('close')
+    } else {
+      error.value = 'Speichern fehlgeschlagen.'
+      toast.error(error.value)
+    }
   } finally {
     saving.value = false
   }
@@ -85,11 +99,19 @@ const confirmingDelete = ref(false)
 
 async function onDeleteConfirmed() {
   try {
-    await api.delete(`/assignments/${props.assignment.id}`)
+    await api.delete(`/assignments/${props.assignment.id}`, {
+      params: { rowVersion: props.assignment.rowVersion },
+    })
     toast.success('Schicht gelöscht.')
     emit('updated')
-  } catch {
-    toast.error('Schicht konnte nicht gelöscht werden.')
+  } catch (err) {
+    if (axios.isAxiosError(err) && err.response?.status === 409) {
+      toast.error('Diese Schicht wurde inzwischen von jemand anderem geändert. Bitte neu laden.')
+      emit('updated')
+      emit('close')
+    } else {
+      toast.error('Schicht konnte nicht gelöscht werden.')
+    }
   }
 }
 </script>

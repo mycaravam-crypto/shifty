@@ -40,12 +40,20 @@ public class EmployeesController(ApplicationDbContext db) : ControllerBase
         e => new EmployeeDto(e.Id, e.PersonnelNumber, e.FirstName, e.LastName, e.Email, e.PhoneNumber, e.Active, e.TeamId);
 
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<EmployeeDto>>> GetAll()
+    // issue #110: optional skip/take, defaulting to unbounded (unchanged behavior) when omitted
+    // so existing callers that fetch the whole list to filter/search client-side keep working.
+    public async Task<ActionResult<IEnumerable<EmployeeDto>>> GetAll(int? skip, int? take)
     {
-        var employees = await db.Employees
+        if (skip < 0 || take < 0)
+            return BadRequest("'skip'/'take' must not be negative.");
+
+        IQueryable<Employee> query = db.Employees
             .AsNoTracking()
-            .OrderBy(e => e.LastName).ThenBy(e => e.FirstName)
-            .ToListAsync();
+            .OrderBy(e => e.LastName).ThenBy(e => e.FirstName);
+        if (skip is not null) query = query.Skip(skip.Value);
+        if (take is not null) query = query.Take(take.Value);
+
+        var employees = await query.ToListAsync();
         return Ok(employees.Select(ToDto));
     }
 

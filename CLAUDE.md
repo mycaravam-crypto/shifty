@@ -56,17 +56,24 @@ batch's remaining issues, #69 (staffing demand modeling), #70 (Sollstunden/contr
 handling), #72 (Planning-Board read model), #73 (decompose `ScheduleView.vue`), #74 (week/month
 split), #75 (integration/E2E/concurrency test coverage), #77 (inline staffing coverage), #80
 (touch targets/keyboard nav), and #81 (cross-midnight shifts — a design decision only, not full
-support, see its own entry below) are now all built too — see below for each. Only #61 remains
-open (verify the compose stack against a real deployment — needs actual VPS access this
-environment doesn't have). #80's GitHub issue itself is still technically open since the PR that
-implemented it didn't use a closing keyword — treat it as done, not open, per its own entry below.
+support, see its own entry below) are now all built too — see below for each. #80's GitHub issue
+itself is still technically open since the PR that implemented it didn't use a closing keyword —
+treat it as done, not open, per its own entry below.
 A German in-app user-help system (no
 issue filed, requested directly for an upcoming stakeholder demo) has also since landed — a
 global "Hilfe" entry point in `AppShell.vue` opening a topic-based explanation modal, covering
 every view non-technically for people testing the app for the first time — see below. Issue
 #79's Draft-only edit lock was then relaxed (no issue filed, requested directly): a Published
 schedule stays editable now too, since shifts get switched in reality after publishing — only
-Archived freezes writes — see below.
+Archived freezes writes — see below. A second, smaller batch of issues (#110, #156, #157, #158)
+came in afterward — #110 (pagination on the four `GetAll` list endpoints), #158 (CancellationToken
+on the data-heaviest endpoints), and #156 (optimistic concurrency control on ShiftAssignment
+writes) are now built too — see below for each. #157 (turning issue #81's cross-midnight design
+decision into an actual feature) is still open: its own issue body flags a real domain question
+(does a shift crossing into a Sunday/holiday get the wage surcharge for the whole shift, or split
+pro-rata at midnight?) that needs a human decision before implementation starts, so it was left
+for that rather than guessed at. Only #61 (verify the compose stack against a real deployment —
+needs actual VPS access this environment doesn't have) and #157 remain open.
 What's built:
 
 - **Backend** (`src/`): 4-project skeleton (Domain → Application → Infrastructure → Api)
@@ -1443,6 +1450,82 @@ What's built:
     #75, Testcontainers-backed) — `ScheduleFlowTests`'s full-lifecycle test was updated to assert
     an assignment write on a Published schedule now succeeds (previously asserted 409) and a new
     assertion confirms it still 409s once Archived; 14/14 integration tests pass.
+- **Propagate CancellationToken on data-heavy endpoints** ([issue #158](https://github.com/mycaravam-crypto/shifty/issues/158),
+    backend-only) — scoped to exactly the three call sites the issue itself named as priority
+    ("the data-heaviest actions first"), not every controller action: `DashboardController.Get`,
+    `SchedulesController.Validate` (and its shared `ValidateScheduleAsync` helper, also used by
+    `Publish`), and `AutoFillPreview`. Each gained a `CancellationToken ct` parameter (bound
+    automatically by ASP.NET Core from the request) threaded through every `ToListAsync(ct)` call
+    in that method, so a disconnected client stops the in-flight DB queries instead of the server
+    finishing several sequential round trips nobody's waiting on anymore. `ValidateScheduleAsync`
+    defaults the parameter (`CancellationToken ct = default`) so its other pre-existing callers
+    didn't need touching. Verified: `dotnet build`/`dotnet test` clean, 286/286 passing (unaffected
+    — this is a plumbing-only change, no behavior to newly test).
+- **No pagination on list endpoints** ([issue #110](https://github.com/mycaravam-crypto/shifty/issues/110))
+    — `EmployeesController`/`SchedulesController`/`ShiftTypesController`/`TeamsController`'s
+    `GetAll()` all gained optional `skip`/`take` query params (negative values 400), applied via
+    plain `IQueryable<T>.Skip()/.Take()` before `ToListAsync()`. Deliberately unbounded when both
+    are omitted — every existing frontend view fetches the whole list once and filters/searches
+    client-side (Employees search+team filter, Dienstplan's team filter, Stammdaten's tables), and
+    forcing a default page size would have silently truncated all of them with no frontend changes
+    to match; no issue asked for that frontend rework, so this session only implements the
+    opt-in capability the issue's own suggested approach describes, not a forced limit. Verified:
+    `dotnet build`/`dotnet test` clean, 286/286 passing (unaffected, no existing caller passes
+    `skip`/`take`) — not exercised via curl against a live Postgres this session (no behavior
+    change for any existing caller, low-risk mechanical addition).
+- **Add optimistic concurrency control for ShiftAssignment writes** ([issue #156](https://github.com/mycaravam-crypto/shifty/issues/156))
+    — `ConcurrencyTests` (issue #75) used to document, not fix, that two concurrent `PUT`s to the
+    same `ShiftAssignment` both silently succeeded (last-write-wins). `ShiftAssignment` now carries
+    a `RowVersion` — a shadow property (no CLR field on the Domain entity, matching how EF Core
+    concerns stay out of every other entity in that file) mapped onto Postgres's own `xmin` system
+    column (`ApplicationDbContext.OnModelCreating`, `a.Property<uint>("RowVersion")
+    .HasColumnName("xmin").HasColumnType("xid").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken()`)
+    rather than a hand-maintained counter column — no schema to manage, Postgres bumps `xmin` on
+    every row update for free. **Migration note**: `dotnet ef migrations add` generates an
+    `AddColumn`/`DropColumn "xmin"` pair for this by default, which Postgres rejects outright
+    (`xmin` is a reserved system column name you cannot `ALTER TABLE ADD/DROP`) — confirmed the
+    hard way against a real Postgres, not assumed; the migration
+    (`ShiftAssignmentXminConcurrency`) was hand-edited to an empty `Up`/`Down` instead, matching
+    this file's own past precedent for hand-editing a generated migration when the default output
+    doesn't fit (e.g. issue #12's `AuditLogValueSnapshots`). `ShiftAssignmentDto` gained a
+    `RowVersion` field, and `UpdateAssignmentRequest` gained a required `RowVersion` the client
+    must echo back — `UpdateAssignment`/`DeleteAssignment` (the latter via a new `rowVersion` query
+    param, since `DELETE` carries no JSON body in this app's client) pin EF's tracked "original
+    value" to the client-supplied figure (`db.Entry(assignment).Property("RowVersion")
+    .OriginalValue = request.RowVersion`) before saving, so the generated `UPDATE`/`DELETE`'s
+    `WHERE` clause checks against what the client actually read, not whatever `FindAsync` just
+    loaded — a `DbUpdateConcurrencyException` (the row's real `xmin` no longer matches) now returns
+    `409 Conflict` with a clear message instead of silently overwriting. Reading `RowVersion`
+    back out for the DTO turned out to need more care than expected: `EF.Property<T>()` only works
+    inside a LINQ query's expression tree, not against an already-materialized object — confirmed
+    by a runtime `InvalidOperationException` when first tried directly in `ToAssignmentDto`. Fixed
+    by removing `.AsNoTracking()` from the two read queries that feed a `ShiftAssignmentDto`
+    (`SchedulesController.GetById`'s assignments list, `PlanningBoardController`'s
+    `assignmentsInRange`) so the entities are genuinely tracked, and turning both `ToAssignmentDto`
+    helpers from `static` into instance methods that read `db.Entry(a).Property("RowVersion")
+    .CurrentValue` off the ChangeTracker — `CreateAssignment`/`AutoFillCommit`'s freshly-`Add`ed
+    entities were already tracked, so those needed no query change. `ConcurrencyTests` was rewritten
+    from documenting last-write-wins to asserting the real behavior (one concurrent `PUT` succeeds,
+    the other 409s; a stale-`RowVersion` `DELETE` 409s and doesn't delete) — plus
+    `ScheduleFlowTests`'s pre-existing assignment-update call needed a `RowVersion` added to its
+    request body, since the field is now required. No frontend change was optional here (unlike
+    issue #110 above) — `ShiftAssignmentModal.vue`'s save/delete, `ScheduleView.vue`'s
+    keyboard-Delete path (issue #80), and `usePlanningActions.ts`'s drag-move `PUT` all now send
+    `rowVersion`, and all three (plus the `Assignment`/`ShiftAssignmentDto` frontend types) handle
+    a `409` the same way the Publish button already handles its own race (issue #79/#68): toast a
+    clear message and reload the affected data instead of leaving the UI showing a write that
+    didn't actually apply. Verified end-to-end against a real local Postgres (this session's Docker
+    daemon could reach both `mcr.microsoft.com` and Docker Hub): `dotnet build`/`dotnet test` clean
+    (286/286, unaffected), `dotnet ef migrations script` confirms the hand-edited migration
+    produces no DDL for it, and the `ShiftPlanner.IntegrationTests` Testcontainers suite passes
+    17/17 including the two new/rewritten concurrency tests. Also curl-round-tripped directly
+    against a throwaway `dotnet run` + Postgres before writing the integration tests, to be sure of
+    the exact failure mode before committing to a fix: create (returns `rowVersion`), update with
+    the current `rowVersion` (`204`), a second update with the now-stale `rowVersion` (`409`),
+    delete with a stale `rowVersion` (`409`, row still present), delete with the current one
+    (`204`). `npm run lint`/`npm run build` (`vue-tsc -b` + `vite build`) both clean — the frontend
+    409-handling paths were not clicked through in an actual browser this session (no Docker-Hub-
+    blocked caveat this time; simply not reached given the scope already covered above).
 - **Docker/deploy**: `docker-compose.yml` (db/api/web) validated with `docker compose config`,
   never actually deployed. No `.env` exists anywhere yet (only `.env.example`).
 - **Versioning**: same scheme as vanspace3d. `frontend/package.json`'s `version` is shown
