@@ -15,7 +15,7 @@ public class ScheduleFlowTests(IntegrationTestFixture fixture)
     private record EmployeeDto(Guid Id);
     private record ShiftTypeDto(Guid Id);
     private record ScheduleDto(Guid Id, string Name, DateOnly StartDate, DateOnly EndDate, int Status);
-    private record ShiftAssignmentDto(Guid Id, Guid ScheduleId);
+    private record ShiftAssignmentDto(Guid Id, Guid ScheduleId, uint RowVersion);
     private record ValidationIssueDto(string Type, string Message, Guid? EmployeeId, Guid? ShiftAssignmentId);
     private record ValidationResultDto(List<ValidationIssueDto> Errors, List<ValidationIssueDto> Warnings, bool IsValid);
 
@@ -54,7 +54,7 @@ public class ScheduleFlowTests(IntegrationTestFixture fixture)
 
         // Fix the break, matching ArbZG's 45-minute minimum for a >9h shift.
         var updateResponse = await admin.PutAsJsonAsync($"/api/assignments/{assignment.Id}",
-            new { EmployeeId = employee.Id, ShiftTypeId = shiftType.Id, Date = "2026-09-02", StartTime = "08:00:00", EndTime = "20:00:00", BreakMinutes = 45 },
+            new { EmployeeId = employee.Id, ShiftTypeId = shiftType.Id, Date = "2026-09-02", StartTime = "08:00:00", EndTime = "20:00:00", BreakMinutes = 45, assignment.RowVersion },
             TestJson.Options);
         Assert.Equal(HttpStatusCode.NoContent, updateResponse.StatusCode);
 

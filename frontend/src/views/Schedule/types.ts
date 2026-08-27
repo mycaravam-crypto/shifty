@@ -47,6 +47,9 @@ export interface Assignment {
   breakStartTime: string | null
   netHours: number
   laborCost: number | null
+  // issue #156: Postgres's own xmin for this row — echoed back on update/delete so the backend
+  // can 409 instead of silently overwriting a change made by someone else in the meantime.
+  rowVersion: number
 }
 export interface Contract {
   employeeId: string

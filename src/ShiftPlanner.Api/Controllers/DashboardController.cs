@@ -25,7 +25,7 @@ namespace ShiftPlanner.Api.Controllers;
 public class DashboardController(ApplicationDbContext db) : ControllerBase
 {
     [HttpGet("dashboard")]
-    public async Task<ActionResult<DashboardDto>> Get(DateOnly? from, DateOnly? to, Guid? teamId, Guid? shiftTypeId)
+    public async Task<ActionResult<DashboardDto>> Get(DateOnly? from, DateOnly? to, Guid? teamId, Guid? shiftTypeId, CancellationToken ct)
     {
         if (from is not null && to is not null && to < from)
             return BadRequest("'to' must not be before 'from'.");
@@ -38,21 +38,21 @@ public class DashboardController(ApplicationDbContext db) : ControllerBase
         var schedules = await db.Schedules
             .AsNoTracking()
             .Where(s => s.StartDate <= periodTo && s.EndDate >= periodFrom)
-            .ToListAsync();
+            .ToListAsync(ct);
         var previousSchedules = await db.Schedules
             .AsNoTracking()
             .Where(s => s.StartDate <= prevTo && s.EndDate >= prevFrom)
-            .ToListAsync();
+            .ToListAsync(ct);
         var allScheduleIds = schedules.Select(s => s.Id).Union(previousSchedules.Select(s => s.Id)).ToList();
 
         var allAssignments = await db.ShiftAssignments
             .AsNoTracking()
             .Where(a => allScheduleIds.Contains(a.ScheduleId))
-            .ToListAsync();
+            .ToListAsync(ct);
         var assignmentsByScheduleId = allAssignments.GroupBy(a => a.ScheduleId)
             .ToDictionary(g => g.Key, g => (IReadOnlyList<ShiftAssignment>)g.ToList());
 
-        var employees = await db.Employees.AsNoTracking().Include(e => e.EligibleShiftTypes).Include(e => e.Team).ToListAsync();
+        var employees = await db.Employees.AsNoTracking().Include(e => e.EligibleShiftTypes).Include(e => e.Team).ToListAsync(ct);
         var employeesById = employees.ToDictionary(e => e.Id);
         bool MatchesTeam(Guid employeeId) =>
             teamId is null || (employeesById.TryGetValue(employeeId, out var e) && e.TeamId == teamId);
@@ -60,15 +60,15 @@ public class DashboardController(ApplicationDbContext db) : ControllerBase
         var employeeIds = allAssignments.Select(a => a.EmployeeId)
             .Union(employees.Where(e => MatchesTeam(e.Id)).Select(e => e.Id))
             .ToList();
-        var contracts = await db.Contracts.AsNoTracking().Where(c => employeeIds.Contains(c.EmployeeId)).ToListAsync();
-        var absences = await db.Absences.AsNoTracking().Where(a => employeeIds.Contains(a.EmployeeId)).ToListAsync();
-        var shiftTypes = await db.ShiftTypes.AsNoTracking().ToListAsync();
+        var contracts = await db.Contracts.AsNoTracking().Where(c => employeeIds.Contains(c.EmployeeId)).ToListAsync(ct);
+        var absences = await db.Absences.AsNoTracking().Where(a => employeeIds.Contains(a.EmployeeId)).ToListAsync(ct);
+        var shiftTypes = await db.ShiftTypes.AsNoTracking().ToListAsync(ct);
         var shiftTypesById = shiftTypes.ToDictionary(s => s.Id);
 
         // issue #69: loaded unconditionally (not scoped to employeeIds/schedules like the
         // queries above) — the whole point of a StaffingRequirement is to surface a slot with
         // *zero* assignments, so it can't be discovered by starting from existing rows.
-        var staffingRequirements = await db.StaffingRequirements.ToListAsync();
+        var staffingRequirements = await db.StaffingRequirements.ToListAsync(ct);
 
         // issue #56: exact ±6-day historyAssignments lookback, mirroring
         // SchedulesController's /validate endpoint exactly, instead of omitting it — fetched once
@@ -90,7 +90,7 @@ public class DashboardController(ApplicationDbContext db) : ControllerBase
                 .Where(a => employeeIds.Contains(a.EmployeeId)
                     && a.Date >= historyWindowStart
                     && a.Date <= historyWindowEnd)
-                .ToListAsync();
+                .ToListAsync(ct);
 
         // Mirrors SchedulesController.GetById: which nationwide-vs-Bundesland holiday set
         // applies depends on each employee's Team, so this resolves a HashSet per distinct
