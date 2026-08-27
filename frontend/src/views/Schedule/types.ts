@@ -25,6 +25,9 @@ export interface ShiftType {
   active: boolean
   minStaffing: number | null
   maxStaffing: number | null
+  // issue #157: lets a template itself represent a recurring overnight shift (e.g. 22:00-06:00)
+  // so an assignment created from it carries the flag through automatically.
+  endsNextDay: boolean
 }
 export interface Schedule {
   id: string
@@ -47,6 +50,8 @@ export interface Assignment {
   breakStartTime: string | null
   netHours: number
   laborCost: number | null
+  // issue #157: true means EndTime falls on the calendar day after `date`.
+  endsNextDay: boolean
   // issue #156: Postgres's own xmin for this row — echoed back on update/delete so the backend
   // can 409 instead of silently overwriting a change made by someone else in the meantime.
   rowVersion: number

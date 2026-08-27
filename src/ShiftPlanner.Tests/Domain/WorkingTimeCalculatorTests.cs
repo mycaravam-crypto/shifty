@@ -7,11 +7,11 @@ namespace ShiftPlanner.Tests.Domain;
 
 public class WorkingTimeCalculatorTests
 {
-    // issue #101: IsValidShiftTiming is the central "is this shift's timing the supported
-    // same-day kind" check — cross-midnight shifts (EndTime <= StartTime) are rejected at the
-    // write boundary (issue #11) and out of scope for v1 (issue #81 covers real overnight
-    // support). This is a direct TimeOnly comparison, so both the exact-equal-times case and a
-    // genuinely-backwards EndTime < StartTime are correctly identified as invalid.
+    // issue #101/#157: IsValidShiftTiming is the central "is this shift's timing structurally
+    // valid" check — same-day (EndTime > StartTime) by default, or exactly one midnight crossing
+    // (EndTime strictly before StartTime) when endsNextDay is set. These same-day-only cases
+    // (endsNextDay left at its default false) are unaffected by #157 — see the endsNextDay=true
+    // cases further down for the crossing behavior.
     [Fact]
     public void IsValidShiftTiming_EndAfterStart_ReturnsTrue()
     {
@@ -51,30 +51,72 @@ public class WorkingTimeCalculatorTests
         Assert.Equal(8m, hours);
     }
 
-    // issue #101: locks down NetHours' current (unchanged) behavior on the two cross-midnight
-    // shapes it can be handed, since neither is guarded by IsValidShiftTiming — the write
-    // boundary (SchedulesController/ShiftTypesController) is what actually prevents this data,
-    // NetHours itself has no opinion.
     [Fact]
     public void NetHours_ZeroLengthShift_ClampsToZero()
     {
         // EndTime == StartTime -> gross span is exactly 0 minutes -> Math.Max(0, -breakMinutes)
-        // clamps to 0. This is the one shape that actually matches the "returns 0 hours"
-        // description of NetHours' cross-midnight handling.
+        // clamps to 0.
         var hours = WorkingTimeCalculator.NetHours(new TimeOnly(8, 0), new TimeOnly(8, 0), 30);
         Assert.Equal(0m, hours);
     }
 
+    // issue #157: NetHours now takes an explicit `endsNextDay` and computes via absolute minutes
+    // instead of TimeOnly's `-` operator wraparound — a genuinely-backwards EndTime < StartTime
+    // with `endsNextDay` left false (its default) now clamps to 0 like any other invalid-looking
+    // span, rather than silently wrapping as if it were a real overnight shift. This replaces the
+    // old NetHours_GenuinelyBackwardsShift_WrapsToPositiveDuration_DoesNotReturnZero test, which
+    // pinned down exactly the wraparound behavior issue #157 deliberately removed.
     [Fact]
-    public void NetHours_GenuinelyBackwardsShift_WrapsToPositiveDuration_DoesNotReturnZero()
+    public void NetHours_BackwardsShift_EndsNextDayFalse_ClampsToZero()
     {
-        // TimeOnly's `-` operator (unlike its `<`/`>` comparison operators, which IsValidShiftTiming
-        // uses) wraps a negative difference by adding a full day, so a genuinely-backwards
-        // EndTime < StartTime does NOT clamp to 0 the way the exact-equal-times case above does
-        // — it silently computes as if it were a real overnight span instead. 22:00 -> 06:00 is
-        // an 8h wrapped span, minus a 30min break = 7.5h.
         var hours = WorkingTimeCalculator.NetHours(new TimeOnly(22, 0), new TimeOnly(6, 0), 30);
+        Assert.Equal(0m, hours);
+    }
+
+    [Fact]
+    public void NetHours_EndsNextDayTrue_ComputesOvernightSpan()
+    {
+        // 22:00 -> 06:00 the next day is an 8h span, minus a 30min break = 7.5h.
+        var hours = WorkingTimeCalculator.NetHours(new TimeOnly(22, 0), new TimeOnly(6, 0), 30, endsNextDay: true);
         Assert.Equal(7.5m, hours);
+    }
+
+    [Fact]
+    public void IsValidShiftTiming_EndsNextDayTrue_EndBeforeStart_ReturnsTrue()
+    {
+        Assert.True(WorkingTimeCalculator.IsValidShiftTiming(new TimeOnly(22, 0), new TimeOnly(6, 0), endsNextDay: true));
+    }
+
+    [Fact]
+    public void IsValidShiftTiming_EndsNextDayTrue_EndAfterStart_ReturnsFalse()
+    {
+        // Would be a >24h span — endsNextDay means exactly one midnight crossing, never more.
+        Assert.False(WorkingTimeCalculator.IsValidShiftTiming(new TimeOnly(8, 0), new TimeOnly(20, 0), endsNextDay: true));
+    }
+
+    [Fact]
+    public void IsValidShiftTiming_EndsNextDayTrue_EndEqualsStart_ReturnsFalse()
+    {
+        Assert.False(WorkingTimeCalculator.IsValidShiftTiming(new TimeOnly(22, 0), new TimeOnly(22, 0), endsNextDay: true));
+    }
+
+    [Theory]
+    [InlineData("2026-08-29", false, false)] // Saturday, no crossing
+    [InlineData("2026-08-30", false, true)] // Sunday itself
+    [InlineData("2026-08-29", true, true)] // Saturday shift crossing into Sunday
+    [InlineData("2026-08-30", true, true)] // Sunday shift crossing into Monday — start day alone already qualifies
+    [InlineData("2026-08-31", true, false)] // Monday shift crossing into Tuesday — neither day is Sunday
+    public void TouchesSunday_ChecksBothStartAndNextDayWhenCrossing(string date, bool endsNextDay, bool expected)
+    {
+        Assert.Equal(expected, WorkingTimeCalculator.TouchesSunday(DateOnly.Parse(date), endsNextDay));
+    }
+
+    [Fact]
+    public void TouchesHoliday_EndsNextDayTrue_ChecksFollowingDayToo()
+    {
+        var holidays = new HashSet<DateOnly> { new(2026, 12, 25) };
+        Assert.True(WorkingTimeCalculator.TouchesHoliday(new DateOnly(2026, 12, 24), endsNextDay: true, holidays));
+        Assert.False(WorkingTimeCalculator.TouchesHoliday(new DateOnly(2026, 12, 24), endsNextDay: false, holidays));
     }
 
     [Theory]

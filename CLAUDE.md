@@ -67,13 +67,11 @@ every view non-technically for people testing the app for the first time — see
 schedule stays editable now too, since shifts get switched in reality after publishing — only
 Archived freezes writes — see below. A second, smaller batch of issues (#110, #156, #157, #158)
 came in afterward — #110 (pagination on the four `GetAll` list endpoints), #158 (CancellationToken
-on the data-heaviest endpoints), and #156 (optimistic concurrency control on ShiftAssignment
-writes) are now built too — see below for each. #157 (turning issue #81's cross-midnight design
-decision into an actual feature) is still open: its own issue body flags a real domain question
-(does a shift crossing into a Sunday/holiday get the wage surcharge for the whole shift, or split
-pro-rata at midnight?) that needs a human decision before implementation starts, so it was left
-for that rather than guessed at. Only #61 (verify the compose stack against a real deployment —
-needs actual VPS access this environment doesn't have) and #157 remain open.
+on the data-heaviest endpoints), #156 (optimistic concurrency control on ShiftAssignment writes),
+and #157 (turning issue #81's cross-midnight design decision into a real feature — whole-shift,
+not pro-rated, Sunday/holiday surcharge, per a direct decision on that exact question) are all now
+built too — see below for each. Only #61 (verify the compose stack against a real deployment —
+needs actual VPS access this environment doesn't have) remains open.
 What's built:
 
 - **Backend** (`src/`): 4-project skeleton (Domain → Application → Infrastructure → Api)
@@ -1450,6 +1448,85 @@ What's built:
     #75, Testcontainers-backed) — `ScheduleFlowTests`'s full-lifecycle test was updated to assert
     an assignment write on a Published schedule now succeeds (previously asserted 409) and a new
     assertion confirms it still 409s once Archived; 14/14 integration tests pass.
+- **Implement cross-midnight (overnight) shift support** ([issue #157](https://github.com/mycaravam-crypto/shifty/issues/157))
+    — turns issue #81's schema-only groundwork (`ShiftAssignment.EndsNextDay`, unused until now)
+    into a real, working feature, following its own dependency-ordered plan closely:
+    1. `WorkingTimeCalculator.IsValidShiftTiming`/`NetHours` both gained an `endsNextDay = false`
+       parameter (default preserves every pre-existing call site exactly). `IsValidShiftTiming`
+       now accepts `EndTime` strictly *before* `StartTime` when the flag is set (e.g. 22:00 ->
+       06:00) — `EndsNextDay` always means exactly one midnight crossing, never more, so
+       `EndTime > StartTime` with the flag set is rejected too (would be a >24h span).
+       `NetHours` now computes via explicit absolute-minute math (`endMinutes = end + 24*60` when
+       crossing) instead of leaning on `TimeOnly`'s own `-` operator wraparound quirk the way the
+       pre-#157 code implicitly could have — deliberate, since the wraparound can't distinguish a
+       real crossing from corrupted same-day data where `EndTime < StartTime` by mistake (a
+       dedicated test, `NetHours_BackwardsShift_EndsNextDayFalse_ClampsToZero`, locks down the new
+       "clamps to 0" behavior for that case, replacing an old test that pinned down the wraparound
+       quirk itself).
+    2. `RestTimeValidator` and `ShiftSuggestionEngine.EvaluateRestTime`'s identical filter both
+       stopped excluding `EndsNextDay` rows as if they were malformed (they're structurally valid
+       now) and compute each shift's real end instant as `Date.ToDateTime(EndTime).AddDays
+       (EndsNextDay ? 1 : 0)`.
+    3. `ShiftOverlapValidator` — the "trickiest piece" per the issue's own framing — needed an
+       actual grouping redesign: it used to group by `(EmployeeId, Date)` and only compare shifts
+       sharing the exact same calendar date, which structurally couldn't catch an overnight shift
+       bleeding into the next day overlapping an early shift assigned to *that* day. Redesigned to
+       group by `EmployeeId` only and compare every pair by absolute start/end instant instead — a
+       strict generalization (same-day-only employees get the exact same adjacent-pair comparisons
+       as before; the redesign only *adds* the cross-day case, verified end-to-end via curl:  a
+       22:00->07:00 overnight shift correctly produces a `ShiftOverlap` warning against a 04:00-
+       12:00 shift the next day, and correctly produces none against an 08:00-16:00 one).
+    4. **Domain decision, resolved directly rather than guessed at**: a shift crossing into a
+       Sunday or public holiday gets the wage surcharge for its FULL duration, not split pro-rata
+       at the actual midnight boundary — simpler, and matches this app's existing all-or-nothing
+       surcharge model (a shift is either "a Sunday shift" or not). New
+       `WorkingTimeCalculator.TouchesSunday`/`TouchesHoliday` centralize that "either calendar day
+       this shift spans qualifies" check (holiday still wins over Sunday, unchanged); every
+       `WageCalculator.LaborCostWithSurcharges`/`Breakdown` call site (`SchedulesController`,
+       `PlanningBoardController`, `DashboardAggregator`) now resolves its `dayOfWeek`/`isHoliday`
+       arguments through these instead of reading `a.Date.DayOfWeek`/a plain `.Contains(a.Date)`
+       directly — every holiday-lookup range at those call sites was also widened by +1 day so an
+       assignment on a schedule/period's own last day can still see a holiday landing just past it.
+       Separately, `WageCalculator.ShiftTiming` gained its own `EndsNextDay` (default false) since
+       the *night*-surcharge overlap math is a distinct concern from the Sunday/holiday one:
+       `NightOverlapHours`'s three fixed absolute-minute windows (`[0,360)`, `[1200,1800)`,
+       `[2640,2880)`) replace the old two-window, same-day-only version — proven to reduce to the
+       exact old formula whenever `EndsNextDay` is false (regression-safe by construction, not just
+       by testing), and correctly handles a `BreakStartTime` that itself falls on the following
+       day (resolved via a shared `ResolveMinute` helper: any clock time at or before the shift's
+       own start minute is assumed to be the next day, matching how a human would read it).
+    5. `SchedulesController`/`ShiftTypesController` now accept `EndTime <= StartTime` when
+       `EndsNextDay` is set on `CreateAssignmentRequest`/`UpdateAssignmentRequest`/
+       `CreateShiftTypeRequest`/`UpdateShiftTypeRequest` (all default `false`, so every existing
+       caller is unaffected) — `ShiftType` itself also gained `EndsNextDay` (migration
+       `ShiftTypeEndsNextDay`, a plain additive column — confirmed via `dotnet ef migrations
+       script`) so a recurring overnight template (e.g. "Nachtschicht" 22:00-06:00) carries the
+       flag through automatically into every assignment created from it — drag-drop create,
+       `ShiftSuggestionModal`'s "Zuweisen", and `AutoFillCommit` (auto-fill preview → commit) all
+       thread it through now. `CopyMonth` copies the field on every copied assignment too.
+    6. Frontend: `ShiftAssignmentModal.vue` and both `ShiftType` forms (`StammdatenView.vue`'s
+       create form, `ShiftTypeDetailModal.vue`'s edit form) gained an "Endet am nächsten Tag
+       (Nachtschicht)" checkbox; `EmployeeScheduleRow.vue`'s assignment chips and both Stammdaten
+       ShiftType tables show a small `(+1)` marker when set.
+    `ShiftPlanner.Tests`: 304 tests total now (up from 286) — new cases for
+    `IsValidShiftTiming`/`NetHours`/`TouchesSunday`/`TouchesHoliday` with `endsNextDay: true`,
+    `WageCalculator`'s cross-midnight night-hours math (fully-within-window, straddling-both-sides,
+    and a next-day break reducing the overlap), `ShiftOverlapValidator`'s cross-day catch (and
+    non-catch), `RestTimeValidator`'s pushed-end-instant rest measurement, and
+    `ShiftSuggestionEngine.EvaluateRestTime`'s identical case. Verified: `dotnet build`/`dotnet
+    test` clean (Debug and Release), `dotnet ef migrations script` confirms the exact expected
+    `ALTER TABLE "ShiftTypes" ADD "EndsNextDay" boolean NOT NULL DEFAULT FALSE;`, the
+    `ShiftPlanner.IntegrationTests` suite (14/14, unaffected — no existing test exercises
+    `EndsNextDay`) — and, beyond the ShiftOverlapValidator curl check in step 3 above, the whole
+    feature was round-tripped end-to-end against a real local Postgres: an overnight ShiftType and
+    assignment created correctly (`netHours` 7.5h for a 22:00->06:00 shift minus a 30min break); a
+    Saturday-start shift crossing into Sunday correctly billed the *whole* shift's Sunday surcharge
+    (hand-computed `laborCost` 132.50 matched exactly); a shift crossing into 1. Weihnachtstag
+    (holiday) correctly billed the whole-shift holiday surcharge instead (188.75, holiday winning
+    over Sunday as designed) — `npm run lint`/`npm run build` (`vue-tsc -b` + `vite build`) both
+    clean; the frontend checkbox/`(+1)` indicator additions were not clicked through in an actual
+    browser this session (time was spent on the backend curl round-trip above instead, which is
+    where the actual cross-midnight arithmetic risk lived).
 - **Propagate CancellationToken on data-heavy endpoints** ([issue #158](https://github.com/mycaravam-crypto/shifty/issues/158),
     backend-only) — scoped to exactly the three call sites the issue itself named as priority
     ("the data-heaviest actions first"), not every controller action: `DashboardController.Get`,

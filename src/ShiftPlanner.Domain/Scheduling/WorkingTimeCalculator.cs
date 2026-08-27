@@ -6,26 +6,39 @@ namespace ShiftPlanner.Domain.Scheduling;
 // Single source of truth for net worked hours — readme.md §14.
 public static class WorkingTimeCalculator
 {
-    // issue #101: the single central place to check whether a shift's times are the
-    // "supported" same-day kind — cross-midnight shifts (EndTime <= StartTime) are rejected
-    // outright at the write boundary (issue #11, SchedulesController/ShiftTypesController) and
-    // are out of scope for v1 (real overnight-shift support is the separate issue #81). Several
-    // read-side consumers (RestTimeValidator, ShiftSuggestionEngine, and BreakMinutesValidator's
-    // own related-but-not-identical check — see its file) independently duplicated an
-    // `EndTime > StartTime` comparison as defense-in-depth for pre-existing/malformed data —
-    // this gives the controllers and the two exactly-equivalent validators one place to
-    // reference instead of three copy-pasted comparisons. This is a direct TimeOnly comparison
-    // (no wraparound): `TimeOnly`'s `<`/`>` operators compare ticks directly, unlike its `-`
-    // operator (used by NetHours below), which wraps a negative result by adding a full day —
-    // so this correctly identifies EndTime == StartTime *and* a genuinely-backwards
-    // EndTime < StartTime as invalid.
-    public static bool IsValidShiftTiming(TimeOnly start, TimeOnly end) => end > start;
+    // issue #101: the single central place to check whether a shift's times are structurally
+    // valid — same-day (EndTime > StartTime) by default, or exactly one midnight crossing when
+    // `endsNextDay` is set (issue #157: EndTime must then be strictly *before* StartTime in clock
+    // terms — e.g. 22:00 -> 06:00 — so the flag always means "one crossing", never "spans
+    // multiple days"; EndTime == StartTime is rejected either way as a degenerate 0h/24h shift).
+    // This is a direct TimeOnly comparison (no wraparound): `TimeOnly`'s `<`/`>` operators compare
+    // ticks directly, unlike its `-` operator (used by NetHours below pre-#157, and still relied
+    // on by BreakMinutesValidator's own independent check — see its file), which wraps a negative
+    // result by adding a full day.
+    public static bool IsValidShiftTiming(TimeOnly start, TimeOnly end, bool endsNextDay = false) =>
+        endsNextDay ? end < start : end > start;
 
-    public static decimal NetHours(TimeOnly start, TimeOnly end, int breakMinutes)
+    // issue #157: takes an explicit `endsNextDay` rather than leaning on TimeOnly's `-` operator
+    // wraparound (which happens to produce the right minute count for a valid crossing, but can't
+    // distinguish that from corrupted same-day data where EndTime < StartTime by mistake) — the
+    // absolute-minute math below is threaded through explicitly instead.
+    public static decimal NetHours(TimeOnly start, TimeOnly end, int breakMinutes, bool endsNextDay = false)
     {
-        var minutes = (end - start).TotalMinutes - breakMinutes;
+        var startMinutes = start.Hour * 60 + start.Minute;
+        var endMinutes = end.Hour * 60 + end.Minute + (endsNextDay ? 24 * 60 : 0);
+        var minutes = endMinutes - startMinutes - breakMinutes;
         return (decimal)Math.Max(0, minutes) / 60m;
     }
+
+    // issue #157 (whole-shift decision, not pro-rated at midnight): a shift crossing into a
+    // Sunday or public holiday gets the wage surcharge for its FULL duration if EITHER calendar
+    // day it touches qualifies — simpler than splitting at the boundary, matching this app's
+    // existing all-or-nothing surcharge model (a shift is either "a Sunday shift" or not).
+    public static bool TouchesSunday(DateOnly date, bool endsNextDay) =>
+        date.DayOfWeek == DayOfWeek.Sunday || (endsNextDay && date.AddDays(1).DayOfWeek == DayOfWeek.Sunday);
+
+    public static bool TouchesHoliday(DateOnly date, bool endsNextDay, IReadOnlySet<DateOnly> holidayDates) =>
+        holidayDates.Contains(date) || (endsNextDay && holidayDates.Contains(date.AddDays(1)));
 
     // Shared by ContractValidator/HoursBalanceCalculator/DashboardController — how many days
     // of [from,to] fall inside [rangeStart,rangeEnd], used to exclude Absence days from an

@@ -251,4 +251,44 @@ public class WageCalculatorTests
         // base: 2h * 10 = 20; night surcharge: 2.5h * 10 * 0.25 = 6.25
         Assert.Equal(26.25m, cost);
     }
+
+    // issue #157: EndsNextDay shifts. Before this, a 22:00->06:00 shift computed ZERO night hours
+    // (the pre-#157 formula had no way to know EndTime belonged to the following day, so its raw
+    // minute-of-day comparison against the night window silently came up empty) — these lock down
+    // the corrected behavior.
+    [Fact]
+    public void LaborCostWithSurcharges_EndsNextDay_FullyWithinNightWindow()
+    {
+        // 22:00 -> 06:00 next day: entirely inside 20:00-06:00, so all 8h (minus break) is night.
+        var timing = new ShiftTiming(new TimeOnly(22, 0), new TimeOnly(6, 0), 0, null, EndsNextDay: true);
+        var cost = WageCalculator.LaborCostWithSurcharges(
+            timing, DayOfWeek.Wednesday, isHoliday: false, netHours: 8m, hourlyRate: 10m);
+        // base: 8h * 10 = 80; night surcharge: 8h * 10 * 0.25 = 20
+        Assert.Equal(100m, cost);
+    }
+
+    [Fact]
+    public void LaborCostWithSurcharges_EndsNextDay_PartialNightOverlapOnBothSides()
+    {
+        // 18:00 -> 08:00 next day: 2h (18:00-20:00, no) wait — night window is 20:00-06:00, so
+        // 18:00-20:00 is NOT night (2h), 20:00-06:00 IS night (10h), 06:00-08:00 is NOT night (2h).
+        var timing = new ShiftTiming(new TimeOnly(18, 0), new TimeOnly(8, 0), 0, null, EndsNextDay: true);
+        var cost = WageCalculator.LaborCostWithSurcharges(
+            timing, DayOfWeek.Wednesday, isHoliday: false, netHours: 14m, hourlyRate: 10m);
+        // base: 14h * 10 = 140; night surcharge: 10h * 10 * 0.25 = 25
+        Assert.Equal(165m, cost);
+    }
+
+    [Fact]
+    public void LaborCostWithSurcharges_EndsNextDay_BreakOnFollowingDayReducesNightOverlap()
+    {
+        // 22:00 -> 06:00 next day, 60min break starting at 01:00 (next day, since 01:00 <= the
+        // shift's own start minute of 22:00 puts it on the following calendar day).
+        var timing = new ShiftTiming(new TimeOnly(22, 0), new TimeOnly(6, 0), 60, new TimeOnly(1, 0), EndsNextDay: true);
+        var cost = WageCalculator.LaborCostWithSurcharges(
+            timing, DayOfWeek.Wednesday, isHoliday: false, netHours: 7m, hourlyRate: 10m);
+        // raw night overlap 8h, minus the 1h break (entirely inside the night window) = 7h.
+        // base: 7h * 10 = 70; night surcharge: 7h * 10 * 0.25 = 17.5
+        Assert.Equal(87.5m, cost);
+    }
 }

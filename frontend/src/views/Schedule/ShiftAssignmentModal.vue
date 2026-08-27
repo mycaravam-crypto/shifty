@@ -17,6 +17,7 @@ interface ShiftType {
   breakMinutes: number
   color: string
   active: boolean
+  endsNextDay: boolean
 }
 interface Assignment {
   id: string
@@ -27,6 +28,7 @@ interface Assignment {
   endTime: string
   breakMinutes: number
   breakStartTime: string | null
+  endsNextDay: boolean
   // issue #156: echoed back on update/delete so the backend can 409 on a stale write instead of
   // silently overwriting a change made by someone else in the meantime.
   rowVersion: number
@@ -50,6 +52,8 @@ const form = ref({
   // null BreakStartTime, in which case the night-surcharge calculation falls back to its
   // pre-existing (unadjusted) approximation.
   breakStartTime: props.assignment.breakStartTime?.slice(0, 5) ?? '',
+  // issue #157: true means EndTime falls on the day after `date` (an overnight shift).
+  endsNextDay: props.assignment.endsNextDay,
 })
 const saving = ref(false)
 const error = ref('')
@@ -60,6 +64,7 @@ function onShiftTypeChange() {
   form.value.startTime = shiftType.startTime.slice(0, 5)
   form.value.endTime = shiftType.endTime.slice(0, 5)
   form.value.breakMinutes = shiftType.breakMinutes
+  form.value.endsNextDay = shiftType.endsNextDay
 }
 
 async function onSave() {
@@ -74,6 +79,7 @@ async function onSave() {
       endTime: `${form.value.endTime}:00`,
       breakMinutes: form.value.breakMinutes,
       breakStartTime: form.value.breakStartTime ? `${form.value.breakStartTime}:00` : null,
+      endsNextDay: form.value.endsNextDay,
       rowVersion: props.assignment.rowVersion,
     })
     toast.success('Schicht gespeichert.')
@@ -168,6 +174,11 @@ async function onDeleteConfirmed() {
         :disabled="readonly"
         :class="inputClass"
       />
+      <!-- issue #157: EndTime is then interpreted as falling on the day after `date`. -->
+      <label class="col-span-2 flex items-center gap-2 text-sm text-slate-300">
+        <input v-model="form.endsNextDay" type="checkbox" :disabled="readonly" />
+        Endet am nächsten Tag (Nachtschicht)
+      </label>
       <p v-if="error" class="col-span-2 text-sm text-rose-400">{{ error }}</p>
       <button
         v-if="!readonly"

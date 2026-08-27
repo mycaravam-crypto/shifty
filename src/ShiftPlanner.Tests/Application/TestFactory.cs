@@ -52,7 +52,8 @@ internal static class TestFactory
     };
 
     public static ShiftAssignment Assignment(
-        Guid employeeId, Guid shiftTypeId, DateOnly date, TimeOnly start, TimeOnly end, int breakMinutes = 30, Guid? scheduleId = null) => new()
+        Guid employeeId, Guid shiftTypeId, DateOnly date, TimeOnly start, TimeOnly end, int breakMinutes = 30,
+        Guid? scheduleId = null, bool endsNextDay = false) => new()
     {
         Id = Guid.NewGuid(),
         ScheduleId = scheduleId ?? Guid.NewGuid(),
@@ -62,6 +63,7 @@ internal static class TestFactory
         StartTime = start,
         EndTime = end,
         BreakMinutes = breakMinutes,
+        EndsNextDay = endsNextDay,
     };
 
     public static Absence Absence(Guid employeeId, DateOnly from, DateOnly to, AbsenceType type = AbsenceType.Vacation) => new()

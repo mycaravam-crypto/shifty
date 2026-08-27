@@ -9,7 +9,7 @@ namespace ShiftPlanner.Api.Controllers;
 
 public record ShiftTypeDto(
     Guid Id, string Name, TimeOnly StartTime, TimeOnly EndTime, int BreakMinutes, string Color, bool Active,
-    int? MinStaffing, int? MaxStaffing);
+    int? MinStaffing, int? MaxStaffing, bool EndsNextDay);
 
 public record CreateShiftTypeRequest(
     [Required, MaxLength(100)] string Name,
@@ -18,7 +18,8 @@ public record CreateShiftTypeRequest(
     [Range(0, 480)] int BreakMinutes,
     [Required] string Color,
     [Range(1, 1000)] int? MinStaffing = null,
-    [Range(1, 1000)] int? MaxStaffing = null);
+    [Range(1, 1000)] int? MaxStaffing = null,
+    bool EndsNextDay = false);
 
 public record UpdateShiftTypeRequest(
     [Required, MaxLength(100)] string Name,
@@ -28,7 +29,8 @@ public record UpdateShiftTypeRequest(
     [Required] string Color,
     bool Active,
     [Range(1, 1000)] int? MinStaffing = null,
-    [Range(1, 1000)] int? MaxStaffing = null);
+    [Range(1, 1000)] int? MaxStaffing = null,
+    bool EndsNextDay = false);
 
 [ApiController]
 [Route("api/shift-types")]
@@ -47,7 +49,7 @@ public class ShiftTypesController(ApplicationDbContext db) : ControllerBase
             .AsNoTracking()
             .OrderBy(s => s.StartTime)
             .Select(s => new ShiftTypeDto(s.Id, s.Name, s.StartTime, s.EndTime, s.BreakMinutes, s.Color, s.Active,
-                s.MinStaffing, s.MaxStaffing));
+                s.MinStaffing, s.MaxStaffing, s.EndsNextDay));
         if (skip is not null) query = query.Skip(skip.Value);
         if (take is not null) query = query.Take(take.Value);
 
@@ -62,8 +64,8 @@ public class ShiftTypesController(ApplicationDbContext db) : ControllerBase
         if (await db.ShiftTypes.AnyAsync(s => s.Name == request.Name))
             return Conflict($"Shift type '{request.Name}' already exists.");
 
-        if (!WorkingTimeCalculator.IsValidShiftTiming(request.StartTime, request.EndTime))
-            return BadRequest("Cross-midnight shift types are not supported (issue #11); EndTime must be after StartTime.");
+        if (!WorkingTimeCalculator.IsValidShiftTiming(request.StartTime, request.EndTime, request.EndsNextDay))
+            return BadRequest("EndTime must be after StartTime, or strictly before it with EndsNextDay set (issue #157).");
 
         var shiftType = new ShiftType
         {
@@ -74,13 +76,14 @@ public class ShiftTypesController(ApplicationDbContext db) : ControllerBase
             BreakMinutes = request.BreakMinutes,
             Color = request.Color,
             MinStaffing = request.MinStaffing,
-            MaxStaffing = request.MaxStaffing
+            MaxStaffing = request.MaxStaffing,
+            EndsNextDay = request.EndsNextDay
         };
         db.ShiftTypes.Add(shiftType);
         await db.SaveChangesAsync();
 
         var dto = new ShiftTypeDto(shiftType.Id, shiftType.Name, shiftType.StartTime, shiftType.EndTime, shiftType.BreakMinutes, shiftType.Color, shiftType.Active,
-            shiftType.MinStaffing, shiftType.MaxStaffing);
+            shiftType.MinStaffing, shiftType.MaxStaffing, shiftType.EndsNextDay);
         // No GetById endpoint exists for this resource, so CreatedAtAction(nameof(GetAll), ...)
         // would produce a Location header pointing at the collection, not the created resource
         // (GetAll takes no id parameter) — StatusCode(201, ...) avoids that misleading header.
@@ -98,8 +101,8 @@ public class ShiftTypesController(ApplicationDbContext db) : ControllerBase
         if (await db.ShiftTypes.AnyAsync(s => s.Name == request.Name && s.Id != id))
             return Conflict($"Shift type '{request.Name}' already exists.");
 
-        if (!WorkingTimeCalculator.IsValidShiftTiming(request.StartTime, request.EndTime))
-            return BadRequest("Cross-midnight shift types are not supported (issue #11); EndTime must be after StartTime.");
+        if (!WorkingTimeCalculator.IsValidShiftTiming(request.StartTime, request.EndTime, request.EndsNextDay))
+            return BadRequest("EndTime must be after StartTime, or strictly before it with EndsNextDay set (issue #157).");
 
         shiftType.Name = request.Name;
         shiftType.StartTime = request.StartTime;
@@ -109,6 +112,7 @@ public class ShiftTypesController(ApplicationDbContext db) : ControllerBase
         shiftType.Active = request.Active;
         shiftType.MinStaffing = request.MinStaffing;
         shiftType.MaxStaffing = request.MaxStaffing;
+        shiftType.EndsNextDay = request.EndsNextDay;
         await db.SaveChangesAsync();
 
         return NoContent();

@@ -47,6 +47,7 @@ interface ShiftType {
   active: boolean
   minStaffing: number | null
   maxStaffing: number | null
+  endsNextDay: boolean
 }
 
 const inputClass =
@@ -70,6 +71,7 @@ const shiftTypeForm = ref({
   color: '#6366f1',
   minStaffing: '',
   maxStaffing: '',
+  endsNextDay: false,
 })
 const savingShiftType = ref(false)
 const selectedShiftType = ref<ShiftType | null>(null)
@@ -124,6 +126,7 @@ async function onCreateShiftType() {
       color: shiftTypeForm.value.color,
       minStaffing: shiftTypeForm.value.minStaffing ? Number(shiftTypeForm.value.minStaffing) : null,
       maxStaffing: shiftTypeForm.value.maxStaffing ? Number(shiftTypeForm.value.maxStaffing) : null,
+      endsNextDay: shiftTypeForm.value.endsNextDay,
     })
     shiftTypeForm.value = {
       name: '',
@@ -133,6 +136,7 @@ async function onCreateShiftType() {
       color: '#6366f1',
       minStaffing: '',
       maxStaffing: '',
+      endsNextDay: false,
     }
     showShiftTypeForm.value = false
     toast.success('Schichttyp angelegt.')
@@ -336,6 +340,11 @@ onMounted(load)
           placeholder="Max. Besetzung (optional)"
           :class="inputClass"
         />
+        <!-- issue #157: lets a template represent a recurring overnight shift (e.g. 22:00-06:00) -->
+        <label class="sm:col-span-2 flex items-center gap-2 text-sm text-slate-300">
+          <input v-model="shiftTypeForm.endsNextDay" type="checkbox" />
+          Endet am nächsten Tag (Nachtschicht)
+        </label>
         <button
           type="submit"
           :disabled="savingShiftType"
@@ -362,8 +371,9 @@ onMounted(load)
                 {{ s.name }}
               </div>
               <div class="text-xs text-slate-500 font-mono mt-0.5 truncate">
-                {{ s.startTime.slice(0, 5) }}–{{ s.endTime.slice(0, 5) }} · {{ s.breakMinutes }}m
-                Pause · {{ s.minStaffing ?? '–' }}/{{ s.maxStaffing ?? '–' }}
+                {{ s.startTime.slice(0, 5) }}–{{ s.endTime.slice(0, 5)
+                }}<span v-if="s.endsNextDay">(+1)</span> · {{ s.breakMinutes }}m Pause ·
+                {{ s.minStaffing ?? '–' }}/{{ s.maxStaffing ?? '–' }}
               </div>
             </div>
             <span
@@ -408,7 +418,8 @@ onMounted(load)
                   {{ s.name }}
                 </td>
                 <td class="px-4 py-3 font-mono text-slate-400">
-                  {{ s.startTime.slice(0, 5) }}–{{ s.endTime.slice(0, 5) }}
+                  {{ s.startTime.slice(0, 5) }}–{{ s.endTime.slice(0, 5)
+                  }}<span v-if="s.endsNextDay">(+1)</span>
                 </td>
                 <td class="px-4 py-3 font-mono text-slate-400">{{ s.breakMinutes }}m</td>
                 <td class="px-4 py-3 text-slate-400">

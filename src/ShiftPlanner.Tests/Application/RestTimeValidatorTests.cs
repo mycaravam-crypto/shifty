@@ -122,4 +122,45 @@ public class RestTimeValidatorTests
         // per employee, there's no adjacent pair to compare, so no error is produced.
         Assert.Empty(result.Errors);
     }
+
+    // issue #157: a real EndsNextDay row is no longer filtered out as malformed — its end
+    // instant is Date+EndTime pushed a day later, so rest time is measured from there.
+    [Fact]
+    public void EndsNextDayAssignment_RestMeasuredFromPushedEndInstant()
+    {
+        var employee = Employee();
+        var shiftType = ShiftType();
+        var assignments = new[]
+        {
+            // 22:00 on the 24th -> 06:00 on the 25th (EndsNextDay)
+            Assignment(employee.Id, shiftType.Id, new DateOnly(2026, 8, 24), new TimeOnly(22, 0), new TimeOnly(6, 0), endsNextDay: true),
+            // Starts 08:00 on the 25th — only 2h after the overnight shift's real end (06:00 the 25th)
+            Assignment(employee.Id, shiftType.Id, new DateOnly(2026, 8, 25), new TimeOnly(8, 0), new TimeOnly(16, 0)),
+        };
+
+        var result = new ValidationResult();
+        RestTimeValidator.Validate(assignments, result);
+
+        var error = Assert.Single(result.Errors);
+        Assert.Equal(ValidationIssueCode.InsufficientRest, error.Type);
+    }
+
+    [Fact]
+    public void EndsNextDayAssignment_SufficientRestFromPushedEndInstant_NoError()
+    {
+        var employee = Employee();
+        var shiftType = ShiftType();
+        var assignments = new[]
+        {
+            // 22:00 on the 24th -> 06:00 on the 25th (EndsNextDay)
+            Assignment(employee.Id, shiftType.Id, new DateOnly(2026, 8, 24), new TimeOnly(22, 0), new TimeOnly(6, 0), endsNextDay: true),
+            // Starts 17:00 on the 25th — 11h after the overnight shift's real end (06:00 the 25th)
+            Assignment(employee.Id, shiftType.Id, new DateOnly(2026, 8, 25), new TimeOnly(17, 0), new TimeOnly(22, 0)),
+        };
+
+        var result = new ValidationResult();
+        RestTimeValidator.Validate(assignments, result);
+
+        Assert.Empty(result.Errors);
+    }
 }

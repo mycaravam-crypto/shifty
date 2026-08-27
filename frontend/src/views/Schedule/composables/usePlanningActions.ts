@@ -114,6 +114,7 @@ export function usePlanningActions(board: ReturnType<typeof usePlanningBoard>) {
           startTime: shiftType.startTime,
           endTime: shiftType.endTime,
           breakMinutes: shiftType.breakMinutes,
+          endsNextDay: shiftType.endsNextDay,
         })
       } else if (payload.kind === 'assignment') {
         const assignment = board.assignments.value.find((a) => a.id === payload.assignmentId)
@@ -126,6 +127,7 @@ export function usePlanningActions(board: ReturnType<typeof usePlanningBoard>) {
           endTime: assignment.endTime,
           breakMinutes: assignment.breakMinutes,
           breakStartTime: assignment.breakStartTime,
+          endsNextDay: assignment.endsNextDay,
           rowVersion: assignment.rowVersion,
         })
       }

@@ -14,6 +14,7 @@ interface ShiftType {
   endTime: string
   breakMinutes: number
   color: string
+  endsNextDay: boolean
 }
 interface SuggestionReason {
   code: number
@@ -73,6 +74,7 @@ async function onAssign(s: Suggestion) {
       startTime: props.shiftType.startTime,
       endTime: props.shiftType.endTime,
       breakMinutes: props.shiftType.breakMinutes,
+      endsNextDay: props.shiftType.endsNextDay,
     })
     toast.success(`${s.firstName} ${s.lastName} zugewiesen.`)
     emit('assigned')
