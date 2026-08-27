@@ -14,7 +14,6 @@ defineProps<{
   isWeekend: (d: Date) => boolean
   dragOverKey: string | null
   highlightKey: string | null
-  printEmployeeId: string | null
   shiftTypeById: (id: string) => ShiftType | undefined
   coverageShiftTypes: ShiftType[]
   coverageFor: (shiftTypeId: string, dateIso: string) => Coverage
@@ -53,17 +52,14 @@ defineExpose({ autoScrollTableWrap })
 </script>
 
 <template>
-  <div
-    ref="tableWrapRef"
-    class="glass rounded-xl overflow-auto max-h-[70vh] print:overflow-visible print:max-h-none"
-  >
+  <div ref="tableWrapRef" class="glass rounded-xl overflow-auto max-h-[70vh] print:hidden">
     <table class="w-full text-sm">
       <thead>
         <tr
-          class="text-left text-[10px] uppercase tracking-wider font-bold text-slate-500 border-b border-white/8 sticky top-0 z-20 bg-[#11141c] shadow-[0_4px_8px_-4px_rgba(0,0,0,0.5)] print:static print:shadow-none"
+          class="text-left text-[10px] uppercase tracking-wider font-bold text-slate-500 border-b border-white/8 sticky top-0 z-20 bg-[#11141c] shadow-[0_4px_8px_-4px_rgba(0,0,0,0.5)]"
         >
           <th
-            class="px-4 py-3 sticky left-0 z-30 bg-[#11141c] shadow-[4px_0_8px_-4px_rgba(0,0,0,0.5)] print:static print:shadow-none"
+            class="px-4 py-3 sticky left-0 z-30 bg-[#11141c] shadow-[4px_0_8px_-4px_rgba(0,0,0,0.5)]"
           >
             Mitarbeiter
           </th>
@@ -119,7 +115,6 @@ defineExpose({ autoScrollTableWrap })
           :is-weekend="isWeekend"
           :drag-over-key="dragOverKey"
           :highlight-key="highlightKey"
-          :print-employee-id="printEmployeeId"
           :shift-type-by-id="shiftTypeById"
           :assignments-for="assignmentsFor"
           :target-hours-for="targetHoursFor"

@@ -13,6 +13,7 @@ import PlanningToolbar from './PlanningToolbar.vue'
 import ShiftPalette from './ShiftPalette.vue'
 import ValidationSummary from './ValidationSummary.vue'
 import PlanningGrid from './PlanningGrid.vue'
+import SchedulePrintSheet from './SchedulePrintSheet.vue'
 import { useScheduleFilters } from './composables/useScheduleFilters'
 import { usePlanningBoard } from './composables/usePlanningBoard'
 import { usePlanningActions } from './composables/usePlanningActions'
@@ -62,6 +63,7 @@ const {
   coverageFor,
   holidayFor,
   isWeekend,
+  isAbsentOn,
   assignmentsFor,
   netHoursFor,
   targetHoursFor,
@@ -423,6 +425,24 @@ window.addEventListener('afterprint', () => {
           @export-employee-pdf="exportEmployeePdf"
           @view-readonly="viewAssignmentReadonly"
         />
+
+        <SchedulePrintSheet
+          :print-employee-id="printEmployeeId"
+          :employees="visibleEmployees"
+          :days="weekDays"
+          :schedule-name="currentSchedule?.name ?? ''"
+          :schedule-status="currentSchedule?.status ?? null"
+          :period-label="weekLabel"
+          :holiday-for="holidayFor"
+          :is-weekend="isWeekend"
+          :is-absent-on="isAbsentOn"
+          :shift-type-by-id="shiftTypeById"
+          :assignments-for="assignmentsFor"
+          :net-hours-for="netHoursFor"
+          :target-hours-for="targetHoursFor"
+          :carried-over-for="carriedOverFor"
+          :labor-cost-for="laborCostFor"
+        />
       </template>
     </template>
 
@@ -510,11 +530,3 @@ window.addEventListener('afterprint', () => {
     </ModalShell>
   </div>
 </template>
-
-<style scoped>
-@media print {
-  @page {
-    size: landscape;
-  }
-}
-</style>

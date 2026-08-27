@@ -41,3 +41,12 @@ export const weekdayFmt = new Intl.DateTimeFormat('de-DE', {
 })
 export const monthFmt = new Intl.DateTimeFormat('de-DE', { month: 'long', year: 'numeric' })
 export const currencyFmt = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' })
+// PDF export (SchedulePrintSheet.vue) reads out full weekday names and full dates — the
+// interactive grid's short forms above are dense-table-appropriate, a printed sheet has room
+// to spell both out.
+export const weekdayLongFmt = new Intl.DateTimeFormat('de-DE', { weekday: 'long' })
+export const dateLongFmt = new Intl.DateTimeFormat('de-DE', {
+  day: '2-digit',
+  month: '2-digit',
+  year: 'numeric',
+})
