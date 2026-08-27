@@ -15,10 +15,13 @@ public record ScheduleDto(
     Guid Id, string Name, DateOnly StartDate, DateOnly EndDate, ScheduleStatus Status,
     DateTimeOffset? PublishedAt, string? PublishedBy);
 
+// issue #156: RowVersion is Postgres's own xmin for this row (see ApplicationDbContext's shadow
+// "RowVersion" property) — an opaque token the client must echo back on Update/Delete so the
+// server can detect a concurrent write in between and 409 instead of silently overwriting it.
 public record ShiftAssignmentDto(
     Guid Id, Guid ScheduleId, Guid EmployeeId, Guid ShiftTypeId,
     DateOnly Date, TimeOnly StartTime, TimeOnly EndTime, int BreakMinutes, TimeOnly? BreakStartTime,
-    decimal NetHours, decimal? LaborCost, bool EndsNextDay);
+    decimal NetHours, decimal? LaborCost, uint RowVersion, bool EndsNextDay);
 
 public record ScheduleDetailDto(
     Guid Id, string Name, DateOnly StartDate, DateOnly EndDate, ScheduleStatus Status,
@@ -54,9 +57,11 @@ public record CreateAssignmentRequest(
     Guid EmployeeId, Guid ShiftTypeId, DateOnly Date, TimeOnly StartTime, TimeOnly EndTime,
     [Range(0, 480)] int BreakMinutes, TimeOnly? BreakStartTime = null, bool EndsNextDay = false);
 
+// issue #156: RowVersion is required — the client must echo back the value it last read (from
+// ShiftAssignmentDto) so the server can detect a concurrent write since then.
 public record UpdateAssignmentRequest(
     Guid EmployeeId, Guid ShiftTypeId, DateOnly Date, TimeOnly StartTime, TimeOnly EndTime,
-    [Range(0, 480)] int BreakMinutes, TimeOnly? BreakStartTime = null, bool EndsNextDay = false);
+    [Range(0, 480)] int BreakMinutes, uint RowVersion, TimeOnly? BreakStartTime = null, bool EndsNextDay = false);
 
 [ApiController]
 [Route("api")]
@@ -70,15 +75,21 @@ public class SchedulesController(ApplicationDbContext db) : ControllerBase
     // assignment's employee/Bundesland — takes the whole set rather than a pre-resolved isHoliday
     // bool now, since a cross-midnight shift needs to check both the start day and (when
     // EndsNextDay) the day after via WorkingTimeCalculator.TouchesHoliday/TouchesSunday.
-    private static ShiftAssignmentDto ToAssignmentDto(ShiftAssignment a, decimal? hourlyRate, IReadOnlySet<DateOnly> holidayDates)
+    // issue #156: not static (unlike the rest of this file's DTO helpers) — needs `db` to read
+    // the RowVersion shadow property off the tracked entity via ChangeTracker (EF.Property<T>()
+    // only works inside a LINQ query's expression tree, not against an already-materialized
+    // object — confirmed the hard way: it throws InvalidOperationException at runtime). Every
+    // caller below queries ShiftAssignments *without* AsNoTracking so the entry actually exists.
+    private ShiftAssignmentDto ToAssignmentDto(ShiftAssignment a, decimal? hourlyRate, IReadOnlySet<DateOnly> holidayDates)
     {
         var netHours = WorkingTimeCalculator.NetHours(a.StartTime, a.EndTime, a.BreakMinutes, a.EndsNextDay);
         var isHoliday = WorkingTimeCalculator.TouchesHoliday(a.Date, a.EndsNextDay, holidayDates);
         var dayOfWeek = WorkingTimeCalculator.TouchesSunday(a.Date, a.EndsNextDay) ? DayOfWeek.Sunday : a.Date.DayOfWeek;
         var timing = new ShiftTiming(a.StartTime, a.EndTime, a.BreakMinutes, a.BreakStartTime, a.EndsNextDay);
         var laborCost = WageCalculator.LaborCostWithSurcharges(timing, dayOfWeek, isHoliday, netHours, hourlyRate);
+        var rowVersion = (uint)db.Entry(a).Property("RowVersion").CurrentValue!;
         return new(a.Id, a.ScheduleId, a.EmployeeId, a.ShiftTypeId, a.Date, a.StartTime, a.EndTime, a.BreakMinutes, a.BreakStartTime,
-            netHours, laborCost, a.EndsNextDay);
+            netHours, laborCost, rowVersion, a.EndsNextDay);
     }
 
     // issue #14: the contract valid on the assignment's own date, not the schedule's start —
@@ -89,9 +100,18 @@ public class SchedulesController(ApplicationDbContext db) : ControllerBase
         Contract.ActiveOn(contracts, employeeId, date)?.HourlyRate;
 
     [HttpGet("schedules")]
-    public async Task<ActionResult<IEnumerable<ScheduleDto>>> GetAll()
+    // issue #110: optional skip/take, defaulting to unbounded (unchanged behavior) when omitted
+    // so existing callers that fetch the whole list to filter/search client-side keep working.
+    public async Task<ActionResult<IEnumerable<ScheduleDto>>> GetAll(int? skip, int? take)
     {
-        var schedules = await db.Schedules.AsNoTracking().OrderByDescending(s => s.StartDate).ToListAsync();
+        if (skip < 0 || take < 0)
+            return BadRequest("'skip'/'take' must not be negative.");
+
+        IQueryable<Schedule> query = db.Schedules.AsNoTracking().OrderByDescending(s => s.StartDate);
+        if (skip is not null) query = query.Skip(skip.Value);
+        if (take is not null) query = query.Take(take.Value);
+
+        var schedules = await query.ToListAsync();
         return Ok(schedules.Select(ToDto));
     }
 
@@ -102,8 +122,9 @@ public class SchedulesController(ApplicationDbContext db) : ControllerBase
         if (schedule is null)
             return NotFound();
 
+        // issue #156: NOT AsNoTracking — ToAssignmentDto needs each entity's RowVersion shadow
+        // property from the ChangeTracker, which AsNoTracking never populates.
         var assignments = await db.ShiftAssignments
-            .AsNoTracking()
             .Where(a => a.ScheduleId == id)
             .OrderBy(a => a.Date).ThenBy(a => a.StartTime)
             .ToListAsync();
@@ -185,14 +206,14 @@ public class SchedulesController(ApplicationDbContext db) : ControllerBase
     // issue #68: loads exactly the data ScheduleValidator needs for one Schedule — shared by
     // both the read-only /validate endpoint and the /publish use case's own blocking check, so
     // the two can never disagree about what counts as a blocking Error.
-    private async Task<Application.Validation.ValidationResult> ValidateScheduleAsync(Schedule schedule)
+    private async Task<Application.Validation.ValidationResult> ValidateScheduleAsync(Schedule schedule, CancellationToken ct = default)
     {
-        var assignments = await db.ShiftAssignments.AsNoTracking().Where(a => a.ScheduleId == schedule.Id).ToListAsync();
+        var assignments = await db.ShiftAssignments.AsNoTracking().Where(a => a.ScheduleId == schedule.Id).ToListAsync(ct);
         var employeeIds = assignments.Select(a => a.EmployeeId).Distinct().ToList();
         var employees = await db.Employees.AsNoTracking().Include(e => e.EligibleShiftTypes)
-            .Where(e => employeeIds.Contains(e.Id)).ToListAsync();
-        var shiftTypes = await db.ShiftTypes.AsNoTracking().ToListAsync();
-        var contracts = await db.Contracts.AsNoTracking().Where(c => employeeIds.Contains(c.EmployeeId)).ToListAsync();
+            .Where(e => employeeIds.Contains(e.Id)).ToListAsync(ct);
+        var shiftTypes = await db.ShiftTypes.AsNoTracking().ToListAsync(ct);
+        var contracts = await db.Contracts.AsNoTracking().Where(c => employeeIds.Contains(c.EmployeeId)).ToListAsync(ct);
 
         // issues #8/#9: rest-time and consecutive-day rules need shifts outside this
         // Schedule's own date range too (an adjacent week already planned).
@@ -201,19 +222,19 @@ public class SchedulesController(ApplicationDbContext db) : ControllerBase
         var historyAssignments = await db.ShiftAssignments
             .AsNoTracking()
             .Where(a => employeeIds.Contains(a.EmployeeId) && a.Date >= historyStart && a.Date <= historyEnd)
-            .ToListAsync();
+            .ToListAsync(ct);
 
         // issue #17: only absences overlapping this Schedule's own span matter here — unlike
         // the rest-time/consecutive-days history window above, absences don't need lookback.
         var absences = await db.Absences
             .AsNoTracking()
             .Where(a => employeeIds.Contains(a.EmployeeId) && a.From <= schedule.EndDate && a.To >= schedule.StartDate)
-            .ToListAsync();
+            .ToListAsync(ct);
 
         // issue #69: every StaffingRequirement is loaded, not just ones matching an employee
         // who already has an assignment here — the whole point is to catch a slot with *zero*
         // assignments, so it can't be scoped down via employeeIds the way the queries above are.
-        var staffingRequirements = await db.StaffingRequirements.ToListAsync();
+        var staffingRequirements = await db.StaffingRequirements.ToListAsync(ct);
 
         return ScheduleValidator.Validate(schedule, assignments, employees, shiftTypes, contracts, historyAssignments, absences, staffingRequirements);
     }
@@ -350,13 +371,13 @@ public class SchedulesController(ApplicationDbContext db) : ControllerBase
     }
 
     [HttpGet("schedules/{id:guid}/validate")]
-    public async Task<ActionResult<Application.Validation.ValidationResult>> Validate(Guid id)
+    public async Task<ActionResult<Application.Validation.ValidationResult>> Validate(Guid id, CancellationToken ct)
     {
-        var schedule = await db.Schedules.AsNoTracking().FirstOrDefaultAsync(s => s.Id == id);
+        var schedule = await db.Schedules.AsNoTracking().FirstOrDefaultAsync(s => s.Id == id, ct);
         if (schedule is null)
             return NotFound();
 
-        return Ok(await ValidateScheduleAsync(schedule));
+        return Ok(await ValidateScheduleAsync(schedule, ct));
     }
 
     // readme.md §17's "Arbeitszeitpräferenzen" — ranks active employees for one open
@@ -412,9 +433,9 @@ public class SchedulesController(ApplicationDbContext db) : ControllerBase
     // per slot from ShiftSuggestionEngine.AutoFill, without persisting anything. The manager
     // reviews/trims this list client-side, then POSTs the kept rows to /auto-fill to commit.
     [HttpGet("schedules/{id:guid}/auto-fill-preview")]
-    public async Task<ActionResult<IEnumerable<AutoFillProposalDto>>> AutoFillPreview(Guid id, DateOnly? from, DateOnly? to)
+    public async Task<ActionResult<IEnumerable<AutoFillProposalDto>>> AutoFillPreview(Guid id, DateOnly? from, DateOnly? to, CancellationToken ct)
     {
-        var schedule = await db.Schedules.AsNoTracking().FirstOrDefaultAsync(s => s.Id == id);
+        var schedule = await db.Schedules.AsNoTracking().FirstOrDefaultAsync(s => s.Id == id, ct);
         if (schedule is null)
             return NotFound();
 
@@ -423,9 +444,9 @@ public class SchedulesController(ApplicationDbContext db) : ControllerBase
         if (rangeStart < schedule.StartDate || rangeEnd > schedule.EndDate || rangeEnd < rangeStart)
             return BadRequest("Range must be a valid sub-range of the schedule's own date range.");
 
-        var shiftTypes = await db.ShiftTypes.AsNoTracking().Where(s => s.Active).ToListAsync();
+        var shiftTypes = await db.ShiftTypes.AsNoTracking().Where(s => s.Active).ToListAsync(ct);
         var employees = await db.Employees.AsNoTracking().Include(e => e.EligibleShiftTypes)
-            .Where(e => e.Active).ToListAsync();
+            .Where(e => e.Active).ToListAsync(ct);
         var employeeIds = employees.Select(e => e.Id).ToList();
 
         // Same ±6-day lookback window as /validate and /suggestions — rest-time/consecutive-day
@@ -435,16 +456,16 @@ public class SchedulesController(ApplicationDbContext db) : ControllerBase
         var historyAssignments = await db.ShiftAssignments
             .AsNoTracking()
             .Where(a => employeeIds.Contains(a.EmployeeId) && a.Date >= historyStart && a.Date <= historyEnd)
-            .ToListAsync();
+            .ToListAsync(ct);
 
         var absences = await db.Absences
             .AsNoTracking()
             .Where(a => employeeIds.Contains(a.EmployeeId) && a.From <= rangeEnd && a.To >= rangeStart)
-            .ToListAsync();
-        var scheduleAssignments = await db.ShiftAssignments.AsNoTracking().Where(a => a.ScheduleId == id).ToListAsync();
-        var contracts = await db.Contracts.AsNoTracking().Where(c => employeeIds.Contains(c.EmployeeId)).ToListAsync();
-        var shiftTypePreferences = await db.ShiftTypePreferences.AsNoTracking().Where(p => employeeIds.Contains(p.EmployeeId)).ToListAsync();
-        var weekdayPreferences = await db.WeekdayPreferences.AsNoTracking().Where(p => employeeIds.Contains(p.EmployeeId)).ToListAsync();
+            .ToListAsync(ct);
+        var scheduleAssignments = await db.ShiftAssignments.AsNoTracking().Where(a => a.ScheduleId == id).ToListAsync(ct);
+        var contracts = await db.Contracts.AsNoTracking().Where(c => employeeIds.Contains(c.EmployeeId)).ToListAsync(ct);
+        var shiftTypePreferences = await db.ShiftTypePreferences.AsNoTracking().Where(p => employeeIds.Contains(p.EmployeeId)).ToListAsync(ct);
+        var weekdayPreferences = await db.WeekdayPreferences.AsNoTracking().Where(p => employeeIds.Contains(p.EmployeeId)).ToListAsync(ct);
 
         var context = new SchedulingContext(
             schedule.StartDate, schedule.EndDate, employees, scheduleAssignments, historyAssignments,
@@ -616,14 +637,27 @@ public class SchedulesController(ApplicationDbContext db) : ControllerBase
         assignment.BreakMinutes = request.BreakMinutes;
         assignment.BreakStartTime = request.BreakStartTime;
         assignment.EndsNextDay = request.EndsNextDay;
-        await db.SaveChangesAsync();
+
+        // issue #156: pin EF's tracked "original value" to whatever the client last read, rather
+        // than the value FindAsync just loaded (always the current DB value) — that's what makes
+        // the UPDATE's WHERE clause check against the client's stale read, not a no-op self-check.
+        db.Entry(assignment).Property("RowVersion").OriginalValue = request.RowVersion;
+
+        try
+        {
+            await db.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            return Conflict("This shift assignment was changed by someone else in the meantime. Please reload and try again.");
+        }
 
         return NoContent();
     }
 
     [HttpDelete("assignments/{id:guid}")]
     [Authorize(Policy = "ManagerWrite")]
-    public async Task<IActionResult> DeleteAssignment(Guid id)
+    public async Task<IActionResult> DeleteAssignment(Guid id, [FromQuery] uint rowVersion)
     {
         var assignment = await db.ShiftAssignments.FindAsync(id);
         if (assignment is null)
@@ -636,8 +670,18 @@ public class SchedulesController(ApplicationDbContext db) : ControllerBase
         if (schedule.Status == ScheduleStatus.Archived)
             return Conflict($"Schedule is {schedule.Status}; assignments can no longer be deleted.");
 
+        db.Entry(assignment).Property("RowVersion").OriginalValue = rowVersion;
         db.ShiftAssignments.Remove(assignment);
-        await db.SaveChangesAsync();
+
+        try
+        {
+            await db.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            return Conflict("This shift assignment was changed by someone else in the meantime. Please reload and try again.");
+        }
+
         return NoContent();
     }
 }

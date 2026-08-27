@@ -128,11 +128,19 @@ export function usePlanningActions(board: ReturnType<typeof usePlanningBoard>) {
           breakMinutes: assignment.breakMinutes,
           breakStartTime: assignment.breakStartTime,
           endsNextDay: assignment.endsNextDay,
+          rowVersion: assignment.rowVersion,
         })
       }
       await board.loadDetail()
-    } catch {
-      toast.error('Schicht konnte nicht gespeichert werden.')
+    } catch (err) {
+      // issue #156: someone else changed this assignment since the grid last loaded — reload
+      // instead of leaving the grid showing a move that didn't actually apply.
+      if (axios.isAxiosError(err) && err.response?.status === 409) {
+        toast.error('Schicht wurde inzwischen von jemand anderem geändert — Ansicht aktualisiert.')
+        await board.loadDetail()
+      } else {
+        toast.error('Schicht konnte nicht gespeichert werden.')
+      }
     }
   }
 

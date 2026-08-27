@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using ShiftPlanner.Infrastructure.Persistence;
@@ -11,9 +12,11 @@ using ShiftPlanner.Infrastructure.Persistence;
 namespace ShiftPlanner.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260827153358_ShiftAssignmentXminConcurrency")]
+    partial class ShiftAssignmentXminConcurrency
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -539,9 +542,6 @@ namespace ShiftPlanner.Infrastructure.Persistence.Migrations
 
                     b.Property<TimeOnly>("EndTime")
                         .HasColumnType("time without time zone");
-
-                    b.Property<bool>("EndsNextDay")
-                        .HasColumnType("boolean");
 
                     b.Property<int?>("MaxStaffing")
                         .HasColumnType("integer");

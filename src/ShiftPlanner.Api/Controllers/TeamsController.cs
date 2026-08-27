@@ -20,13 +20,21 @@ public record CreateTeamRequest([Required, MaxLength(200)] string Name, Bundesla
 public class TeamsController(ApplicationDbContext db) : ControllerBase
 {
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<TeamDto>>> GetAll()
+    // issue #110: optional skip/take, defaulting to unbounded (unchanged behavior) when omitted
+    // so existing callers that fetch the whole list to filter/search client-side keep working.
+    public async Task<ActionResult<IEnumerable<TeamDto>>> GetAll(int? skip, int? take)
     {
-        var teams = await db.Teams
+        if (skip < 0 || take < 0)
+            return BadRequest("'skip'/'take' must not be negative.");
+
+        IQueryable<TeamDto> query = db.Teams
             .AsNoTracking()
             .OrderBy(t => t.Name)
-            .Select(t => new TeamDto(t.Id, t.Name, t.Active, t.Bundesland))
-            .ToListAsync();
+            .Select(t => new TeamDto(t.Id, t.Name, t.Active, t.Bundesland));
+        if (skip is not null) query = query.Skip(skip.Value);
+        if (take is not null) query = query.Take(take.Value);
+
+        var teams = await query.ToListAsync();
         return Ok(teams);
     }
 

@@ -135,6 +135,16 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
                 .WithMany()
                 .HasForeignKey(x => x.ShiftTypeId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            // issue #156: maps onto Postgres's own xmin system column as the concurrency token —
+            // xmin already exists on every row, so the migration for this (ShiftAssignmentXmin
+            // Concurrency) has its generated AddColumn/DropColumn hand-edited to a no-op; Postgres
+            // rejects ALTER TABLE ADD/DROP COLUMN on a reserved system column name outright.
+            a.Property<uint>("RowVersion")
+                .HasColumnName("xmin")
+                .HasColumnType("xid")
+                .ValueGeneratedOnAddOrUpdate()
+                .IsConcurrencyToken();
         });
     }
 }

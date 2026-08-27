@@ -43,7 +43,9 @@ public class PlanningBoardController(ApplicationDbContext db) : ControllerBase
         var employees = await employeesQuery.ToListAsync();
         var employeeIds = employees.Select(e => e.Id).ToList();
 
-        var assignmentsInRange = await db.ShiftAssignments.AsNoTracking()
+        // issue #156: NOT AsNoTracking — ToAssignmentDto needs each entity's RowVersion shadow
+        // property from the ChangeTracker, which AsNoTracking never populates.
+        var assignmentsInRange = await db.ShiftAssignments
             .Where(a => employeeIds.Contains(a.EmployeeId) && a.Date >= from && a.Date <= to)
             .OrderBy(a => a.Date).ThenBy(a => a.StartTime)
             .ToListAsync();
@@ -114,7 +116,9 @@ public class PlanningBoardController(ApplicationDbContext db) : ControllerBase
         contracts.Where(c => c.EmployeeId == employeeId && c.ValidFrom <= date && (c.ValidTo is null || c.ValidTo >= date))
             .MaxBy(c => c.ValidFrom)?.HourlyRate;
 
-    private static ShiftAssignmentDto ToAssignmentDto(ShiftAssignment a, IReadOnlyList<Contract> contracts, HashSet<DateOnly> holidays)
+    // issue #156: not static — needs `db` to read the RowVersion shadow property off the tracked
+    // entity via ChangeTracker (see SchedulesController.ToAssignmentDto's identical note).
+    private ShiftAssignmentDto ToAssignmentDto(ShiftAssignment a, IReadOnlyList<Contract> contracts, HashSet<DateOnly> holidays)
     {
         var netHours = WorkingTimeCalculator.NetHours(a.StartTime, a.EndTime, a.BreakMinutes, a.EndsNextDay);
         var hourlyRate = HourlyRateOn(contracts, a.EmployeeId, a.Date);
@@ -122,7 +126,8 @@ public class PlanningBoardController(ApplicationDbContext db) : ControllerBase
         var dayOfWeek = WorkingTimeCalculator.TouchesSunday(a.Date, a.EndsNextDay) ? DayOfWeek.Sunday : a.Date.DayOfWeek;
         var timing = new ShiftTiming(a.StartTime, a.EndTime, a.BreakMinutes, a.BreakStartTime, a.EndsNextDay);
         var laborCost = WageCalculator.LaborCostWithSurcharges(timing, dayOfWeek, isHoliday, netHours, hourlyRate);
+        var rowVersion = (uint)db.Entry(a).Property("RowVersion").CurrentValue!;
         return new(a.Id, a.ScheduleId, a.EmployeeId, a.ShiftTypeId, a.Date, a.StartTime, a.EndTime, a.BreakMinutes,
-            a.BreakStartTime, netHours, laborCost, a.EndsNextDay);
+            a.BreakStartTime, netHours, laborCost, rowVersion, a.EndsNextDay);
     }
 }

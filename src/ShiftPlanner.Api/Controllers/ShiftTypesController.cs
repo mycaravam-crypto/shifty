@@ -38,14 +38,22 @@ public record UpdateShiftTypeRequest(
 public class ShiftTypesController(ApplicationDbContext db) : ControllerBase
 {
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<ShiftTypeDto>>> GetAll()
+    // issue #110: optional skip/take, defaulting to unbounded (unchanged behavior) when omitted
+    // so existing callers that fetch the whole list to filter/search client-side keep working.
+    public async Task<ActionResult<IEnumerable<ShiftTypeDto>>> GetAll(int? skip, int? take)
     {
-        var shiftTypes = await db.ShiftTypes
+        if (skip < 0 || take < 0)
+            return BadRequest("'skip'/'take' must not be negative.");
+
+        IQueryable<ShiftTypeDto> query = db.ShiftTypes
             .AsNoTracking()
             .OrderBy(s => s.StartTime)
             .Select(s => new ShiftTypeDto(s.Id, s.Name, s.StartTime, s.EndTime, s.BreakMinutes, s.Color, s.Active,
-                s.MinStaffing, s.MaxStaffing, s.EndsNextDay))
-            .ToListAsync();
+                s.MinStaffing, s.MaxStaffing, s.EndsNextDay));
+        if (skip is not null) query = query.Skip(skip.Value);
+        if (take is not null) query = query.Take(take.Value);
+
+        var shiftTypes = await query.ToListAsync();
         return Ok(shiftTypes);
     }
 

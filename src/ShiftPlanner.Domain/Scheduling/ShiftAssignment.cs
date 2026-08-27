@@ -31,4 +31,10 @@ public class ShiftAssignment
     // yet — setting it via the API would currently be meaningless (nothing reads it, and the
     // controllers still 400 on backwards times regardless of this flag).
     public bool EndsNextDay { get; set; }
+
+    // issue #156: optimistic concurrency uses Postgres's own xmin system column as the
+    // concurrency token (see ApplicationDbContext.OnModelCreating's UseXminAsConcurrencyToken) —
+    // it's an EF/Infrastructure-level shadow property (accessed via EF.Property<uint>(a, "xmin")
+    // where needed), not a CLR property here, matching how every other entity in this file has no
+    // EF Core-specific concerns leaking into Domain.
 }

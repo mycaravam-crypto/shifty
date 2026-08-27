@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import axios from 'axios'
 import { ChevronsLeft, Search } from '@lucide/vue'
 import api from '@/services/api'
 import { useToastStore } from '@/stores/toast'
@@ -178,11 +179,21 @@ const { isFocusableCell, cellAriaLabel, onCellFocus, focusedGridCellEl, onGridCe
 async function onDeleteAssignmentConfirmed() {
   if (!deletingAssignment.value) return
   try {
-    await api.delete(`/assignments/${deletingAssignment.value.id}`)
+    await api.delete(`/assignments/${deletingAssignment.value.id}`, {
+      params: { rowVersion: deletingAssignment.value.rowVersion },
+    })
     toast.success('Schicht gelöscht.')
     await loadDetail()
-  } catch {
-    toast.error('Schicht konnte nicht gelöscht werden.')
+  } catch (err) {
+    // issue #156: someone else changed this assignment since the grid last loaded.
+    if (axios.isAxiosError(err) && err.response?.status === 409) {
+      toast.error(
+        'Diese Schicht wurde inzwischen von jemand anderem geändert. Ansicht aktualisiert.',
+      )
+      await loadDetail()
+    } else {
+      toast.error('Schicht konnte nicht gelöscht werden.')
+    }
   } finally {
     deletingAssignment.value = null
   }
