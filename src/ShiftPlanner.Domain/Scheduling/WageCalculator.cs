@@ -4,7 +4,9 @@ namespace ShiftPlanner.Domain.Scheduling;
 // (start/end/break) so they can't be silently transposed against each other or against the
 // decimal netHours/hourlyRate parameters at a call site — a swapped positional TimeOnly/TimeOnly
 // or decimal/decimal pair used to compile fine and silently miscalculate wages.
-public record ShiftTiming(TimeOnly Start, TimeOnly End, int BreakMinutes, TimeOnly? BreakStart);
+// issue #157: EndsNextDay defaults to false so every pre-existing call site (built before real
+// cross-midnight support existed) keeps compiling and behaving exactly as before.
+public record ShiftTiming(TimeOnly Start, TimeOnly End, int BreakMinutes, TimeOnly? BreakStart, bool EndsNextDay = false);
 
 // Single source of truth for labor cost — mirrors WorkingTimeCalculator (readme.md §14).
 // HourlyRate is optional (Contract.HourlyRate, issue #14), so cost is null when unset.
@@ -53,7 +55,7 @@ public static class WageCalculator
             return null;
 
         var regular = netHours * hourlyRate.Value;
-        var nightHours = NightOverlapHours(timing.Start, timing.End, timing.BreakMinutes, timing.BreakStart);
+        var nightHours = NightOverlapHours(timing.Start, timing.End, timing.BreakMinutes, timing.BreakStart, timing.EndsNextDay);
         var night = nightHours * hourlyRate.Value * NightSurchargeRate;
         var holiday = isHoliday ? regular * HolidaySurchargeRate : 0m;
         var sunday = !isHoliday && dayOfWeek == DayOfWeek.Sunday ? regular * SundaySurchargeRate : 0m;
@@ -61,27 +63,51 @@ public static class WageCalculator
         return new LaborCostBreakdown(regular, night, sunday, holiday);
     }
 
-    private static decimal NightOverlapHours(TimeOnly start, TimeOnly end, int breakMinutes, TimeOnly? breakStartTime)
+    // issue #157: endsNextDay puts EndTime (and possibly BreakStartTime) on the calendar day
+    // after Start — NightMinutesIn below already generalizes to a >24h absolute range, so this
+    // just needs to resolve every clock time onto the right side of that range first.
+    private static decimal NightOverlapHours(TimeOnly start, TimeOnly end, int breakMinutes, TimeOnly? breakStartTime, bool endsNextDay)
     {
         var startMinute = start.Hour * 60 + start.Minute;
-        var endMinute = end.Hour * 60 + end.Minute;
-        var shiftNightMinutes = OverlapMinutes(startMinute, endMinute, NightStartMinute, 24 * 60)
-            + OverlapMinutes(startMinute, endMinute, 0, NightEndMinute);
+        var endMinute = ResolveMinute(end, startMinute, endsNextDay);
+        var shiftNightMinutes = NightMinutesIn(startMinute, endMinute);
 
         if (breakStartTime is null)
             return shiftNightMinutes / 60m;
 
         // Precise path: subtract the break's own overlap with the night window from the raw
         // shift/night-window overlap, rather than leaving it folded into shiftNightMinutes above.
-        // Same same-day assumption as the shift's own StartTime/EndTime (issue #11 already
-        // rejects cross-midnight shifts, so a break within one never wraps past midnight either).
-        var breakStartMinute = breakStartTime.Value.Hour * 60 + breakStartTime.Value.Minute;
-        var breakEndMinute = Math.Min(breakStartMinute + breakMinutes, 24 * 60);
-        var breakNightMinutes = OverlapMinutes(breakStartMinute, breakEndMinute, NightStartMinute, 24 * 60)
-            + OverlapMinutes(breakStartMinute, breakEndMinute, 0, NightEndMinute);
+        // issue #157: BreakStartTime carries no day of its own — a clock value at or before
+        // StartTime is assumed to fall on the day the shift ENDS (e.g. a 22:00->06:00 shift with
+        // BreakStartTime 01:00 means 01:00 the next morning, not 01:00 before the shift even
+        // starts), same resolution ResolveMinute already applies to EndTime.
+        var breakStartMinute = ResolveMinute(breakStartTime.Value, startMinute, endsNextDay);
+        var breakEndMinute = Math.Min(breakStartMinute + breakMinutes, endsNextDay ? endMinute : 24 * 60);
+        var breakNightMinutes = NightMinutesIn(breakStartMinute, breakEndMinute);
 
         return Math.Max(0, shiftNightMinutes - breakNightMinutes) / 60m;
     }
+
+    // A clock time <= the shift's own start minute is assumed to fall on the following calendar
+    // day when the shift crosses midnight (true for EndTime by construction — IsValidShiftTiming
+    // requires End < Start whenever EndsNextDay — and applied the same way to BreakStartTime).
+    private static int ResolveMinute(TimeOnly time, int shiftStartMinute, bool endsNextDay)
+    {
+        var minute = time.Hour * 60 + time.Minute;
+        return endsNextDay && minute <= shiftStartMinute ? minute + 24 * 60 : minute;
+    }
+
+    // The 20:00-06:00 night window recurs every calendar day; a shift/break can span at most one
+    // midnight (endsNextDay is exactly one crossing, never more), so its absolute minute range
+    // never reaches past the second day's own night window — these three fixed intervals cover
+    // every case: today's early morning, the (contiguous, since 24:00 day N = 00:00 day N+1)
+    // 20:00-day-N -> 06:00-day-N+1 block, and — only reachable by a shift starting very late and
+    // running nearly a full 24h — day N+1's own evening. Reduces to the exact pre-#157 two-term
+    // formula whenever endMinute stays under 24*60 (every same-day, non-crossing shift).
+    private static int NightMinutesIn(int startMinute, int endMinute) =>
+        OverlapMinutes(startMinute, endMinute, 0, NightEndMinute)
+        + OverlapMinutes(startMinute, endMinute, NightStartMinute, 24 * 60 + NightEndMinute)
+        + OverlapMinutes(startMinute, endMinute, 24 * 60 + NightStartMinute, 48 * 60);
 
     private static int OverlapMinutes(int aStart, int aEnd, int bStart, int bEnd) =>
         Math.Max(0, Math.Min(aEnd, bEnd) - Math.Max(aStart, bStart));

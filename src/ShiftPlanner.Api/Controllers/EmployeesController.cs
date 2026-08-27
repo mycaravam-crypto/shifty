@@ -152,7 +152,7 @@ public class EmployeesController(ApplicationDbContext db) : ControllerBase
         return Ok(employee.EligibleShiftTypes
             .OrderBy(s => s.StartTime)
             .Select(s => new ShiftTypeDto(s.Id, s.Name, s.StartTime, s.EndTime, s.BreakMinutes, s.Color, s.Active,
-                s.MinStaffing, s.MaxStaffing)));
+                s.MinStaffing, s.MaxStaffing, s.EndsNextDay)));
     }
 
     [HttpPut("{id:guid}/eligible-shift-types")]

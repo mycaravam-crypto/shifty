@@ -103,12 +103,14 @@ public class DashboardController(ApplicationDbContext db) : ControllerBase
         // when TKey is a nullable value type. A non-nullable Dictionary<Bundesland, ...> for
         // actual states plus a separate set for the nationwide/null case avoids that.
         var bundeslandByEmployee = employees.ToDictionary(e => e.Id, e => e.Team?.Bundesland);
-        var nationwideHolidays = GermanPublicHolidays.InRange(prevFrom, periodTo).Select(h => h.Date).ToHashSet();
+        // issue #157: +1 day past periodTo — same reasoning as SchedulesController.GetById's
+        // holiday lookup (an EndsNextDay assignment on the last day touches the day after it).
+        var nationwideHolidays = GermanPublicHolidays.InRange(prevFrom, periodTo.AddDays(1)).Select(h => h.Date).ToHashSet();
         var holidaysByBundesland = new Dictionary<Bundesland, HashSet<DateOnly>>();
         foreach (var land in bundeslandByEmployee.Values.Distinct())
         {
             if (land is { } b)
-                holidaysByBundesland[b] = GermanPublicHolidays.InRange(prevFrom, periodTo, b).Select(h => h.Date).ToHashSet();
+                holidaysByBundesland[b] = GermanPublicHolidays.InRange(prevFrom, periodTo.AddDays(1), b).Select(h => h.Date).ToHashSet();
         }
 
         bool InScope(ShiftAssignment a) =>

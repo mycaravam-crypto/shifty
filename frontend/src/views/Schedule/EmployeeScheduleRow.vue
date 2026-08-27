@@ -143,6 +143,8 @@ function barWidth(employeeId: string): number {
         </div>
         <div class="font-mono text-[11px] text-slate-500">
           {{ a.startTime.slice(0, 5) }}–{{ a.endTime.slice(0, 5) }}
+          <!-- issue #157: marks an overnight shift whose EndTime falls on the next calendar day. -->
+          <span v-if="a.endsNextDay" title="Endet am nächsten Tag">(+1)</span>
         </div>
       </div>
     </td>

@@ -36,7 +36,7 @@ public static class ContractValidator
 
             var expectedHours = WorkingTimeCalculator.ExpectedHours(
                 contracts, absences ?? [], group.Key, schedule.StartDate, schedule.EndDate);
-            var plannedHours = group.Sum(a => WorkingTimeCalculator.NetHours(a.StartTime, a.EndTime, a.BreakMinutes));
+            var plannedHours = group.Sum(a => WorkingTimeCalculator.NetHours(a.StartTime, a.EndTime, a.BreakMinutes, a.EndsNextDay));
             if (plannedHours > expectedHours)
             {
                 result.Errors.Add(new ValidationIssue(

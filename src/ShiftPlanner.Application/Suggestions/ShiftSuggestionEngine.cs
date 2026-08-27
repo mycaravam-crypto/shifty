@@ -86,7 +86,7 @@ public static class ShiftSuggestionEngine
     public static List<ShiftSuggestion> Suggest(DateOnly date, ShiftType shiftType, SchedulingContext context)
     {
         var hypotheticalStart = date.ToDateTime(shiftType.StartTime);
-        var hypotheticalEnd = date.ToDateTime(shiftType.EndTime);
+        var hypotheticalEnd = date.ToDateTime(shiftType.EndTime).AddDays(shiftType.EndsNextDay ? 1 : 0);
 
         var results = new List<ShiftSuggestion>();
 
@@ -145,11 +145,10 @@ public static class ShiftSuggestionEngine
         IReadOnlyList<ShiftAssignment> employeeHistory, DateTime hypotheticalStart, DateTime hypotheticalEnd)
     {
         var neighbours = employeeHistory
-            // cross-midnight shifts unsupported — issue #11; centralized via
-            // WorkingTimeCalculator.IsValidShiftTiming (issue #101), same as
-            // RestTimeValidator's identical filter — no behavior change.
-            .Where(a => WorkingTimeCalculator.IsValidShiftTiming(a.StartTime, a.EndTime))
-            .Select(a => (Start: a.Date.ToDateTime(a.StartTime), End: a.Date.ToDateTime(a.EndTime)))
+            // issue #157: RestTimeValidator's identical filter/EndsNextDay handling — see its file.
+            .Where(a => WorkingTimeCalculator.IsValidShiftTiming(a.StartTime, a.EndTime, a.EndsNextDay))
+            .Select(a => (Start: a.Date.ToDateTime(a.StartTime),
+                End: a.Date.ToDateTime(a.EndTime).AddDays(a.EndsNextDay ? 1 : 0)))
             .Append((Start: hypotheticalStart, End: hypotheticalEnd))
             .OrderBy(x => x.Start)
             .ToList();
@@ -178,6 +177,10 @@ public static class ShiftSuggestionEngine
     }
 
     // ShiftOverlapValidator only Warns about a second shift the same day — scored, not excluding.
+    // ponytail: still same-Date-only, unlike ShiftOverlapValidator's own issue #157 redesign (an
+    // EndsNextDay shift bleeding into `date`'s morning isn't caught here) — this is a soft scoring
+    // nudge, not a hard gate, so the imprecision is low-stakes; add EndsNextDay awareness here too
+    // if a real gap in suggestion quality shows up.
     internal static RuleOutcome EvaluateSameDayOverlap(IReadOnlyList<ShiftAssignment> employeeHistory, DateOnly date) =>
         employeeHistory.Any(a => a.Date == date)
             ? RuleOutcome.Scored(AlreadyAssignedPenalty, SuggestionReasonCode.AlreadyAssignedThatDay, "Hat an diesem Tag bereits eine Schicht.")
@@ -232,7 +235,7 @@ public static class ShiftSuggestionEngine
         var expectedHours = WorkingTimeCalculator.ExpectedHours(contracts, absences, employee.Id, scheduleStart, scheduleEnd);
         var plannedHours = scheduleAssignments
             .Where(a => a.EmployeeId == employee.Id)
-            .Sum(a => WorkingTimeCalculator.NetHours(a.StartTime, a.EndTime, a.BreakMinutes));
+            .Sum(a => WorkingTimeCalculator.NetHours(a.StartTime, a.EndTime, a.BreakMinutes, a.EndsNextDay));
 
         return plannedHours < expectedHours
             ? RuleOutcome.Scored(UnderContractTargetBonus, SuggestionReasonCode.UnderContractTarget, "Liegt aktuell unter der Vertrags-Sollstunden-Zahl.")

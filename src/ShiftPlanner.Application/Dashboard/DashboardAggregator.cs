@@ -159,14 +159,18 @@ public static class DashboardAggregator
         foreach (var a in assignments)
         {
             var contract = Contract.ActiveOn(contracts, a.EmployeeId, a.Date);
-            var netHours = WorkingTimeCalculator.NetHours(a.StartTime, a.EndTime, a.BreakMinutes);
+            var netHours = WorkingTimeCalculator.NetHours(a.StartTime, a.EndTime, a.BreakMinutes, a.EndsNextDay);
             var land = bundeslandByEmployee.GetValueOrDefault(a.EmployeeId);
-            var isHoliday = (land is { } bl ? holidaysByBundesland[bl] : nationwideHolidays).Contains(a.Date);
+            var holidayDates = land is { } bl ? holidaysByBundesland[bl] : nationwideHolidays;
+            // issue #157 (whole-shift decision): a shift touches a Sunday/holiday if either
+            // calendar day it spans does — see WorkingTimeCalculator.TouchesSunday/TouchesHoliday.
+            var isHoliday = WorkingTimeCalculator.TouchesHoliday(a.Date, a.EndsNextDay, holidayDates);
+            var dayOfWeek = WorkingTimeCalculator.TouchesSunday(a.Date, a.EndsNextDay) ? DayOfWeek.Sunday : a.Date.DayOfWeek;
             // issue #58: BreakMinutes/BreakStartTime threaded through so the night-surcharge
             // portion of the breakdown gets the same break-adjusted precision LaborCostWithSurcharges'
             // other call sites already have.
-            var timing = new ShiftTiming(a.StartTime, a.EndTime, a.BreakMinutes, a.BreakStartTime);
-            var breakdown = WageCalculator.Breakdown(timing, a.Date.DayOfWeek, isHoliday, netHours, contract?.HourlyRate);
+            var timing = new ShiftTiming(a.StartTime, a.EndTime, a.BreakMinutes, a.BreakStartTime, a.EndsNextDay);
+            var breakdown = WageCalculator.Breakdown(timing, dayOfWeek, isHoliday, netHours, contract?.HourlyRate);
             if (breakdown is not { } b)
                 continue;
             regular += b.Regular;
@@ -194,7 +198,7 @@ public static class DashboardAggregator
         {
             var expected = WorkingTimeCalculator.ExpectedHours(contracts, absences, employee.Id, from, to);
             var actual = assignments.Where(a => a.EmployeeId == employee.Id)
-                .Sum(a => WorkingTimeCalculator.NetHours(a.StartTime, a.EndTime, a.BreakMinutes));
+                .Sum(a => WorkingTimeCalculator.NetHours(a.StartTime, a.EndTime, a.BreakMinutes, a.EndsNextDay));
             var percent = expected == 0 ? 0m : Math.Round(actual * 100m / expected, 1);
             result.Add(new EmployeeUtilizationDto(
                 employee.Id, $"{employee.FirstName} {employee.LastName}", expected, actual, percent, Math.Max(0, actual - expected)));

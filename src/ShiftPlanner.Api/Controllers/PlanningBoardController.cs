@@ -70,12 +70,14 @@ public class PlanningBoardController(ApplicationDbContext db) : ControllerBase
         // set. Bundesland? can't be used as a Dictionary key directly (Dictionary throws on a
         // null key even for a nullable value type), so the nationwide/null case gets its own set.
         var bundeslandByEmployee = employees.ToDictionary(e => e.Id, e => e.Team?.Bundesland);
-        var nationwideHolidays = GermanPublicHolidays.InRange(from, to).Select(h => h.Date).ToHashSet();
+        // issue #157: +1 day past `to` — an assignment on the period's last day with EndsNextDay
+        // touches a calendar day just outside it, and TouchesHoliday needs that day in the set.
+        var nationwideHolidays = GermanPublicHolidays.InRange(from, to.AddDays(1)).Select(h => h.Date).ToHashSet();
         var holidaysByBundesland = new Dictionary<Bundesland, HashSet<DateOnly>>();
         foreach (var land in bundeslandByEmployee.Values.Distinct())
         {
             if (land is { } b)
-                holidaysByBundesland[b] = GermanPublicHolidays.InRange(from, to, b).Select(h => h.Date).ToHashSet();
+                holidaysByBundesland[b] = GermanPublicHolidays.InRange(from, to.AddDays(1), b).Select(h => h.Date).ToHashSet();
         }
         HashSet<DateOnly> HolidaysFor(Bundesland? land) =>
             land is { } b ? holidaysByBundesland[b] : nationwideHolidays;
@@ -114,11 +116,13 @@ public class PlanningBoardController(ApplicationDbContext db) : ControllerBase
 
     private static ShiftAssignmentDto ToAssignmentDto(ShiftAssignment a, IReadOnlyList<Contract> contracts, HashSet<DateOnly> holidays)
     {
-        var netHours = WorkingTimeCalculator.NetHours(a.StartTime, a.EndTime, a.BreakMinutes);
+        var netHours = WorkingTimeCalculator.NetHours(a.StartTime, a.EndTime, a.BreakMinutes, a.EndsNextDay);
         var hourlyRate = HourlyRateOn(contracts, a.EmployeeId, a.Date);
-        var timing = new ShiftTiming(a.StartTime, a.EndTime, a.BreakMinutes, a.BreakStartTime);
-        var laborCost = WageCalculator.LaborCostWithSurcharges(timing, a.Date.DayOfWeek, holidays.Contains(a.Date), netHours, hourlyRate);
+        var isHoliday = WorkingTimeCalculator.TouchesHoliday(a.Date, a.EndsNextDay, holidays);
+        var dayOfWeek = WorkingTimeCalculator.TouchesSunday(a.Date, a.EndsNextDay) ? DayOfWeek.Sunday : a.Date.DayOfWeek;
+        var timing = new ShiftTiming(a.StartTime, a.EndTime, a.BreakMinutes, a.BreakStartTime, a.EndsNextDay);
+        var laborCost = WageCalculator.LaborCostWithSurcharges(timing, dayOfWeek, isHoliday, netHours, hourlyRate);
         return new(a.Id, a.ScheduleId, a.EmployeeId, a.ShiftTypeId, a.Date, a.StartTime, a.EndTime, a.BreakMinutes,
-            a.BreakStartTime, netHours, laborCost);
+            a.BreakStartTime, netHours, laborCost, a.EndsNextDay);
     }
 }

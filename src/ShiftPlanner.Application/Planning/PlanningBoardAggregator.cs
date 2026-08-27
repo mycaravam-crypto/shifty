@@ -40,7 +40,7 @@ public static class PlanningBoardAggregator
             : WorkingTimeCalculator.ExpectedHours(employeeContracts, employeeAbsences, employeeId, from, to);
 
         var plannedHours = assignmentsInRange.Where(a => a.EmployeeId == employeeId)
-            .Sum(a => WorkingTimeCalculator.NetHours(a.StartTime, a.EndTime, a.BreakMinutes));
+            .Sum(a => WorkingTimeCalculator.NetHours(a.StartTime, a.EndTime, a.BreakMinutes, a.EndsNextDay));
 
         var balanceHours = HoursBalanceCalculator.CumulativeBalance(
             employeeId, from, priorSchedules,

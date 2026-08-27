@@ -35,7 +35,7 @@ public static class HoursBalanceCalculator
                 contracts, absences ?? [], employeeId, schedule.StartDate, schedule.EndDate);
             var actual = assignments
                 .Where(a => a.ScheduleId == schedule.Id && a.EmployeeId == employeeId)
-                .Sum(a => WorkingTimeCalculator.NetHours(a.StartTime, a.EndTime, a.BreakMinutes));
+                .Sum(a => WorkingTimeCalculator.NetHours(a.StartTime, a.EndTime, a.BreakMinutes, a.EndsNextDay));
             balance += actual - expected;
         }
         return balance;

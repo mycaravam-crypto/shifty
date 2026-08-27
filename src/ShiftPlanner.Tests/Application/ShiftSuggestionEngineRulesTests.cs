@@ -87,6 +87,29 @@ public class ShiftSuggestionEngineRulesTests
         Assert.Equal(SuggestionReasonCode.InsufficientRest, outcome.Reason!.Code);
     }
 
+    // issue #157: the history shift's real end instant is Date+EndTime pushed a day later when
+    // EndsNextDay is set — before this, its EndTime (06:00) would sort as if it ended the SAME
+    // morning it started, making the hypothetical 08:00 shift look like it had 2h of rest instead
+    // of correctly appearing to have none at all (the overnight shift would still be in progress).
+    [Fact]
+    public void EvaluateRestTime_EndsNextDayHistoryShift_RestMeasuredFromPushedEndInstant()
+    {
+        var employeeId = Guid.NewGuid();
+        var shiftType = ShiftType(new TimeOnly(8, 0), new TimeOnly(16, 0));
+        var history = new[]
+        {
+            // 22:00 on the 9th -> 06:00 on the 10th (EndsNextDay)
+            Assignment(employeeId, shiftType.Id, new DateOnly(2026, 8, 9), new TimeOnly(22, 0), new TimeOnly(6, 0), endsNextDay: true),
+        };
+        var hypotheticalStart = new DateOnly(2026, 8, 10).ToDateTime(shiftType.StartTime);
+        var hypotheticalEnd = new DateOnly(2026, 8, 10).ToDateTime(shiftType.EndTime);
+
+        var outcome = ShiftSuggestionEngine.EvaluateRestTime(history, hypotheticalStart, hypotheticalEnd);
+
+        Assert.False(outcome.Eligible);
+        Assert.Equal(SuggestionReasonCode.InsufficientRest, outcome.Reason!.Code);
+    }
+
     [Fact]
     public void EvaluateRestTime_NoAdjacentShifts_IsEligible()
     {

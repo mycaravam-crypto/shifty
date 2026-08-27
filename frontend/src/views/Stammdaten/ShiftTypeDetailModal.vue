@@ -17,6 +17,7 @@ interface ShiftType {
   active: boolean
   minStaffing: number | null
   maxStaffing: number | null
+  endsNextDay: boolean
 }
 
 const props = defineProps<{ shiftType: ShiftType }>()
@@ -34,6 +35,7 @@ const form = ref({
   active: props.shiftType.active,
   minStaffing: props.shiftType.minStaffing?.toString() ?? '',
   maxStaffing: props.shiftType.maxStaffing?.toString() ?? '',
+  endsNextDay: props.shiftType.endsNextDay,
 })
 const saving = ref(false)
 const error = ref('')
@@ -51,6 +53,7 @@ async function onSave() {
       active: form.value.active,
       minStaffing: form.value.minStaffing ? Number(form.value.minStaffing) : null,
       maxStaffing: form.value.maxStaffing ? Number(form.value.maxStaffing) : null,
+      endsNextDay: form.value.endsNextDay,
     })
     toast.success('Schichttyp gespeichert.')
     emit('updated')
@@ -107,6 +110,11 @@ async function onSave() {
       <label class="col-span-2 flex items-center gap-2 text-sm text-slate-400">
         <input v-model="form.active" type="checkbox" class="rounded border-white/10" />
         Aktiv
+      </label>
+      <!-- issue #157: lets a template represent a recurring overnight shift (e.g. 22:00-06:00) -->
+      <label class="col-span-2 flex items-center gap-2 text-sm text-slate-400">
+        <input v-model="form.endsNextDay" type="checkbox" class="rounded border-white/10" />
+        Endet am nächsten Tag (Nachtschicht)
       </label>
       <p v-if="error" class="col-span-2 text-sm text-rose-400">{{ error }}</p>
       <button

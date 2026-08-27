@@ -18,7 +18,7 @@ public record ScheduleDto(
 public record ShiftAssignmentDto(
     Guid Id, Guid ScheduleId, Guid EmployeeId, Guid ShiftTypeId,
     DateOnly Date, TimeOnly StartTime, TimeOnly EndTime, int BreakMinutes, TimeOnly? BreakStartTime,
-    decimal NetHours, decimal? LaborCost);
+    decimal NetHours, decimal? LaborCost, bool EndsNextDay);
 
 public record ScheduleDetailDto(
     Guid Id, string Name, DateOnly StartDate, DateOnly EndDate, ScheduleStatus Status,
@@ -52,11 +52,11 @@ public record CopyMonthResponse(ScheduleDto Target, int CopiedCount);
 
 public record CreateAssignmentRequest(
     Guid EmployeeId, Guid ShiftTypeId, DateOnly Date, TimeOnly StartTime, TimeOnly EndTime,
-    [Range(0, 480)] int BreakMinutes, TimeOnly? BreakStartTime = null);
+    [Range(0, 480)] int BreakMinutes, TimeOnly? BreakStartTime = null, bool EndsNextDay = false);
 
 public record UpdateAssignmentRequest(
     Guid EmployeeId, Guid ShiftTypeId, DateOnly Date, TimeOnly StartTime, TimeOnly EndTime,
-    [Range(0, 480)] int BreakMinutes, TimeOnly? BreakStartTime = null);
+    [Range(0, 480)] int BreakMinutes, TimeOnly? BreakStartTime = null, bool EndsNextDay = false);
 
 [ApiController]
 [Route("api")]
@@ -66,13 +66,19 @@ public class SchedulesController(ApplicationDbContext db) : ControllerBase
     private static readonly Func<Schedule, ScheduleDto> ToDto =
         s => new ScheduleDto(s.Id, s.Name, s.StartDate, s.EndDate, s.Status, s.PublishedAt, s.PublishedBy);
 
-    private static ShiftAssignmentDto ToAssignmentDto(ShiftAssignment a, decimal? hourlyRate, bool isHoliday)
+    // issue #157 (whole-shift decision): `holidayDates` is the caller's own resolved set for this
+    // assignment's employee/Bundesland — takes the whole set rather than a pre-resolved isHoliday
+    // bool now, since a cross-midnight shift needs to check both the start day and (when
+    // EndsNextDay) the day after via WorkingTimeCalculator.TouchesHoliday/TouchesSunday.
+    private static ShiftAssignmentDto ToAssignmentDto(ShiftAssignment a, decimal? hourlyRate, IReadOnlySet<DateOnly> holidayDates)
     {
-        var netHours = WorkingTimeCalculator.NetHours(a.StartTime, a.EndTime, a.BreakMinutes);
-        var timing = new ShiftTiming(a.StartTime, a.EndTime, a.BreakMinutes, a.BreakStartTime);
-        var laborCost = WageCalculator.LaborCostWithSurcharges(timing, a.Date.DayOfWeek, isHoliday, netHours, hourlyRate);
+        var netHours = WorkingTimeCalculator.NetHours(a.StartTime, a.EndTime, a.BreakMinutes, a.EndsNextDay);
+        var isHoliday = WorkingTimeCalculator.TouchesHoliday(a.Date, a.EndsNextDay, holidayDates);
+        var dayOfWeek = WorkingTimeCalculator.TouchesSunday(a.Date, a.EndsNextDay) ? DayOfWeek.Sunday : a.Date.DayOfWeek;
+        var timing = new ShiftTiming(a.StartTime, a.EndTime, a.BreakMinutes, a.BreakStartTime, a.EndsNextDay);
+        var laborCost = WageCalculator.LaborCostWithSurcharges(timing, dayOfWeek, isHoliday, netHours, hourlyRate);
         return new(a.Id, a.ScheduleId, a.EmployeeId, a.ShiftTypeId, a.Date, a.StartTime, a.EndTime, a.BreakMinutes, a.BreakStartTime,
-            netHours, laborCost);
+            netHours, laborCost, a.EndsNextDay);
     }
 
     // issue #14: the contract valid on the assignment's own date, not the schedule's start —
@@ -117,13 +123,16 @@ public class SchedulesController(ApplicationDbContext db) : ControllerBase
         var bundeslandByEmployee = await db.Employees.AsNoTracking().Include(e => e.Team)
             .Where(e => employeeIds.Contains(e.Id))
             .ToDictionaryAsync(e => e.Id, e => e.Team?.Bundesland);
-        var nationwideHolidays = GermanPublicHolidays.InRange(schedule.StartDate, schedule.EndDate)
+        // issue #157: +1 day past the schedule's own end — an assignment on the schedule's last
+        // day with EndsNextDay touches a calendar day just outside the schedule's own span, and
+        // TouchesHoliday needs that day in the set to catch a holiday landing on it.
+        var nationwideHolidays = GermanPublicHolidays.InRange(schedule.StartDate, schedule.EndDate.AddDays(1))
             .Select(h => h.Date).ToHashSet();
         var holidaysByBundesland = new Dictionary<Bundesland, HashSet<DateOnly>>();
         foreach (var land in bundeslandByEmployee.Values.Distinct())
         {
             if (land is { } b)
-                holidaysByBundesland[b] = GermanPublicHolidays.InRange(schedule.StartDate, schedule.EndDate, b)
+                holidaysByBundesland[b] = GermanPublicHolidays.InRange(schedule.StartDate, schedule.EndDate.AddDays(1), b)
                     .Select(h => h.Date).ToHashSet();
         }
         HashSet<DateOnly> HolidaysFor(Bundesland? land) =>
@@ -132,7 +141,7 @@ public class SchedulesController(ApplicationDbContext db) : ControllerBase
         return Ok(new ScheduleDetailDto(schedule.Id, schedule.Name, schedule.StartDate, schedule.EndDate,
             schedule.Status, schedule.PublishedAt, schedule.PublishedBy,
             assignments.Select(a => ToAssignmentDto(a, HourlyRateOn(contracts, a.EmployeeId, a.Date),
-                HolidaysFor(bundeslandByEmployee.GetValueOrDefault(a.EmployeeId)).Contains(a.Date))).ToList()));
+                HolidaysFor(bundeslandByEmployee.GetValueOrDefault(a.EmployeeId)))).ToList()));
     }
 
     [HttpPost("schedules")]
@@ -331,6 +340,7 @@ public class SchedulesController(ApplicationDbContext db) : ControllerBase
                 EndTime = a.EndTime,
                 BreakMinutes = a.BreakMinutes,
                 BreakStartTime = a.BreakStartTime,
+                EndsNextDay = a.EndsNextDay,
             });
         }
 
@@ -498,6 +508,7 @@ public class SchedulesController(ApplicationDbContext db) : ControllerBase
                 StartTime = shiftType.StartTime,
                 EndTime = shiftType.EndTime,
                 BreakMinutes = shiftType.BreakMinutes,
+                EndsNextDay = shiftType.EndsNextDay,
             });
         }
 
@@ -506,9 +517,10 @@ public class SchedulesController(ApplicationDbContext db) : ControllerBase
 
         var employeeIds = created.Select(a => a.EmployeeId).Distinct().ToList();
         var contracts = await db.Contracts.Where(c => employeeIds.Contains(c.EmployeeId)).ToListAsync();
-        var holidayDates = GermanPublicHolidays.InRange(schedule.StartDate, schedule.EndDate).Select(h => h.Date).ToHashSet();
+        // issue #157: +1 day, same reasoning as GetById's holiday lookup above.
+        var holidayDates = GermanPublicHolidays.InRange(schedule.StartDate, schedule.EndDate.AddDays(1)).Select(h => h.Date).ToHashSet();
 
-        return Ok(created.Select(a => ToAssignmentDto(a, HourlyRateOn(contracts, a.EmployeeId, a.Date), holidayDates.Contains(a.Date))));
+        return Ok(created.Select(a => ToAssignmentDto(a, HourlyRateOn(contracts, a.EmployeeId, a.Date), holidayDates)));
     }
 
     [HttpPost("schedules/{id:guid}/assignments")]
@@ -538,8 +550,8 @@ public class SchedulesController(ApplicationDbContext db) : ControllerBase
         if (!await db.ShiftTypes.AnyAsync(s => s.Id == request.ShiftTypeId))
             return BadRequest($"Shift type '{request.ShiftTypeId}' does not exist.");
 
-        if (!WorkingTimeCalculator.IsValidShiftTiming(request.StartTime, request.EndTime))
-            return BadRequest("Cross-midnight shift assignments are not supported (issue #11); EndTime must be after StartTime.");
+        if (!WorkingTimeCalculator.IsValidShiftTiming(request.StartTime, request.EndTime, request.EndsNextDay))
+            return BadRequest("EndTime must be after StartTime, or strictly before it with EndsNextDay set (issue #157).");
 
         var assignment = new ShiftAssignment
         {
@@ -551,7 +563,8 @@ public class SchedulesController(ApplicationDbContext db) : ControllerBase
             StartTime = request.StartTime,
             EndTime = request.EndTime,
             BreakMinutes = request.BreakMinutes,
-            BreakStartTime = request.BreakStartTime
+            BreakStartTime = request.BreakStartTime,
+            EndsNextDay = request.EndsNextDay
         };
         db.ShiftAssignments.Add(assignment);
         await db.SaveChangesAsync();
@@ -562,8 +575,10 @@ public class SchedulesController(ApplicationDbContext db) : ControllerBase
             .OrderByDescending(c => c.ValidFrom)
             .FirstOrDefaultAsync();
 
-        var isHoliday = GermanPublicHolidays.InRange(assignment.Date, assignment.Date, employee.Team?.Bundesland).Count > 0;
-        return CreatedAtAction(nameof(GetById), new { id }, ToAssignmentDto(assignment, contract?.HourlyRate, isHoliday));
+        // issue #157: the +1-day end of range covers EndsNextDay touching the day after Date.
+        var holidayDates = GermanPublicHolidays.InRange(assignment.Date, assignment.Date.AddDays(1), employee.Team?.Bundesland)
+            .Select(h => h.Date).ToHashSet();
+        return CreatedAtAction(nameof(GetById), new { id }, ToAssignmentDto(assignment, contract?.HourlyRate, holidayDates));
     }
 
     [HttpPut("assignments/{id:guid}")]
@@ -590,8 +605,8 @@ public class SchedulesController(ApplicationDbContext db) : ControllerBase
         if (!await db.ShiftTypes.AnyAsync(s => s.Id == request.ShiftTypeId))
             return BadRequest($"Shift type '{request.ShiftTypeId}' does not exist.");
 
-        if (!WorkingTimeCalculator.IsValidShiftTiming(request.StartTime, request.EndTime))
-            return BadRequest("Cross-midnight shift assignments are not supported (issue #11); EndTime must be after StartTime.");
+        if (!WorkingTimeCalculator.IsValidShiftTiming(request.StartTime, request.EndTime, request.EndsNextDay))
+            return BadRequest("EndTime must be after StartTime, or strictly before it with EndsNextDay set (issue #157).");
 
         assignment.EmployeeId = request.EmployeeId;
         assignment.ShiftTypeId = request.ShiftTypeId;
@@ -600,6 +615,7 @@ public class SchedulesController(ApplicationDbContext db) : ControllerBase
         assignment.EndTime = request.EndTime;
         assignment.BreakMinutes = request.BreakMinutes;
         assignment.BreakStartTime = request.BreakStartTime;
+        assignment.EndsNextDay = request.EndsNextDay;
         await db.SaveChangesAsync();
 
         return NoContent();

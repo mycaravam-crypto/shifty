@@ -13,17 +13,17 @@ public static class RestTimeValidator
         foreach (var group in assignments.GroupBy(a => a.EmployeeId))
         {
             var ordered = group
-                // cross-midnight shifts unsupported — issue #11; centralized via
-                // WorkingTimeCalculator.IsValidShiftTiming (issue #101) for consistency with
-                // ShiftSuggestionEngine's identical filter and the controller-level rejection —
-                // no behavior change here, this is the exact same TimeOnly comparison.
-                .Where(a => WorkingTimeCalculator.IsValidShiftTiming(a.StartTime, a.EndTime))
+                // issue #157: EndsNextDay rows are now structurally valid (not filtered out as
+                // malformed) — this still guards against genuinely-corrupted data via the same
+                // WorkingTimeCalculator.IsValidShiftTiming check, just endsNextDay-aware.
+                .Where(a => WorkingTimeCalculator.IsValidShiftTiming(a.StartTime, a.EndTime, a.EndsNextDay))
                 .OrderBy(a => a.Date).ThenBy(a => a.StartTime)
                 .ToList();
 
             for (var i = 1; i < ordered.Count; i++)
             {
-                var prevEnd = ordered[i - 1].Date.ToDateTime(ordered[i - 1].EndTime);
+                var prevEnd = ordered[i - 1].Date.ToDateTime(ordered[i - 1].EndTime)
+                    .AddDays(ordered[i - 1].EndsNextDay ? 1 : 0);
                 var nextStart = ordered[i].Date.ToDateTime(ordered[i].StartTime);
                 var rest = nextStart - prevEnd;
                 if (rest >= TimeSpan.Zero && rest < TimeSpan.FromHours(MinRestHours))
