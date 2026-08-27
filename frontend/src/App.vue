@@ -16,5 +16,7 @@ const route = useRoute()
     <router-view />
   </AppShell>
   <ToastContainer />
-  <span class="fixed bottom-2 right-3 text-[11px] text-slate-600 select-none">v{{ version }}</span>
+  <span class="fixed bottom-2 right-3 text-[11px] text-slate-600 select-none print:hidden"
+    >v{{ version }}</span
+  >
 </template>

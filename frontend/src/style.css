@@ -37,3 +37,15 @@ body {
   backdrop-filter: blur(12px);
   border: 1px solid rgba(255, 255, 255, 0.08);
 }
+
+/* The dark theme is screen-only — printed output (PDF export, SchedulePrintSheet.vue) starts
+   from a plain white page regardless of whether the browser's own "print background graphics"
+   option is on, since relying on that default being off isn't something we control. */
+@media print {
+  html,
+  body {
+    background: #fff !important;
+    background-image: none !important;
+    color: #111827 !important;
+  }
+}

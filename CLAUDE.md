@@ -70,8 +70,11 @@ came in afterward — #110 (pagination on the four `GetAll` list endpoints), #15
 on the data-heaviest endpoints), #156 (optimistic concurrency control on ShiftAssignment writes),
 and #157 (turning issue #81's cross-midnight design decision into a real feature — whole-shift,
 not pro-rated, Sunday/holiday surcharge, per a direct decision on that exact question) are all now
-built too — see below for each. Only #61 (verify the compose stack against a real deployment —
-needs actual VPS access this environment doesn't have) remains open.
+built too — see below for each. The PDF export (originally landed with no issue filed) was then
+redesigned end-to-end (again no issue filed, requested directly as a usability follow-up) — a
+dedicated print-only layout replacing the old approach of just toggling `print:` classes on the
+same dark, glassy interactive grid — see below. Only #61 (verify the compose stack against a real
+deployment — needs actual VPS access this environment doesn't have) remains open.
 What's built:
 
 - **Backend** (`src/`): 4-project skeleton (Domain → Application → Infrastructure → Api)
@@ -762,16 +765,59 @@ What's built:
     confirmed `Escape` closes the resulting `ShiftAssignmentModal`.
   - **PDF export** (new Phase 5 feature, no issue filed) — "PDF exportieren" in
     `ScheduleView.vue`'s header (all employees) and a small printer icon per employee row (that
-    employee only) both just call the browser's native `window.print()`, scoped with a
-    `print:hidden`/`print:` Tailwind media-print stylesheet rather than a PDF-generation
-    dependency — no library added. `printEmployeeId` (unset for "all", set for a single row)
-    hides non-matching `<tr>`s via `print:hidden`; the toolbar, palette, search/filter row,
-    validation panel, and sidebar (`components/AppShell.vue`) are all `print:hidden` too, and a
-    scoped `@page { size: landscape }` block fits a month's ~30 day columns on the page. Users
-    save the resulting print dialog as PDF themselves (every major browser's print dialog offers
-    "Save as PDF" natively) — there's no server-side PDF generation. Verified via
-    `vue-tsc -b`/`vite build` clean; not clicked through in an actual browser print preview (same
-    Playwright-install gap as the rest of this app's frontend work).
+    employee only) both just call the browser's native `window.print()` rather than a
+    PDF-generation dependency — no library added, users save the resulting print dialog as PDF
+    themselves (every major browser's print dialog offers "Save as PDF" natively). Originally
+    implemented by toggling `print:` Tailwind classes on the same interactive grid — **redesigned
+    below** once that stopped fitting well and reading well on paper.
+  - **PDF export redesign** (no issue filed, requested directly — "doesn't fit well on one page,
+    style it smarter, make it valuable for a member") — the original approach reused the
+    interactive Dienstplan grid for print, just hiding non-matching rows/toolbar chrome via
+    `print:` classes; three real problems fell out of that once looked at closely rather than
+    guessed at: the grid's dark theme (`.glass` panels, `#0b0d13` body, white text) printed
+    as-is with no light-mode override, `body`'s own background had no print override at all so it
+    bled through print unless the browser's "print background graphics" happened to be off, and a
+    single employee's export was still a one-row slice of the same cramped multi-employee table —
+    sparse, tiny chip cells, no real value to a member trying to check "when do I work this
+    week." Fix was a completely separate, print-only component,
+    `views/Schedule/SchedulePrintSheet.vue` (`hidden print:block`, rendered nothing on screen),
+    with its own light/ink-friendly CSS sharing nothing from the dark theme — `PlanningGrid.vue`'s
+    wrapper became unconditionally `print:hidden` instead of fighting sticky positioning/shadows
+    with print overrides (removed now-dead `print:static`/`print:shadow-none` classes and the
+    `printEmployeeId`-driven per-row `print:hidden` toggle that came with it, both now redundant
+    once the whole grid is hidden), and `style.css` gained a global
+    `@media print { html, body { background: #fff !important; ... } }` override so the page starts
+    from white paper regardless of the browser's background-graphics setting. Two layouts inside
+    the one component, chosen by whether `printEmployeeId` is set:
+    - **Single employee** (the actual "valuable for a member" ask): a plain day-by-day list —
+      full weekday name, full date (with a "Feiertag" tag), the shift(s) that day as
+      `Name · Start–End`, and net hours — always all 7 days of the displayed week, so a day off
+      shows as plainly as a worked one ("Frei", or "Abwesend" when `isAbsentOn` — issue #17's
+      Absence data — covers it). A summary footer below: hours in the printed period (summed from
+      exactly the displayed days, a new `periodNetHours` local to this component — distinct from
+      the existing `netHoursFor`/`targetHoursFor`/`carriedOverFor` it also shows, which (matching
+      the interactive row they're read from, unchanged) are the whole month's Ist/Soll/Übertrag
+      regardless of which week is being printed, labeled "(Monat)" so the distinction is explicit
+      rather than silently conflating the two).
+    - **Whole team**: a compact, still-light table — same 7-column shape as the interactive grid,
+      just print-styled (thin borders, 8.5–9.5pt text, a "Feiertag" tag instead of the on-screen
+      amber dot, weekend columns lightly shaded) so it reliably fits the week view's 7 columns on
+      one landscape page; a team large enough to need more rows than one page holds paginates
+      naturally (`break-inside: avoid` per employee row, the browser's native `<thead>` repeat on
+      each subsequent page) rather than being forced onto one page at the cost of legibility.
+    Both layouts share a header (schedule name, period, a status badge reusing
+    `PlanningToolbar.vue`'s own Entwurf/Veröffentlicht/Archiviert labels, a generated-at
+    timestamp) and a footer. `PlanningToolbar.vue`'s own on-screen header row (the `h1`, month
+    label, status badge — previously not `print:hidden` at all, so it doubled up against the new
+    sheet's own header) and `App.vue`'s bottom-right version tag are now both `print:hidden` too.
+    Verified with a scratch Playwright script (this session's Chromium install worked fine, no
+    repeat of the install gaps noted elsewhere in this file) against the real dev server with
+    `/api/*` mocked: both the single-employee and whole-team print layouts render correctly under
+    print media emulation (light background, correct day/shift/hours content, holiday tag, status
+    badge) with zero console errors, `page.pdf()` confirms both render as a single landscape page
+    (792×612pt `MediaBox`) for realistic data, and a stress test (20 employees, some with two
+    shifts on one day) confirmed the team table paginates cleanly rather than overflowing or
+    clipping. `npm run lint`/`npm run build` (`vue-tsc -b` + `vite build`) both clean.
   - `views/Dashboard/DashboardView.vue` (issues #30/#31, frontend-only — the backend read model
     from issue #29 needed no changes) — new `/dashboard` route, reachable via a new "Übersicht"
     nav entry (placed first, as the landing overview). One `GET /dashboard` fetch per

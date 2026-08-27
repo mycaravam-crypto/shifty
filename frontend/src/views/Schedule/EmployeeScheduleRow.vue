@@ -14,7 +14,6 @@ const props = defineProps<{
   isWeekend: (d: Date) => boolean
   dragOverKey: string | null
   highlightKey: string | null
-  printEmployeeId: string | null
   shiftTypeById: (id: string) => ShiftType | undefined
   assignmentsFor: (employeeId: string, dateIso: string) => Assignment[]
   targetHoursFor: (employeeId: string) => number | null
@@ -47,13 +46,10 @@ function barWidth(employeeId: string): number {
 <template>
   <tr
     class="border-b border-white/5 last:border-0"
-    :class="{
-      'print:hidden': printEmployeeId && printEmployeeId !== employee.id,
-      'bg-blue-500/10': highlightKey === employee.id,
-    }"
+    :class="{ 'bg-blue-500/10': highlightKey === employee.id }"
   >
     <td
-      class="px-4 py-3 align-top sticky left-0 z-10 shadow-[4px_0_8px_-4px_rgba(0,0,0,0.5)] print:static print:shadow-none"
+      class="px-4 py-3 align-top sticky left-0 z-10 shadow-[4px_0_8px_-4px_rgba(0,0,0,0.5)]"
       :style="{ backgroundColor: highlightKey === employee.id ? '#161d2f' : '#11141c' }"
     >
       <div class="flex items-center gap-1.5">
