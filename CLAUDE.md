@@ -52,16 +52,21 @@ Archived lifecycle server-side, flagged by that review as the single most impact
 gap in the app) is now built too. Issue #79 then followed up on #68 by surfacing that lifecycle
 in the UI itself — a Draft/Published/Archived status badge, a "Veröffentlichen"/"Archivieren"
 action pair, and a read-only Dienstplan grid once a schedule isn't Draft — see below. Of the
-batch's remaining issues, several are still open: #61 (verify the compose stack against a real
-deployment — needs actual VPS access this environment doesn't have), #69 (model staffing demand
-independently of assignments), #70 (centralize Sollstunden/contract-segment handling), #72
-(a Planning-Board read model), #73 (decompose `ScheduleView.vue`), #74 (split the Dienstplan
-into week/month views), #75 (integration/E2E/concurrency test coverage), #77 (inline staffing
-coverage — depends on #69), #80 (touch targets/keyboard nav), and #81 (cross-midnight shifts,
-explicitly flagged as needing its own separate decision). A German in-app user-help system (no
+batch's remaining issues, #69 (staffing demand modeling), #70 (Sollstunden/contract-segment
+handling), #72 (Planning-Board read model), #73 (decompose `ScheduleView.vue`), #74 (week/month
+split), #75 (integration/E2E/concurrency test coverage), #77 (inline staffing coverage), #80
+(touch targets/keyboard nav), and #81 (cross-midnight shifts — a design decision only, not full
+support, see its own entry below) are now all built too — see below for each. Only #61 remains
+open (verify the compose stack against a real deployment — needs actual VPS access this
+environment doesn't have). #80's GitHub issue itself is still technically open since the PR that
+implemented it didn't use a closing keyword — treat it as done, not open, per its own entry below.
+A German in-app user-help system (no
 issue filed, requested directly for an upcoming stakeholder demo) has also since landed — a
 global "Hilfe" entry point in `AppShell.vue` opening a topic-based explanation modal, covering
-every view non-technically for people testing the app for the first time — see below.
+every view non-technically for people testing the app for the first time — see below. Issue
+#79's Draft-only edit lock was then relaxed (no issue filed, requested directly): a Published
+schedule stays editable now too, since shifts get switched in reality after publishing — only
+Archived freezes writes — see below.
 What's built:
 
 - **Backend** (`src/`): 4-project skeleton (Domain → Application → Infrastructure → Api)
@@ -1187,7 +1192,257 @@ What's built:
     clicking an assignment chip opens the modal titled "Schicht ansehen" with no Save/Delete
     buttons visible; and confirming "Archivieren" flips the badge to "Archiviert" — no console
     errors beyond the pre-existing benign 401 `stores/auth.ts`'s silent-refresh-on-boot already
-    produces elsewhere in this file.
+    produces elsewhere in this file. **Superseded by the entry directly below** — the grid is no
+    longer read-only once Published, only once Archived.
+- **Model staffing demand independently of assignments** ([issue #69](https://github.com/mycaravam-crypto/shifty/issues/69))
+    — `ShiftType.MinStaffing`/`MaxStaffing` and `StaffingValidator` only ever grouped *existing*
+    `ShiftAssignment` rows, so a `(ShiftType, Date)` slot nobody scheduled anyone for produced no
+    signal at all — a fully unstaffed day was invisible to both the validator and the dashboard's
+    coverage numbers. New Domain entity `StaffingRequirement`
+    (`Domain/Scheduling/StaffingRequirement.cs`: `TeamId` nullable-for-all-teams, `ShiftTypeId`,
+    `DayOfWeek`, `MinimumStaffing`) models this as a **weekly pattern**, not per-date rows, so a
+    recurring need ("always ≥2 on Frühschicht on Mondays") doesn't need years of seeded dates.
+    `StaffingRequirementsController` (GET/GET-by-id/POST/PUT/DELETE, `AdminWrite` — Stammdaten/
+    planning-configuration, like Team/ShiftType). `StaffingValidator.ValidateRequirements` walks
+    the schedule's date range × every matching active requirement (rather than only grouping
+    assignments that already exist) and flags `Understaffed` (same Warning severity as the
+    pre-existing group-based check, which is left untouched/additive) including the previously-
+    invisible zero-assignment case — wired into `ScheduleValidator.Validate` via a new optional
+    trailing parameter and `SchedulesController`'s `ValidateScheduleAsync`. `DashboardController`'s
+    `BuildCoverage` also emits coverage rows for requirement-driven zero-assignment slots (deduped
+    against the existing assignment-groupby loop), and `BuildPainPoints` threads
+    `StaffingRequirement`s through so the new `Understaffed` issues show up in Pain Points/the
+    conflict count too. No frontend UI for managing `StaffingRequirement`s was added in this pass
+    (CRUD API only) — issue #77 below is the frontend-facing staffing-coverage surface, and it
+    turned out not to depend on this one (see its own entry). Verified: `dotnet build`/`dotnet
+    test` clean, 163/163 passing (new `StaffingValidatorValidateRequirementsTests`: zero-assignment
+    slot flags Understaffed, an unconfigured combo still doesn't flag, requirement met → no
+    warning, `DayOfWeek` mismatch not checked, team-scoped vs. global requirement counting,
+    multiple matching dates each checked).
+- **Centralize Sollstunden/contract-segment handling** ([issue #70](https://github.com/mycaravam-crypto/shifty/issues/70))
+    — extracts `Contract.ActiveOn(...)` ("which contract applies to employee X on date Y") and
+    `Contract.Overlaps(...)` as Domain-layer helpers on `Contract` (alongside
+    `WorkingTimeCalculator`), and uses `ActiveOn` at every site independently duplicating that
+    lookup: `SchedulesController.HourlyRateOn`, `DashboardController`'s `ActiveContract`,
+    `HoursBalanceCalculator`, `ShiftSuggestionEngine`, `ContractValidator` — `ShiftSuggestionEngine`
+    turned out to have a sixth duplicate too, re-implementing the whole `WeeklyHours × days / 7`
+    target-hours formula inline instead of calling `WorkingTimeCalculator.ExpectedHours` (now
+    shared there as well). **Fixes a real correctness bug**: `ExpectedHours` (extracted earlier by
+    issue #56) picked one `Contract` once at the schedule's *start* date and scaled the whole span
+    by it — since a Schedule is usually a full calendar month, any employee whose contract changed
+    mid-month got the wrong target hours for the entire period. `ExpectedHours` now takes the full
+    contracts list and resolves the applicable one **per day**, grouping days by contract identity
+    so the common single-contract case still does the exact same arithmetic as before (no
+    decimal-rounding drift) while correctly blending segments when a contract changes partway
+    through; all four remaining callers were updated to pass the full list instead of a
+    pre-resolved contract. `ContractsController.Create`/`Update` now also reject a `Contract` whose
+    validity range overlaps another one for the same employee (409, matching the existing
+    `EmployeeId+ValidFrom` unique-index conflict pattern) rather than letting every `ActiveOn`
+    call site's `MaxBy(ValidFrom)` silently pick a winner — an application-level check, not a
+    Postgres exclusion constraint (would need `btree_gist`), flagged as possible future hardening.
+    `ScheduleView.vue`'s client-side target-hours duplicate was updated to match (resolves the
+    contract per day of the visible month, not once at month-start); the larger "send
+    `targetHours` from the backend directly" idea was left for issue #72 below, which overlaps it.
+    Verified: `dotnet build`/`dotnet test` clean, 170/170 passing (14 new — `ActiveOn`/`Overlaps`
+    cases, mid-schedule-contract-change/gap cases, a `ContractValidator` case confirming a
+    mid-span contract change no longer false-flags `ContractHoursExceeded`); `npm run lint`/
+    `npm run build` clean; not exercised against a live Postgres this session.
+- **Add a Planning-Board read model** ([issue #72](https://github.com/mycaravam-crypto/shifty/issues/72))
+    — `ScheduleView.vue` used to issue one `GET /employees/{id}/contracts` + `/absences` +
+    `/hours-balance` call *per employee* (dozens to low-hundreds of requests with more than a
+    handful of employees) plus a separate `GET /schedules/{id}` for assignments. New
+    `GET /api/planning-board?from=&to=&teamId=` (`PlanningBoardController`) returns everything the
+    grid needs per employee in one call: assignments (same `netHours`/`laborCost` shape
+    `SchedulesController` already sends), target/planned/carried-over-balance hours, and absences
+    overlapping the period. The per-employee aggregation is extracted into
+    `Application/Planning/PlanningBoardAggregator.BuildStats` (unit-testable without a live
+    `ApplicationDbContext`), reusing the same Domain calculators every other read model already
+    relies on (`WorkingTimeCalculator.ExpectedHours`/`NetHours`,
+    `HoursBalanceCalculator.CumulativeBalance`) — the numbers match exactly what the old
+    per-employee endpoints produced, not a re-derived calculation. `ScheduleView.vue` now calls
+    this one endpoint (`loadPlanningBoard`) instead of the old `Promise.all` loops, normalizing the
+    response once into `assignmentsByEmployeeAndDate` (grid cell lookups) and a `planningBoard` map
+    (target/planned/carried-over readouts). `/schedules/{id}/validate` and all assignment CRUD are
+    unchanged — read-path only, no schema changes. Verified: `dotnet build`/`dotnet test` clean,
+    163/163 passing (7 new `PlanningBoardAggregatorTests` — contract-selection fallback, a
+    hand-computed target/planned/balance scenario, absence-day exclusion, cross-employee
+    isolation); `npm run lint`/`npm run build` clean; not exercised against a live Postgres/API
+    this session.
+- **Decompose `ScheduleView.vue`** ([issue #73](https://github.com/mycaravam-crypto/shifty/issues/73))
+    — a pure refactor, no behavior change: the ~1100-line monolith (DTOs, date/currency
+    formatting, data loading, filter/URL-query state, drag-and-drop mechanics, mutation calls, and
+    rendering all in one file) split into `types.ts`/`format.ts` (shared DTOs and pure formatting
+    helpers), `composables/useScheduleFilters.ts` (search/team filter state, the `?q=&team=` URL
+    sync, the Settings default-team fallback, the dashboard `?scheduleId=` deep link),
+    `composables/usePlanningBoard.ts` (all reference/derived state plus month navigation and the
+    per-employee stat functions), `composables/usePlanningActions.ts` (create-schedule/copy-month/
+    drop mutations), `composables/useScheduleDnD.ts` (the pointer-based drag-and-drop + auto-scroll
+    mechanics, decoupled from any specific DOM node via an `onAutoScroll` callback), and
+    presentational components `PlanningToolbar.vue`/`ShiftPalette.vue`/`ValidationSummary.vue`/
+    `PlanningGrid.vue`/`EmployeeScheduleRow.vue`. `ScheduleView.vue` is now orchestration only,
+    wiring the composables to the components and to the three pre-existing modals
+    (`ShiftAssignmentModal`/`ShiftSuggestionModal`/`AutoFillModal`, left untouched). Every existing
+    feature is preserved as-is (drag-and-drop create/move, month-copy, auto-fill/suggestion
+    modals, the grouped validation panel, keyboard shortcuts, edge auto-scroll, print, holiday
+    dots, weekend shading, sticky header/column, search/team filter with URL sync). This is the
+    component/composable structure every Schedule-area entry from this point in the file onward
+    (including issues #74/#77/#79/#80 and the Published-editing entry below) is written against.
+    Verified: `npm run lint` clean, `npm run build` clean (type-checks every new prop/emit
+    contract), and a scratch Playwright script against the mocked dev server (drag-create,
+    drag-move, click-to-open/Escape-to-close, `/` search focus, month-nav arrows, "Vorschlagen"/
+    "Automatisch füllen" both still open their modals) — zero console errors.
+- **Split the Dienstplan into a month-overview and week-scoped editing view**
+    ([issue #74](https://github.com/mycaravam-crypto/shifty/issues/74)) — the single full-month
+    grid was trying to be both a detailed drag-and-drop editor and a monthly coverage overview at
+    once, hence the horizontal scroll and dense day columns. Frontend-presentation-only split,
+    `Schedule` stays month-scoped server-side: new `MonthOverviewView.vue` is now the default `/`
+    landing view — one compact cell per employee/day (colored shift-type initial, absence marker,
+    conflict dot, all sourced from the same `/validate` result the detail view already used), days
+    grouped into calendar weeks with an "open week" action per group; month-copy and auto-fill live
+    here now since both operate on the whole month-scoped `Schedule`. `ScheduleView.vue` keeps the
+    full editing experience unchanged, now fed a 7-day range at `/dienstplan/woche/:date` instead
+    of the whole month (clamped into the owning Schedule's own span at a month boundary, so a week
+    straddling two months shows only the in-month portion). The validation panel narrows to issues
+    tied to an assignment within the displayed week, plus schedule-wide issues with no specific
+    date (e.g. `ContractHoursExceeded`), which still show every week. Shared date-math helpers
+    (`firstOfMonth`, `addDays`, `toIso`, `startOfWeek`, etc.) extracted to
+    `frontend/src/utils/weekDates.ts`. The dashboard's `?scheduleId=` pain-point deep link now
+    lands on the month overview (its natural home) instead of the old full-month grid. Verified:
+    `npm run lint`/`npm run build` clean, and a scratch Playwright script (month overview renders a
+    shift-type initial + conflict dot for a mocked issue, days group into the right week buttons,
+    clicking a week navigates into the week view with drag-and-drop still working, "Monatsübersicht"
+    navigates back) — no unexpected console errors.
+- **Dienstplan grid: show staffing coverage inline** ([issue #77](https://github.com/mycaravam-crypto/shifty/issues/77))
+    — adds a small per-day/shift-type coverage indicator directly to the grid's day column headers
+    (e.g. "1/3 ⚠"), so understaffing is visible where a manager is already looking while placing
+    shifts, not only in the validation panel above the grid. For every active `ShiftType` with
+    `MinStaffing`/`MaxStaffing` set, each day header shows one small row per such ShiftType: a
+    color dot matching the palette chip, the distinct-employee count for that `(date, shiftType)`
+    pair, and the target — rose+⚠ understaffed, amber+⚠ overstaffed, dim neutral within range.
+    Entirely a frontend computed property over data `PlanningGrid.vue`/`usePlanningBoard.ts`
+    already fetch (`shiftTypes` already carries `minStaffing`/`maxStaffing`, `assignments` is
+    already loaded) — no new backend endpoint, and turned out **not to depend on issue #69 above**
+    despite first appearing to: the backend's `StaffingValidator` only flags a slot once it already
+    has an assignment (exactly the gap #69's `StaffingRequirement` closes for the validation panel),
+    but `MinStaffing` is a property of the `ShiftType` itself, so this inline indicator can already
+    show a true "0/3 ⚠" for a zero-assignment day with no dependency on #69 — the two surfaces just
+    agree on more cases once #69 is in. Verified: `npm run lint`/`npm run build` clean, and a
+    Playwright smoke test (synthetic 3-employee/3-shift-type dataset: one understaffed day renders
+    "1/3 ⚠" rose, one overstaffed renders "3/2 ⚠" amber, one fully-staffed renders neutral "3/3") —
+    no console errors.
+- **Design decision: cross-midnight (overnight) shift support**
+    ([issue #81](https://github.com/mycaravam-crypto/shifty/issues/81), which explicitly framed
+    this as a decision to revisit, not a small fix) — **does not implement cross-midnight shifts**;
+    still rejected exactly as issue #11 established (`EndTime <= StartTime` is a 400 everywhere).
+    What this did land: a decision plus one small, additive, provably-inert schema step.
+    **Decision**: an explicit `ShiftAssignment.EndsNextDay bool` (default `false`) rather than
+    replacing `Date`/`StartTime`/`EndTime` with `StartAt`/`EndAt` timestamps — the timestamp model
+    is theoretically cleaner (no wraparound ambiguity) but isn't additive (`Date`/`StartTime`/
+    `EndTime` are read across `WorkingTimeCalculator`, `WageCalculator`, all 7 `ScheduleValidator`
+    rules, `ShiftSuggestionEngine`, `DashboardController`, `SchedulesController`'s DTOs, and the
+    whole frontend grid/drag-drop/month-copy/PDF layout — every one would need to change in the
+    same PR just to keep compiling), needs a real data migration instead of an additive column, and
+    doesn't even solve the hardest part for free (the grid is fundamentally per-day-column; an
+    overnight shift still has to anchor to one column either way). `EndsNextDay` keeps `Date` as
+    "the day this shift is assigned to" and is purely a modifier on how `EndTime` is interpreted —
+    every existing row defaults to `false`, which is exactly the behavior every calculator/
+    validator already assumes, so nothing else had to change to keep compiling or passing tests.
+    Migration `EndsNextDayFlag` (`ALTER TABLE "ShiftAssignments" ADD "EndsNextDay" boolean NOT NULL
+    DEFAULT FALSE`) is the only code change — no DTO/controller/validator/calculator reads or
+    writes the field yet, by construction (the write boundary never sets it to anything but its
+    default). The PR body has a full table mapping each downstream consumer (`NetHours`,
+    `WageCalculator`'s night/Sunday/holiday surcharges, `RestTimeValidator`,
+    `ConsecutiveDaysValidator`, `ShiftOverlapValidator` — flagged as needing an actual grouping
+    redesign, not just a formula tweak, since it'd need to compare against the *previous* day's
+    assignments too — `ShiftSuggestionEngine`, the frontend) to what it would need once the flag is
+    real, plus a list of suggested (unfiled) follow-up issues — worth reading in full before anyone
+    picks this up. Verified: `dotnet build`/`dotnet test` clean, 156/156 passing unaffected (no
+    behavioral change), `dotnet ef migrations script` confirms the exact additive DDL.
+- **Dienstplan grid: larger touch targets and keyboard navigation**
+    ([issue #80](https://github.com/mycaravam-crypto/shifty/issues/80) — implemented and merged,
+    but the GitHub issue itself was never closed since the merging PR didn't use a closing keyword;
+    treat it as done, not open, despite what the tracker shows) — icon-only buttons
+    (`ScheduleView.vue`/`AutoFillModal.vue`) enlarged to roughly the 40–44px touch-target minimum:
+    isolated toolbar buttons (month-nav chevrons, the shortcuts-help icon) get real `p-3` padding +
+    a hover background; icons sitting inline in dense text/chips (the per-employee print icon, the
+    palette's "Vorschlagen" sparkle, `AutoFillModal`'s per-row discard icon) instead get an
+    invisible `absolute -inset-3.5` hit-slop overlay, enlarging only the clickable area without
+    changing what's rendered. Keyboard navigation for the grid was added as an *addition* alongside
+    drag-and-drop, not a replacement: a roving-tabindex model (exactly one day cell is a Tab stop
+    at a time — the focused cell, or the first employee/first day before anything's focused),
+    arrow keys move that focus between cells (up/down = employee row, left/right = day) but only
+    once a grid cell already has keyboard focus (the pre-existing ArrowLeft/ArrowRight month
+    navigation is untouched everywhere else), Enter reuses the exact same "open
+    `ShiftAssignmentModal`" logic a chip's click/tap already triggers (a no-op on an empty cell,
+    since creation is drag-only), and Delete/Backspace opens the same `ConfirmDialog` +
+    `DELETE /assignments/{id}` call the modal's own delete button already uses. The "?"
+    shortcuts-help modal documents the new keys. Verified: `npm run lint`/`npm run build` clean,
+    and a scratch Playwright script (Tab-into-grid lands on exactly one of N day cells;
+    ArrowRight/ArrowDown move focus without triggering month nav; Enter opens the edit modal,
+    Escape closes it; Delete opens the confirm dialog and confirming removes the chip; ArrowLeft/
+    ArrowRight still navigate months correctly outside the grid; toolbar icon buttons measured at
+    42×42px) — no visual regression, no console errors. Not exercised against a real backend.
+- **Add integration test coverage + a CI gate for it** ([issue #75](https://github.com/mycaravam-crypto/shifty/issues/75))
+    — the issue asked for four things (integration tests, CI wiring, E2E/Playwright, a concurrency
+    test); per its own scoping note this delivered the first two solidly and documented the rest as
+    follow-up rather than skipping them silently. New `src/ShiftPlanner.IntegrationTests` project:
+    a real `WebApplicationFactory<Program>` (`Program.cs` now exposes `public partial class
+    Program` for this) against a real, throwaway Postgres via `Testcontainers.PostgreSql` — actual
+    EF Core migrations run (`Database.MigrateAsync()`, not `EnsureCreated()`), so a broken migration
+    is itself something these tests catch. One shared factory/container per test run
+    (`IntegrationTestFixture`, an `ICollectionFixture`) rather than one per class, both for speed
+    and to avoid exhausting `AuthController`'s global 10-logins/minute rate limiter across test
+    classes. Four test classes: `AuthenticationTests` (login success/failure, unauthenticated 401,
+    refresh-token rotation-on-use including a reused/rotated-out token failing, a refresh token
+    rejected as a Bearer access token); `EmployeeCrudTests` (full CRUD round trip, duplicate-
+    personnel-number 409, unauthenticated 401, role-gated 403); `ScheduleFlowTests` (the full
+    `Schedule` → `ShiftAssignment` → `/validate` → `/publish` → `/archive` lifecycle — see the
+    Published-editing entry below for how this test was later updated); `ConcurrencyTests`
+    (documents, rather than fixes, that two concurrent `PUT`s to the same `ShiftAssignment` both
+    succeed today with no optimistic concurrency control — deferred explicitly by issue #97 — with
+    an inline comment flagging it to fail the day real concurrency control lands). Along the way
+    this surfaced a real bug: `JwtTokenFactory` built tokens with no per-token entropy beyond
+    second-granularity `iat`/`exp`, so two logins for the same user within the same UTC second
+    produced byte-identical JWTs — and since refresh tokens hash into a uniquely-indexed
+    `RefreshTokens.TokenHash` column (issue #55), the second login's insert threw a raw 500 instead
+    of succeeding (a real risk: double-clicked login button, two tabs, a client retry) — fixed by
+    adding a `jti` claim. `.github/workflows/build.yml`'s existing `backend` job gained an
+    "Integration tests" step — deliberately **no `services: postgres:` block**, since
+    `Testcontainers.PostgreSql` starts and tears down its own throwaway container via the Docker
+    daemon GitHub's hosted runners already have, so a fixed service container would just sit
+    unused. E2E/Playwright setup was deferred entirely (no Playwright config exists anywhere in
+    this repo — a from-scratch setup, not an incremental addition) and full concurrency *control*
+    (as opposed to the test documenting its absence) is still open, tracked here rather than as
+    separate filed issues. Verified: `dotnet build`/`dotnet test` (unit) clean, 156/156 unaffected;
+    14/14 new integration tests pass (this sandbox's own Docker Hub access is blocked, same
+    documented limitation as elsewhere in this file, so the suite was verified by temporarily
+    pointing at this machine's local `postgresql-16` install instead, fully reverted before commit
+    — the real `Testcontainers.PostgreSql` path is exactly what runs in CI, where GitHub's hosted
+    runners have full Docker Hub access).
+- **Allow editing assignments on a Published schedule** (no issue filed, requested directly) —
+    shifts get switched in reality after a schedule is published (someone's sick, a swap gets
+    agreed), so the Draft-only write lock issue #68 built (and issue #79 above then surfaced in
+    the UI) was one notch too strict. The freeze now happens only at Archived, everywhere it
+    was previously at "not Draft": `SchedulesController`'s `CreateAssignment`/`UpdateAssignment`/
+    `DeleteAssignment`/`AutoFillCommit` all 409 on `Status == Archived` instead of
+    `Status != Draft`. `Publish`/`Archive`/the schedule-level `Update` (name/dates) are untouched
+    — those transitions, and the Draft-only-target check on `/copy`, are a different concern
+    (freezing a schedule's own identity/span, and not bulk-overwriting an already-live month)
+    from freezing individual shift edits. Frontend: `usePlanningBoard.ts` gained `isEditable`
+    (`status !== Archived`) alongside the pre-existing `isDraft`/`isPublished`, and the
+    editing-gate prop threaded through `ShiftPalette`/`PlanningGrid`/`EmployeeScheduleRow`/
+    `ShiftAssignmentModal`'s `readonly` flag was renamed from `isDraft` to `isEditable` and
+    re-pointed at it — so drag-to-create/move, delete, "Automatisch füllen", and "Vorschlagen"
+    all keep working on a Published schedule now, only locking once Archived.
+    `PlanningToolbar.vue`'s own `isDraft`/`isPublished` (Veröffentlichen/Archivieren button
+    visibility) are unchanged, since publishing/archiving themselves are still exactly
+    Draft-only/Published-only transitions. In-app help (`data/helpTopics.ts`) and the readonly
+    modal's inline copy were updated to match (no longer claim Published is read-only).
+    Verified: `dotnet build`/`dotnet test` clean (286 unit tests, unaffected), `npm run lint`/
+    `npm run build` clean, and the `ShiftPlanner.IntegrationTests` real-Postgres suite (issue
+    #75, Testcontainers-backed) — `ScheduleFlowTests`'s full-lifecycle test was updated to assert
+    an assignment write on a Published schedule now succeeds (previously asserted 409) and a new
+    assertion confirms it still 409s once Archived; 14/14 integration tests pass.
 - **Docker/deploy**: `docker-compose.yml` (db/api/web) validated with `docker compose config`,
   never actually deployed. No `.env` exists anywhere yet (only `.env.example`).
 - **Versioning**: same scheme as vanspace3d. `frontend/package.json`'s `version` is shown
