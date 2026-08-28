@@ -278,20 +278,28 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
 
 // PDF export = the browser's own print-to-PDF, scoped via CSS rather than a PDF-generation
 // library. `printEmployeeId` narrows the printed table to one row; "all" export is just
-// printing with it unset.
+// printing with it unset. Plans are always made a whole month at a time (not per-week), so the
+// grid switches from this view's normal weekDays to the full month's days while printing —
+// `assignmentsFor`/`targetHoursFor`/etc. are already month-scoped (only the displayed columns
+// were narrowed by issue #74's week/month split), so nothing else needs to change.
 const printEmployeeId = ref<string | null>(null)
+const printMode = ref(false)
+const printDays = computed(() => (printMode.value ? days.value : weekDays.value))
 async function exportAllPdf() {
   printEmployeeId.value = null
+  printMode.value = true
   await nextTick()
   window.print()
 }
 async function exportEmployeePdf(employeeId: string) {
   printEmployeeId.value = employeeId
+  printMode.value = true
   await nextTick()
   window.print()
 }
 window.addEventListener('afterprint', () => {
   printEmployeeId.value = null
+  printMode.value = false
 })
 </script>
 
@@ -400,7 +408,7 @@ window.addEventListener('afterprint', () => {
 
         <PlanningGrid
           ref="gridRef"
-          :days="weekDays"
+          :days="printDays"
           :visible-employees="visibleEmployees"
           :active-employees-count="activeEmployees.length"
           :holiday-for="holidayFor"
