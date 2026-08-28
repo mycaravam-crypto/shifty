@@ -12,11 +12,17 @@
 // - Single employee: a plain day-by-day list (the shape a member actually wants to check "when
 //   do I work this week" or pin to a fridge) plus an hours summary, not a one-row slice of a
 //   multi-employee grid.
-// - Whole team: a compact table, still light/print-styled, sized to fit a week's 7 columns on
-//   one landscape page.
+// - Whole team: a compact grid — the day columns are a fixed share of the page width (via
+//   `<colgroup>`, `dayColWidth` below) instead of auto-sizing to content, so a full month's
+//   28-31 columns always fits the page width, not just a week's 7. Each cell shows a colored
+//   shift-type initial (same abbreviation the interactive month overview uses) rather than the
+//   full "name · time" text the single-employee list can afford — there's no room for that at
+//   month width, and print has no hover tooltip to fall back on, hence the legend below the grid.
 import { computed } from 'vue'
-import { currencyFmt, dateLongFmt, toIso, weekdayFmt, weekdayLongFmt } from './format'
+import { currencyFmt, dateLongFmt, toIso, weekdayLongFmt } from './format'
 import type { Assignment, Employee, PublicHoliday, ShiftType } from './types'
+
+const weekdayLetterFmt = new Intl.DateTimeFormat('de-DE', { weekday: 'narrow' })
 
 // Same ordinal→label mapping PlanningToolbar.vue uses for the on-screen status badge
 // (Domain/Scheduling/Schedule.cs's ScheduleStatus, serialized as its ordinal).
@@ -69,6 +75,34 @@ function dayNetHours(employeeId: string, dateIso: string): number {
 function periodNetHours(employeeId: string): number {
   return props.days.reduce((sum, d) => sum + dayNetHours(employeeId, toIso(d)), 0)
 }
+
+const EMPLOYEE_COL_WIDTH = '30mm'
+// Every day column gets an equal share of whatever page width is left over — this is what
+// keeps a 31-column month on one landscape page instead of growing wider than it (see
+// `table-layout: fixed` + `<colgroup>` below, which is what makes the browser actually honor
+// this instead of auto-sizing columns to their content).
+const dayColWidth = computed(
+  () => `calc((100% - ${EMPLOYEE_COL_WIDTH}) / ${props.days.length || 1})`,
+)
+
+// Print has no hover tooltip to fall back on for the grid's single-letter shift badges, so spell
+// out what each color/letter actually means — only for shift types that actually appear in the
+// printed range, not every ShiftType in the system.
+const usedShiftTypes = computed(() => {
+  const seen = new Map<string, ShiftType>()
+  for (const e of printedEmployees.value) {
+    for (const d of props.days) {
+      for (const a of props.assignmentsFor(e.id, toIso(d))) {
+        const type = props.shiftTypeById(a.shiftTypeId)
+        if (type) seen.set(type.id, type)
+      }
+    }
+  }
+  return [...seen.values()]
+})
+const hasAbsences = computed(() =>
+  printedEmployees.value.some((e) => props.days.some((d) => props.isAbsentOn(e.id, toIso(d)))),
+)
 </script>
 
 <template>
@@ -149,15 +183,25 @@ function periodNetHours(employeeId: string): number {
       </div>
     </dl>
 
-    <!-- Whole team: a compact grid, still light/print-styled — column count matches whatever
-         `days` the caller passed (the week view's 7 columns), so it fits one landscape page. -->
+    <!-- Whole team: a compact grid, still light/print-styled — day columns are a fixed equal
+         share of the page width (colgroup below) regardless of how many `days` the caller
+         passed, so a full month's columns fit one landscape page just as a week's did. -->
     <table v-else class="print-table print-table--grid">
+      <colgroup>
+        <col :style="{ width: EMPLOYEE_COL_WIDTH }" />
+        <col v-for="d in days" :key="toIso(d)" :style="{ width: dayColWidth }" />
+      </colgroup>
       <thead>
         <tr>
           <th>Mitarbeiter</th>
           <th v-for="d in days" :key="toIso(d)" :class="{ weekend: isWeekend(d) }">
-            {{ weekdayFmt.format(d) }}
-            <span v-if="holidayFor(toIso(d))" class="print-tag">Feiertag</span>
+            <div>{{ weekdayLetterFmt.format(d) }}</div>
+            <div class="print-daynum">{{ d.getDate() }}</div>
+            <span
+              v-if="holidayFor(toIso(d))"
+              class="print-holiday-dot"
+              :title="holidayFor(toIso(d))?.name"
+            ></span>
           </th>
         </tr>
       </thead>
@@ -172,7 +216,22 @@ function periodNetHours(employeeId: string): number {
             </div>
           </td>
           <td v-for="d in days" :key="toIso(d)" :class="{ weekend: isWeekend(d) }">
-            <div v-for="a in assignmentsFor(e.id, toIso(d))" :key="a.id">{{ shiftLabel(a) }}</div>
+            <div class="print-badges">
+              <span
+                v-for="a in assignmentsFor(e.id, toIso(d)).slice(0, 2)"
+                :key="a.id"
+                class="print-badge"
+                :style="{ backgroundColor: shiftTypeById(a.shiftTypeId)?.color ?? '#94a3b8' }"
+                >{{ (shiftTypeById(a.shiftTypeId)?.name ?? '?').slice(0, 1).toUpperCase()
+                }}{{ a.endsNextDay ? '+' : '' }}</span
+              >
+              <span v-if="assignmentsFor(e.id, toIso(d)).length > 2" class="print-badge-more"
+                >+{{ assignmentsFor(e.id, toIso(d)).length - 2 }}</span
+              >
+              <span v-if="isAbsentOn(e.id, toIso(d))" class="print-absent-mark" title="Abwesend"
+                >A</span
+              >
+            </div>
           </td>
         </tr>
         <tr v-if="!printedEmployees.length">
@@ -180,6 +239,17 @@ function periodNetHours(employeeId: string): number {
         </tr>
       </tbody>
     </table>
+    <p v-if="!singleEmployee && (usedShiftTypes.length || hasAbsences)" class="print-legend">
+      <span v-for="s in usedShiftTypes" :key="s.id" class="print-legend-item">
+        <span class="print-badge" :style="{ backgroundColor: s.color }">{{
+          s.name.slice(0, 1).toUpperCase()
+        }}</span>
+        {{ s.name }}
+      </span>
+      <span v-if="hasAbsences" class="print-legend-item">
+        <span class="print-absent-mark">A</span> Abwesenheit
+      </span>
+    </p>
     <p
       v-if="!singleEmployee && printedEmployees.some((e) => laborCostFor(e.id) !== null)"
       class="print-total"
@@ -300,18 +370,90 @@ function periodNetHours(employeeId: string): number {
     font-variant-numeric: tabular-nums;
   }
 
+  .print-table--grid {
+    table-layout: fixed;
+  }
   .print-table--grid th,
   .print-table--grid td {
-    font-size: 8.5pt;
+    font-size: 7pt;
+    padding: 1mm 0.8mm;
+    text-align: center;
+    overflow: hidden;
+  }
+  .print-table--grid th {
+    position: relative;
+    text-align: center;
+  }
+  .print-daynum {
+    font-variant-numeric: tabular-nums;
+  }
+  .print-holiday-dot {
+    display: inline-block;
+    width: 1.2mm;
+    height: 1.2mm;
+    border-radius: 50%;
+    background: #b45309;
+    margin-top: 0.5mm;
   }
   .print-employee-cell {
     font-weight: 600;
-    white-space: nowrap;
+    text-align: left;
+    white-space: normal;
+    word-break: break-word;
   }
   .print-employee-hours {
     font-weight: 400;
-    font-size: 8pt;
+    font-size: 6.5pt;
     color: #64748b;
+  }
+  .print-badges {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 0.5mm;
+  }
+  .print-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 3.5mm;
+    height: 3.5mm;
+    border-radius: 1pt;
+    color: #fff;
+    font-size: 6pt;
+    font-weight: 700;
+    line-height: 1;
+  }
+  .print-badge-more {
+    font-size: 6pt;
+    color: #64748b;
+  }
+  .print-absent-mark {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 3.5mm;
+    height: 3.5mm;
+    border: 0.5pt dashed #94a3b8;
+    border-radius: 50%;
+    color: #64748b;
+    font-size: 6pt;
+    font-weight: 700;
+    line-height: 1;
+  }
+  .print-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 3mm;
+    margin: 3mm 0 0;
+    font-size: 7.5pt;
+    color: #475569;
+  }
+  .print-legend-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 1mm;
   }
 
   .print-summary {
