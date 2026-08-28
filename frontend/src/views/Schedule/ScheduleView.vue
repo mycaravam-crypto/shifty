@@ -276,15 +276,16 @@ onMounted(load)
 onMounted(() => window.addEventListener('keydown', onKeydown))
 onUnmounted(() => window.removeEventListener('keydown', onKeydown))
 
-// PDF export = the browser's own print-to-PDF, scoped via CSS rather than a PDF-generation
-// library. `printEmployeeId` narrows the printed table to one row; "all" export is just
-// printing with it unset. Plans are always made a whole month at a time (not per-week), so the
-// grid switches from this view's normal weekDays to the full month's days while printing —
-// `assignmentsFor`/`targetHoursFor`/etc. are already month-scoped (only the displayed columns
-// were narrowed by issue #74's week/month split), so nothing else needs to change.
+// PDF export = the browser's own print-to-PDF via SchedulePrintSheet.vue (a dedicated print-only
+// layout — PlanningGrid itself is print:hidden). `printEmployeeId` narrows it to one employee;
+// "all" export is just printing with it unset. Plans are always made a whole month at a time
+// (not per-week), so the sheet is fed this Schedule's full `days` rather than this view's
+// week-scoped `weekDays` — `assignmentsFor`/`targetHoursFor`/etc. are already month-scoped, so
+// nothing else needs to change.
 const printEmployeeId = ref<string | null>(null)
 const printMode = ref(false)
 const printDays = computed(() => (printMode.value ? days.value : weekDays.value))
+const printLabel = computed(() => (printMode.value ? monthLabel.value : weekLabel.value))
 async function exportAllPdf() {
   printEmployeeId.value = null
   printMode.value = true
@@ -408,7 +409,7 @@ window.addEventListener('afterprint', () => {
 
         <PlanningGrid
           ref="gridRef"
-          :days="printDays"
+          :days="weekDays"
           :visible-employees="visibleEmployees"
           :active-employees-count="activeEmployees.length"
           :holiday-for="holidayFor"
@@ -437,10 +438,10 @@ window.addEventListener('afterprint', () => {
         <SchedulePrintSheet
           :print-employee-id="printEmployeeId"
           :employees="visibleEmployees"
-          :days="weekDays"
+          :days="printDays"
           :schedule-name="currentSchedule?.name ?? ''"
           :schedule-status="currentSchedule?.status ?? null"
-          :period-label="weekLabel"
+          :period-label="printLabel"
           :holiday-for="holidayFor"
           :is-weekend="isWeekend"
           :is-absent-on="isAbsentOn"
