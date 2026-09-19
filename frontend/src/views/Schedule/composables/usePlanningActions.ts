@@ -129,6 +129,19 @@ export function usePlanningActions(board: ReturnType<typeof usePlanningBoard>) {
     }
   }
 
+  // issue #156: someone else changed this assignment since the grid last loaded — reload
+  // instead of leaving the grid showing a move that didn't actually apply. Any other 409 (e.g.
+  // the schedule got archived in the meantime) shows its own real message instead. Shared by
+  // both performDrop (employee-rows grid) and performShiftDrop (shift-rows grid) below.
+  async function reportDropError(err: unknown) {
+    if (isConcurrencyConflict(err)) {
+      toast.error('Schicht wurde inzwischen von jemand anderem geändert — Ansicht aktualisiert.')
+      await board.loadDetail()
+    } else {
+      toast.error(extractErrorMessage(err, 'Schicht konnte nicht gespeichert werden.'))
+    }
+  }
+
   async function performDrop(payload: DragPayload, employeeId: string, dateIso: string) {
     if (!board.currentSchedule.value) return
 
@@ -162,15 +175,77 @@ export function usePlanningActions(board: ReturnType<typeof usePlanningBoard>) {
       }
       await board.loadDetail()
     } catch (err) {
-      // issue #156: someone else changed this assignment since the grid last loaded — reload
-      // instead of leaving the grid showing a move that didn't actually apply. Any other 409
-      // (e.g. the schedule got archived in the meantime) shows its own real message instead.
-      if (isConcurrencyConflict(err)) {
-        toast.error('Schicht wurde inzwischen von jemand anderem geändert — Ansicht aktualisiert.')
-        await board.loadDetail()
-      } else {
-        toast.error(extractErrorMessage(err, 'Schicht konnte nicht gespeichert werden.'))
+      await reportDropError(err)
+    }
+  }
+
+  // A dropped employee chip creates a fresh assignment from the target row's ShiftType
+  // template, same as dropping a shiftType chip does in the employee-rows view.
+  async function createShiftAssignmentFromEmployeeDrop(
+    scheduleId: string,
+    employeeId: string,
+    shiftTypeId: string,
+    dateIso: string,
+  ) {
+    const shiftType = board.shiftTypeById(shiftTypeId)
+    if (!shiftType) return
+    await api.post(`/schedules/${scheduleId}/assignments`, {
+      employeeId,
+      shiftTypeId,
+      date: dateIso,
+      startTime: shiftType.startTime,
+      endTime: shiftType.endTime,
+      breakMinutes: shiftType.breakMinutes,
+      endsNextDay: shiftType.endsNextDay,
+    })
+  }
+  // Moving an existing assignment chip onto a different ShiftType row re-templates its times
+  // from the new ShiftType (its old times belonged to the old shift); onto the same ShiftType
+  // row (just a different date) keeps its own times unchanged, matching how a move in the
+  // employee-rows view never resets times either.
+  async function moveAssignmentToShiftCell(
+    assignmentId: string,
+    shiftTypeId: string,
+    dateIso: string,
+  ) {
+    const assignment = board.assignments.value.find((a) => a.id === assignmentId)
+    if (!assignment) return
+    const retemplate =
+      assignment.shiftTypeId !== shiftTypeId ? board.shiftTypeById(shiftTypeId) : undefined
+    if (assignment.shiftTypeId !== shiftTypeId && !retemplate) return
+    await api.put(`/assignments/${assignment.id}`, {
+      employeeId: assignment.employeeId,
+      shiftTypeId,
+      date: dateIso,
+      startTime: retemplate ? retemplate.startTime : assignment.startTime,
+      endTime: retemplate ? retemplate.endTime : assignment.endTime,
+      breakMinutes: retemplate ? retemplate.breakMinutes : assignment.breakMinutes,
+      breakStartTime: retemplate ? null : assignment.breakStartTime,
+      endsNextDay: retemplate ? retemplate.endsNextDay : assignment.endsNextDay,
+      rowVersion: assignment.rowVersion,
+    })
+  }
+  // The "Nach Schicht" view's drop handler (requested directly — dragging a handful of shift
+  // types onto 20+ employee rows was the wrong way round; shift types are the grid's rows here
+  // and employees get dragged onto them instead). `shiftTypeId` is the dropped-on cell's
+  // ShiftType id.
+  async function performShiftDrop(payload: DragPayload, shiftTypeId: string, dateIso: string) {
+    if (!board.currentSchedule.value) return
+
+    try {
+      if (payload.kind === 'employee') {
+        await createShiftAssignmentFromEmployeeDrop(
+          board.currentSchedule.value.id,
+          payload.employeeId!,
+          shiftTypeId,
+          dateIso,
+        )
+      } else if (payload.kind === 'assignment') {
+        await moveAssignmentToShiftCell(payload.assignmentId!, shiftTypeId, dateIso)
       }
+      await board.loadDetail()
+    } catch (err) {
+      await reportDropError(err)
     }
   }
 
@@ -189,6 +264,7 @@ export function usePlanningActions(board: ReturnType<typeof usePlanningBoard>) {
     onArchiveConfirmed,
     onCopyMonth,
     performDrop,
+    performShiftDrop,
     onAssignmentUpdated,
   }
 }

@@ -90,7 +90,13 @@ affected handlers — see below. A direct follow-up on that same report then add
 escape hatch for the underlying "old test data I don't care about" case: a `deleteAssignments`
 option on the employee-delete endpoint, offered as a second, more explicit confirmation once
 the plain delete 409s, that deletes the employee's shift history right along with them — see
-below.
+below. A "Nach Schicht" view for the Dienstplan's week editor (no issue filed, requested
+directly — with only a handful of shift types but 20+ employees, dragging shifts onto employee
+rows was the wrong way round) then added a second, toggleable layout with the axes swapped:
+shift types as the grid's rows and employees as the draggable palette, alongside the original
+"Nach Mitarbeiter" layout rather than replacing it — made the default right after (same direct
+request), then given eligibility/absence hints on the sidebar chips as a follow-up so dragging
+isn't blind — see below for both.
 Only #61 (verify the compose stack against a real deployment — needs actual VPS access this
 environment doesn't have) remains open.
 What's built:
@@ -1976,6 +1982,85 @@ What's built:
   the new "Mitarbeiter endgültig löschen" dialog appears automatically → confirming it removes
   the employee, closes the dialog, and the list correctly shows "Keine Mitarbeiter." afterward.
   `npm run lint` (0 errors) and `npm run build` (`vue-tsc -b` + `vite build`) both clean.
+- **Dienstplan "Nach Schicht" view** (no issue filed, requested directly — with only a handful
+  of shift types but 20+ employees, dragging shift-type chips onto 20+ employee rows was the
+  wrong way round; the axes needed swapping) — frontend-only, week-scoped `ScheduleView.vue`
+  only (the month-overview grid and `Schedule`'s own server-side shape are both untouched). A
+  toggle in `PlanningToolbar.vue` ("Nach Mitarbeiter" / "Nach Schicht") switches between the
+  original employee-rows grid (unchanged) and a new axes-swapped layout — **"Nach Schicht" is
+  now the default** (`viewMode` initializes to `'shift'`, changed right after this landed, same
+  direct request), the better fit for the common few-shift-types/many-employees case; the
+  original employee-rows grid is still one click away via the toggle, unchanged otherwise:
+  `ShiftPlanningGrid.vue`/`ShiftTypeScheduleRow.vue` render one row per active ShiftType instead
+  of per Employee, and a new `EmployeeSidebar.vue` (a scrollable, search/team-filtered panel —
+  reusing the same `visibleEmployees` the employee-rows grid already filters, so it stays usable
+  with 20+ names) replaces `ShiftPalette.vue` as the drag source; each employee chip carries the
+  same Xh/Yh/Übertrag/Lohnkosten readouts `EmployeeScheduleRow.vue` shows per row, since there's
+  no employee row left to show them on in this view. Coverage (issue #77) moves from the day
+  header into each shift row's own cells (one row is already one shift type, so a per-shift-type
+  breakdown in the header would be redundant now).
+  `composables/useScheduleDnD.ts`/`useGridKeyboardNav.ts` (issue #80) were both generalized from
+  employee-specific to a generic "row id" concept (`data-row-id` replaces `data-employee-id`
+  throughout, including `EmployeeScheduleRow.vue`'s own cells) rather than duplicated, since the
+  pointer-drag/touch and roving-tabindex-keyboard-nav mechanics themselves don't care what a
+  "row" is — a second `useGridKeyboardNav` instance (rows = ShiftTypes) drives the new grid's
+  keyboard nav side by side with the original (rows = Employees) instance. A new `'employee'`
+  `DragPayload` kind (`employeeDragPayload`) is the sidebar's drag-to-create equivalent of the
+  existing `'shiftType'` kind; `usePlanningActions.ts` gained `performShiftDrop` alongside the
+  existing `performDrop`, sharing a `reportDropError` helper — dropping an employee chip creates
+  an assignment from the target row's ShiftType template (mirroring a shiftType-chip drop in the
+  employee-rows view), and dragging an existing assignment chip onto a different ShiftType row
+  re-templates its times from the new ShiftType (onto the same row, just a different date, times
+  stay as-is — matching how a move in the employee-rows view never resets times either).
+  `usePlanningBoard.ts` gained `employeeById`/`assignmentsForShift` (the latter also respecting
+  the search/team filter, same as the employee-rows grid hiding filtered-out employees'
+  assignments entirely). `focusIssue` (issue #39, jump-to-and-highlight from the validation
+  panel) is view-mode-aware: in 'shift' mode it resolves to the assignment's ShiftType row when
+  the issue carries a `shiftAssignmentId`, and no-ops for a whole-employee issue with no
+  assignment (e.g. `ContractHoursExceeded`) since there's no employee row left to jump to in
+  that view. Verified: `npm run lint` (0 errors, including a `sonarjs/cognitive-complexity` fix
+  splitting `performShiftDrop` into two smaller helpers) and `npm run build` (`vue-tsc -b` +
+  `vite build`) both clean; no backend touched, checked anyway (`dotnet build`/`dotnet test` not
+  re-run — no `src/` files changed). Clicked through in real headless Chromium against the dev
+  server with `/api/*` mocked at the network layer (same technique this file's other
+  frontend-only sessions used): logged in, opened the week view, toggled to "Nach Schicht" and
+  confirmed the employee sidebar and both ShiftType rows rendered (including the pre-existing
+  assignment showing under its correct shift row), dragged an employee chip from the sidebar
+  onto a different day's Frühschicht cell and confirmed the resulting `POST` carried the right
+  employeeId/shiftTypeId/date and the ShiftType's own template times, dragged the existing
+  assignment chip onto the Spätschicht row (same day) and confirmed the resulting `PUT`
+  re-templated its times to Spätschicht's while keeping the same employee and date, then toggled
+  back to "Nach Mitarbeiter" and confirmed the original grid still rendered correctly — no
+  console errors beyond the pre-existing benign 401 `stores/auth.ts`'s silent-refresh-on-boot
+  already produces elsewhere in this file.
+- **"Nach Schicht" sidebar: eligibility hints** (no issue filed, requested directly as a
+  follow-up on the view above — "you'd only find out via a toast after dropping") —
+  `EmployeeSidebar.vue`'s chips gain two static signals so dragging isn't blind: a small dot per
+  visible `ShiftType` (dim + ringed when the employee isn't eligible for it — same "empty
+  `EligibleShiftTypes` list means unrestricted" rule `EligibilityValidator` itself uses, not a
+  new one invented here) and an "Abwesend" badge when the employee is absent on any day of the
+  displayed period (reusing `isAbsentOn`, already loaded — no new fetch for that half). Backend
+  is still the sole source of truth — dropping on a flagged cell still round-trips through the
+  same validators/409s as before, this only surfaces what those would say up front. The
+  eligibility half needed new data no batch endpoint returns (`GET /employees` doesn't carry
+  it, and `GET /employees/{id}/eligible-shift-types` has no bulk equivalent), so
+  `usePlanningBoard.ts` gained `loadEligibility()` — one request per employee, same N+1 shape
+  `load()`'s own contracts/absences fetches already use — called **on demand** from
+  `ScheduleView.vue`'s `onMounted` (after `load()`, not folded into it) rather than eagerly for
+  every `usePlanningBoard` consumer, so `MonthOverviewView.vue` (a separate instance, never
+  needs this) doesn't pay for it. Also: the sidebar's own Xh/Yh line now distinguishes
+  over-target (rose) from under-target (amber) — previously both were the same amber, and
+  over-target is the sharper signal in a view a manager is actively assigning more work from
+  (`EmployeeScheduleRow.vue`'s equivalent line in the "Nach Mitarbeiter" grid is untouched).
+  Verified: `npm run lint` (0 errors) and `npm run build` (`vue-tsc -b` + `vite build`) both
+  clean; no backend touched. Clicked through in real headless Chromium against the dev server
+  with `/api/*` mocked (a hand-built scenario: one employee unrestricted, one eligible for only
+  one of two shown ShiftTypes, one absent across the displayed week): confirmed the restricted
+  employee's dot for the ineligible ShiftType renders dim/ringed with the right title while the
+  eligible one renders solid, the unrestricted employee shows both as eligible, the absent
+  employee's "Abwesend" badge renders (and doesn't on a non-absent one), and drag-to-create
+  still round-trips the correct `POST` body with the hints present — no console errors beyond
+  the pre-existing benign 401.
 - **Docker/deploy**: `docker-compose.yml` (db/api/web) validated with `docker compose config`,
   never actually deployed. No `.env` exists anywhere yet (only `.env.example`).
 - **Versioning**: same scheme as vanspace3d. `frontend/package.json`'s `version` is shown

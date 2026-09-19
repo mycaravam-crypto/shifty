@@ -1,13 +1,21 @@
 import { onUnmounted, ref } from 'vue'
-import type { Assignment, ShiftType } from '@/views/Schedule/types'
+import type { Assignment, Employee, ShiftType } from '@/views/Schedule/types'
 
 // Pointer-events-based drag (works for mouse and touch alike — native HTML5 DnD has no touch
 // support). Drag only becomes "active" past a small movement threshold so a plain tap/click
 // still opens the assignment modal instead of misfiring as a zero-distance drag.
+//
+// Cells are identified generically by a "row id" (via each cell's `data-row-id`/`data-date`
+// attributes) rather than anything employee-specific — the employee-rows grid uses the
+// employee's id as the row id, the shift-type-rows grid (drag employees onto shifts, requested
+// directly since a handful of shift types with 20+ employees makes dragging shifts onto
+// employees the wrong way round) uses the ShiftType's id instead. This composable doesn't care
+// which; the caller's `onDrop` interprets `rowId` based on which grid is currently shown.
 export interface DragPayload {
-  kind: 'shiftType' | 'assignment'
+  kind: 'shiftType' | 'assignment' | 'employee'
   shiftTypeId?: string
   assignmentId?: string
+  employeeId?: string
   label: string
   color: string
   time: string
@@ -43,12 +51,26 @@ export function assignmentDragPayload(
     time: `${a.startTime.slice(0, 5)}–${a.endTime.slice(0, 5)}`,
   }
 }
+// The "Nach Schicht" view's palette equivalent — dropped onto a (shiftType, date) cell to
+// create an assignment for this employee, mirroring how a shiftType chip dropped onto an
+// (employee, date) cell creates one in the "Nach Mitarbeiter" view.
+export function employeeDragPayload(e: Employee): DragPayload {
+  return {
+    kind: 'employee',
+    employeeId: e.id,
+    label: `${e.firstName} ${e.lastName}`,
+    color: '#64748b',
+    time: '',
+  }
+}
 
 const DRAG_ACTIVATE_PX = 6
 
 export function useScheduleDnD(options: {
-  // Drag ended on a valid cell — create-or-move, depending on payload.kind.
-  onDrop: (payload: DragPayload, employeeId: string, dateIso: string) => void | Promise<void>
+  // Drag ended on a valid cell — create-or-move, depending on payload.kind. rowId is the
+  // dropped-on cell's `data-row-id` (an employeeId in the employee-rows grid, a ShiftType id
+  // in the shift-rows grid) — the caller knows which grid is active and interprets it.
+  onDrop: (payload: DragPayload, rowId: string, dateIso: string) => void | Promise<void>
   // Pointer went up without ever crossing the activation threshold — a plain tap/click.
   onTap: (payload: DragPayload) => void
   // Ticks (via setInterval, not pointermove) while an active drag's pointer sits near the
@@ -94,23 +116,23 @@ export function useScheduleDnD(options: {
     e.preventDefault()
     const cell = document
       .elementFromPoint(e.clientX, e.clientY)
-      ?.closest<HTMLElement>('[data-employee-id]')
-    dragOverKey.value = cell ? `${cell.dataset.employeeId}|${cell.dataset.date}` : null
+      ?.closest<HTMLElement>('[data-row-id]')
+    dragOverKey.value = cell ? `${cell.dataset.rowId}|${cell.dataset.date}` : null
   }
   async function onDragPointerUp(e: PointerEvent) {
     if (!drag.value || e.pointerId !== drag.value.pointerId) return
     const { payload, active } = drag.value
     const cell = document
       .elementFromPoint(e.clientX, e.clientY)
-      ?.closest<HTMLElement>('[data-employee-id]')
+      ?.closest<HTMLElement>('[data-row-id]')
     cleanupDrag()
 
     if (!active) {
       options.onTap(payload)
       return
     }
-    if (cell?.dataset.employeeId && cell.dataset.date) {
-      await options.onDrop(payload, cell.dataset.employeeId, cell.dataset.date)
+    if (cell?.dataset.rowId && cell.dataset.date) {
+      await options.onDrop(payload, cell.dataset.rowId, cell.dataset.date)
     }
   }
   function onDragPointerCancel(e: PointerEvent) {

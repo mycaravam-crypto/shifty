@@ -43,6 +43,12 @@ export function usePlanningBoard(filters: ReturnType<typeof useScheduleFilters>)
   const contractsByEmployee = ref<Map<string, Contract[]>>(new Map())
   const absencesByEmployee = ref<Map<string, Absence[]>>(new Map())
   const balanceByEmployee = ref<Map<string, number>>(new Map())
+  // "Nach Schicht" sidebar eligibility hints (requested directly) — an empty/unfetched set
+  // means "unrestricted", matching EligibilityValidator's own backend rule (an employee with no
+  // EligibleShiftTypes rows is treated as unrestricted, every employee's default) rather than
+  // "not yet loaded" being mistaken for "not eligible". Loaded on demand via loadEligibility(),
+  // not as part of load() below, since only the shift-rows view needs it.
+  const eligibleShiftTypesByEmployee = ref<Map<string, Set<string>>>(new Map())
   const holidays = ref<PublicHoliday[]>([])
   const assignments = ref<Assignment[]>([])
   const validation = ref<ValidationResult | null>(null)
@@ -101,6 +107,9 @@ export function usePlanningBoard(filters: ReturnType<typeof useScheduleFilters>)
   function shiftTypeById(id: string) {
     return shiftTypes.value.find((s) => s.id === id)
   }
+  function employeeById(id: string) {
+    return employees.value.find((e) => e.id === id)
+  }
   // issue #77: inline per-day/shift-type staffing coverage on the grid itself, not only in the
   // validation panel above it. Only ShiftTypes with a MinStaffing/MaxStaffing target defined are
   // shown at all — most ShiftTypes have neither set and would just be noise here.
@@ -151,6 +160,17 @@ export function usePlanningBoard(filters: ReturnType<typeof useScheduleFilters>)
   }
   function assignmentsFor(employeeId: string, dateIso: string) {
     return assignments.value.filter((a) => a.employeeId === employeeId && a.date === dateIso)
+  }
+  // "Nach Schicht" view (requested directly — a handful of shift types with 20+ employees
+  // makes dragging shifts onto employees the wrong way round; shift types become the grid's
+  // rows and employees are dragged onto them instead). Only considers assignments for employees
+  // the search/team filter would also show, matching how the employee-rows grid already hides
+  // filtered-out employees' rows entirely rather than just dimming them.
+  function assignmentsForShift(shiftTypeId: string, dateIso: string) {
+    const visibleIds = new Set(visibleEmployees.value.map((e) => e.id))
+    return assignments.value.filter(
+      (a) => a.shiftTypeId === shiftTypeId && a.date === dateIso && visibleIds.has(a.employeeId),
+    )
   }
   function netHoursFor(employeeId: string) {
     return assignments.value
@@ -254,6 +274,27 @@ export function usePlanningBoard(filters: ReturnType<typeof useScheduleFilters>)
       ),
     )
     balanceByEmployee.value = new Map(activeEmployees.value.map((e, i) => [e.id, results[i].data]))
+  }
+  // "Nach Schicht" sidebar eligibility hints — same N+1-per-employee shape as loadBalances/
+  // load()'s contracts+absences fetches above (`GET /employees/{id}/eligible-shift-types` has no
+  // batch equivalent), but only called by ScheduleView.vue once it actually needs this data, not
+  // from load() itself, so MonthOverviewView.vue and a session that never opens "Nach Schicht"
+  // never pay for it.
+  async function loadEligibility() {
+    if (!activeEmployees.value.length) return
+    const results = await Promise.all(
+      activeEmployees.value.map((e) => api.get(`/employees/${e.id}/eligible-shift-types`)),
+    )
+    eligibleShiftTypesByEmployee.value = new Map(
+      activeEmployees.value.map((e, i) => [
+        e.id,
+        new Set((results[i].data as { id: string }[]).map((s) => s.id)),
+      ]),
+    )
+  }
+  function isEligibleFor(employeeId: string, shiftTypeId: string): boolean {
+    const eligible = eligibleShiftTypesByEmployee.value.get(employeeId)
+    return !eligible || eligible.size === 0 || eligible.has(shiftTypeId)
   }
   function sumLaborCost(list: Assignment[]): number | null {
     if (!list.some((a) => a.laborCost !== null)) return null
@@ -373,12 +414,14 @@ export function usePlanningBoard(filters: ReturnType<typeof useScheduleFilters>)
     publishBlockReason,
     days,
     shiftTypeById,
+    employeeById,
     coverageShiftTypes,
     coverageFor,
     holidayFor,
     isWeekend,
     isAbsentOn,
     assignmentsFor,
+    assignmentsForShift,
     netHoursFor,
     targetHoursFor,
     carriedOverFor,
@@ -387,6 +430,8 @@ export function usePlanningBoard(filters: ReturnType<typeof useScheduleFilters>)
     load,
     loadDetail,
     loadBalances,
+    loadEligibility,
+    isEligibleFor,
     loadHolidays,
     updateCurrentScheduleFrom,
     prevMonth,
