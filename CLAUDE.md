@@ -73,8 +73,11 @@ not pro-rated, Sunday/holiday surcharge, per a direct decision on that exact que
 built too — see below for each. The PDF export (originally landed with no issue filed) was then
 redesigned end-to-end (again no issue filed, requested directly as a usability follow-up) — a
 dedicated print-only layout replacing the old approach of just toggling `print:` classes on the
-same dark, glassy interactive grid — see below. Only #61 (verify the compose stack against a real
-deployment — needs actual VPS access this environment doesn't have) remains open.
+same dark, glassy interactive grid — see below. Issue #165 then added Ist/Soll hour tracking
+proper — admin-entered deviation corrections with a required reason, and a printable/signable
+per-employee monthly hour report built on top of the existing Ist/Soll/Übertrag math — see below.
+Only #61 (verify the compose stack against a real deployment — needs actual VPS access this
+environment doesn't have) remains open.
 What's built:
 
 - **Backend** (`src/`): 4-project skeleton (Domain → Application → Infrastructure → Api)
@@ -1649,6 +1652,72 @@ What's built:
     (`204`). `npm run lint`/`npm run build` (`vue-tsc -b` + `vite build`) both clean — the frontend
     409-handling paths were not clicked through in an actual browser this session (no Docker-Hub-
     blocked caveat this time; simply not reached given the scope already covered above).
+- **Ist/Soll hour tracking: admin deviation adjustments + signable monthly report**
+  ([issue #165](https://github.com/mycaravam-crypto/shifty/issues/165)) — Ist (recorded
+  `ShiftAssignment` hours) vs. Soll (`WorkingTimeCalculator.ExpectedHours`) and a running
+  Ist−Soll balance (`HoursBalanceCalculator.CumulativeBalance`) already existed as the
+  Wochenansicht's "Xh / Yh ⚠"/"Übertrag" readouts (issue #18); this session added the two
+  pieces that didn't: an admin-only manual correction to that balance, and a printable/signable
+  monthly report built on top of it. New Domain entity `HoursAdjustment`
+  (`Domain/Employees/HoursAdjustment.cs`: `EmployeeId`, `Date`, `HoursDelta`, a required
+  `Reason`, `CreatedBy`/`CreatedAt`) — same "doesn't live on Employee directly" shape as
+  `Absence`/`Contract`, `Create`/`Validate` reject a blank `Reason` or a zero `HoursDelta` (a
+  zero-delta "adjustment" wouldn't mean anything on the printed report). `HoursAdjustmentsController`
+  mirrors `AbsencesController`'s CRUD shape (`GET`/`POST /employees/{id}/hours-adjustments`,
+  `GET`/`PUT`/`DELETE /hours-adjustments/{id}`) but is gated by `AdminWrite`, not `ManagerWrite`
+  — this overrides a computed balance rather than recording routine Mitarbeiter data, matching
+  the issue's own "admin function" framing; the list itself stays readable to any signed-in
+  Staff user (`ApiRead`), same read/write split every other entity in this file uses.
+  `HoursBalanceCalculator.CumulativeBalance` gained an `adjustments` parameter, gated by the
+  exact same `before` cutoff as elapsed Schedules (an adjustment dated within the still-open
+  period isn't carried into the balance yet either — it only shows as its own line item on that
+  period's report until the period elapses) — every existing caller (`EmployeesController`'s
+  `hours-balance` endpoint, `PlanningBoardAggregator.BuildStats` via `PlanningBoardController`)
+  now also fetches and threads `HoursAdjustment`s through, so the Wochenansicht's own Übertrag
+  figure picks up adjustments automatically with no frontend change needed there. `HoursAdjustment`
+  was also added to `AuditSaveChangesInterceptor`'s audited-entity list, same as every other
+  write-controller entity. New `GET /employees/{id}/hours-report?from=&to=`
+  (`EmployeesController`) is the report's data source — a day-by-day breakdown (shifts worked,
+  net hours, Absence/holiday flags) plus the period's Soll/Ist/deviation, the balance carried in
+  and out of the period, and every `HoursAdjustment` in range with its `Reason` — built entirely
+  from existing calculators/validators data (`WorkingTimeCalculator.ExpectedHours`/`NetHours`,
+  `GermanPublicHolidays`, `HoursBalanceCalculator`), no new derived-state storage. Frontend:
+  `EmployeeDetailModal.vue` gets a "Korrekturen" section (list/create/delete, same table pattern
+  as Verträge/Abwesenheiten) with create/delete gated behind `auth.claims.role === 'Admin'`
+  client-side (matching the backend's `AdminWrite` gate) while the list stays visible to any
+  signed-in user. `EmployeesView.vue` gets a per-employee printer-icon entry point
+  ("Monatsbericht drucken", both the mobile card and desktop table rows) opening a new
+  `HoursReportModal.vue` — a month picker that fetches the report and calls `window.print()`.
+  The actual printed page is `HoursReportPrintSheet.vue`, a separate print-only component in
+  the same family as `views/Schedule/SchedulePrintSheet.vue` (its own light/ink-friendly CSS,
+  `hidden print:block`, nothing shared with the dark interactive theme) — a day-by-day table
+  (weekday, date, shift(s) or "Frei"/"Abwesend", net hours, a Feiertag tag), a Korrekturen table
+  when any exist, a Soll/Ist/Abweichung/Übertrag-davor/Übertrag-danach summary, and two
+  signature lines ("Mitarbeiter" / "Vorgesetzte:r, Datum/Unterschrift") — the "sign this and
+  hand it back" ask the issue itself named. `HoursReportModal.vue` is deliberately not built on
+  the shared `ModalShell.vue` — it needs the on-screen picker to vanish on print
+  (`print:hidden`) while the print sheet (a sibling root node, Vue 3 multi-root) does not,
+  which `ModalShell`'s single shared overlay doesn't expose. `ShiftPlanner.Tests`: 10 new tests
+  (`HoursAdjustmentTests` for the `Create`/`Validate` invariants; `HoursBalanceCalculatorTests`
+  gained cases for a positive/negative adjustment before the cutoff, an adjustment on/after the
+  cutoff being ignored, cross-employee isolation, and a combined Schedule-deviation-plus-
+  adjustment scenario) — 314 tests total now, all passing. Verified against a real local
+  Postgres (this session's Docker daemon reachable via the same proxy-CA-trust-plus-
+  `--network host` approach documented elsewhere in this file, `mcr.microsoft.com/dotnet/sdk:10.0`
+  for build/test/`dotnet ef`, this machine's local `postgresql-16` install for the database):
+  `dotnet build`/`dotnet test` clean (Debug and Release, 314/314), `dotnet ef migrations script`
+  confirms the exact expected `CREATE TABLE "HoursAdjustments"` DDL, and the full flow was
+  curl-round-tripped end-to-end — a Manager correctly 403s creating a `HoursAdjustment` while an
+  Admin's create succeeds (`201`) and a blank-reason create `400`s, a Manager can still read the
+  list (`200`), `GET hours-balance` picks up a pre-cutoff adjustment correctly, `GET hours-report`
+  for a full month returns the right `sollHours`/`istHours`/`deviation`/`balanceBefore`/
+  `balanceAfter` (hand-verified: `balanceAfter = balanceBefore + (istHours − sollHours) +
+  Σadjustments`) with all 31 days and the adjustment's `Reason` present, `PUT`/`DELETE` round-trip
+  correctly (`204`/`404` after delete), and unauthenticated requests `401`. `npm run lint`
+  (0 errors) and `npm run build` (`vue-tsc -b` + `vite build`) both clean — the frontend
+  Korrekturen section and print flow were not clicked through in an actual browser this session
+  (time was spent on the backend curl round-trip above instead, which is where the balance
+  arithmetic risk lived).
 - **Docker/deploy**: `docker-compose.yml` (db/api/web) validated with `docker compose config`,
   never actually deployed. No `.env` exists anywhere yet (only `.env.example`).
 - **Versioning**: same scheme as vanspace3d. `frontend/package.json`'s `version` is shown
