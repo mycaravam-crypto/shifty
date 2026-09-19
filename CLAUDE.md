@@ -86,7 +86,11 @@ report on that same flow ("disabling a member while trying to delete him caused 
 turned out to be a separate, frontend-only bug: every `ConfirmDialog`-driven delete handler but
 one left its dialog open (backdrop blocking every click) after a failed delete instead of
 closing it the way the one correct existing example already did — fixed across all five
-affected handlers — see below.
+affected handlers — see below. A direct follow-up on that same report then added the actual
+escape hatch for the underlying "old test data I don't care about" case: a `deleteAssignments`
+option on the employee-delete endpoint, offered as a second, more explicit confirmation once
+the plain delete 409s, that deletes the employee's shift history right along with them — see
+below.
 Only #61 (verify the compose stack against a real deployment — needs actual VPS access this
 environment doesn't have) remains open.
 What's built:
@@ -1941,6 +1945,37 @@ What's built:
   the modal, where unchecking "Aktiv" and saving succeeds cleanly (confirmed via the API too —
   `active: false` persisted). `npm run lint` (0 errors) and `npm run build` (`vue-tsc -b` +
   `vite build`) both clean.
+- **Force-delete an employee along with their shift history** (no issue filed, requested
+  directly as a follow-up on the fix above — "I had old test user data I wanted to remove and
+  don't care about the history"). `EmployeesController.Delete` gains an optional
+  `deleteAssignments` query bool (default `false`, so every existing caller keeps the safe
+  409-and-suggest-alternatives behavior unchanged): when `true` and the employee has
+  `ShiftAssignment`s, those are `RemoveRange`d in the same `SaveChangesAsync` call as the
+  `Employee` itself, so EF Core's one implicit transaction covers both — no separate
+  `BeginTransactionAsync` needed, same reasoning issue #82's `/copy` already documented for
+  atomicity. `AuditSaveChangesInterceptor` still logs each deleted `ShiftAssignment` and the
+  `Employee` individually, so "don't care about the Dienstplan history" doesn't mean losing the
+  audit trail of what was force-deleted and by whom. Frontend: `EmployeesView.vue`'s
+  `onDeleteConfirmed` now also sets a new `employeeToForceDelete` ref when the plain delete
+  409s (in addition to still toasting the reason) — a second `ConfirmDialog` ("Mitarbeiter
+  endgültig löschen", rose-styled, explicit "Das kann nicht rückgängig gemacht werden." wording)
+  offers deleting the employee and their shifts together; confirming calls the same endpoint
+  with `?deleteAssignments=true`. Same `ManagerWrite` policy as the plain delete — this doesn't
+  need Admin, since a Manager can already delete every one of those shift assignments
+  individually via the Dienstplan; the new endpoint parameter is a shortcut for that, not a new
+  capability. Verified against a real local Postgres + API (`dotnet run`, same setup as the fix
+  above): `dotnet build`/`dotnet test` clean (324/324, unaffected — this is controller-level
+  behavior, no `ShiftPlanner.Tests` project has ASP.NET Core hosting, same reasoning issue #71/
+  #68 documented for their own controller-level checks), then curl-round-tripped directly — a
+  plain `DELETE` on an employee with 2 assignments still 409s with the exact original message,
+  `DELETE ?deleteAssignments=true` on the same employee returns `204` and removes both the
+  employee and both assignments in one call, and the `AuditLogs` table confirms 3 `Delete` rows
+  (`Employee` + 2 `ShiftAssignment`) alongside the original `Create` rows. Then re-verified the
+  full UI flow with a scratch Playwright script against that same real backend (not mocked):
+  clicking delete on an employee with a shift shows the original confirm dialog → 409 toast →
+  the new "Mitarbeiter endgültig löschen" dialog appears automatically → confirming it removes
+  the employee, closes the dialog, and the list correctly shows "Keine Mitarbeiter." afterward.
+  `npm run lint` (0 errors) and `npm run build` (`vue-tsc -b` + `vite build`) both clean.
 - **Docker/deploy**: `docker-compose.yml` (db/api/web) validated with `docker compose config`,
   never actually deployed. No `.env` exists anywhere yet (only `.env.example`).
 - **Versioning**: same scheme as vanspace3d. `frontend/package.json`'s `version` is shown
