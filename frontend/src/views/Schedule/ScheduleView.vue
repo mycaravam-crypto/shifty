@@ -75,6 +75,8 @@ const {
   carriedOverFor,
   laborCostFor,
   totalLaborCost,
+  isEligibleFor,
+  loadEligibility,
   loading,
   error,
   load,
@@ -355,7 +357,12 @@ function onKeydown(e: KeyboardEvent) {
   }
 }
 
-onMounted(load)
+// loadEligibility is its own call, not folded into load() (see usePlanningBoard.ts) — it needs
+// `employees` populated first, and only this view's "Nach Schicht" sidebar uses the result.
+onMounted(async () => {
+  await load()
+  await loadEligibility()
+})
 onMounted(() => window.addEventListener('keydown', onKeydown))
 onUnmounted(() => window.removeEventListener('keydown', onKeydown))
 
@@ -529,6 +536,10 @@ window.addEventListener('afterprint', () => {
           <EmployeeSidebar
             :employees="visibleEmployees"
             :active-employees-count="activeEmployees.length"
+            :active-shift-types="activeShiftTypes"
+            :is-eligible-for="isEligibleFor"
+            :days="weekDays"
+            :is-absent-on="isAbsentOn"
             :target-hours-for="targetHoursFor"
             :net-hours-for="netHoursFor"
             :carried-over-for="carriedOverFor"

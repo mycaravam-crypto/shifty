@@ -43,6 +43,12 @@ export function usePlanningBoard(filters: ReturnType<typeof useScheduleFilters>)
   const contractsByEmployee = ref<Map<string, Contract[]>>(new Map())
   const absencesByEmployee = ref<Map<string, Absence[]>>(new Map())
   const balanceByEmployee = ref<Map<string, number>>(new Map())
+  // "Nach Schicht" sidebar eligibility hints (requested directly) — an empty/unfetched set
+  // means "unrestricted", matching EligibilityValidator's own backend rule (an employee with no
+  // EligibleShiftTypes rows is treated as unrestricted, every employee's default) rather than
+  // "not yet loaded" being mistaken for "not eligible". Loaded on demand via loadEligibility(),
+  // not as part of load() below, since only the shift-rows view needs it.
+  const eligibleShiftTypesByEmployee = ref<Map<string, Set<string>>>(new Map())
   const holidays = ref<PublicHoliday[]>([])
   const assignments = ref<Assignment[]>([])
   const validation = ref<ValidationResult | null>(null)
@@ -269,6 +275,27 @@ export function usePlanningBoard(filters: ReturnType<typeof useScheduleFilters>)
     )
     balanceByEmployee.value = new Map(activeEmployees.value.map((e, i) => [e.id, results[i].data]))
   }
+  // "Nach Schicht" sidebar eligibility hints — same N+1-per-employee shape as loadBalances/
+  // load()'s contracts+absences fetches above (`GET /employees/{id}/eligible-shift-types` has no
+  // batch equivalent), but only called by ScheduleView.vue once it actually needs this data, not
+  // from load() itself, so MonthOverviewView.vue and a session that never opens "Nach Schicht"
+  // never pay for it.
+  async function loadEligibility() {
+    if (!activeEmployees.value.length) return
+    const results = await Promise.all(
+      activeEmployees.value.map((e) => api.get(`/employees/${e.id}/eligible-shift-types`)),
+    )
+    eligibleShiftTypesByEmployee.value = new Map(
+      activeEmployees.value.map((e, i) => [
+        e.id,
+        new Set((results[i].data as { id: string }[]).map((s) => s.id)),
+      ]),
+    )
+  }
+  function isEligibleFor(employeeId: string, shiftTypeId: string): boolean {
+    const eligible = eligibleShiftTypesByEmployee.value.get(employeeId)
+    return !eligible || eligible.size === 0 || eligible.has(shiftTypeId)
+  }
   function sumLaborCost(list: Assignment[]): number | null {
     if (!list.some((a) => a.laborCost !== null)) return null
     return list.reduce((sum, a) => sum + (a.laborCost ?? 0), 0)
@@ -403,6 +430,8 @@ export function usePlanningBoard(filters: ReturnType<typeof useScheduleFilters>)
     load,
     loadDetail,
     loadBalances,
+    loadEligibility,
+    isEligibleFor,
     loadHolidays,
     updateCurrentScheduleFrom,
     prevMonth,

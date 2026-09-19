@@ -94,7 +94,9 @@ below. A "Nach Schicht" view for the Dienstplan's week editor (no issue filed, r
 directly — with only a handful of shift types but 20+ employees, dragging shifts onto employee
 rows was the wrong way round) then added a second, toggleable layout with the axes swapped:
 shift types as the grid's rows and employees as the draggable palette, alongside the original
-"Nach Mitarbeiter" layout rather than replacing it — see below.
+"Nach Mitarbeiter" layout rather than replacing it — made the default right after (same direct
+request), then given eligibility/absence hints on the sidebar chips as a follow-up so dragging
+isn't blind — see below for both.
 Only #61 (verify the compose stack against a real deployment — needs actual VPS access this
 environment doesn't have) remains open.
 What's built:
@@ -2031,6 +2033,34 @@ What's built:
   back to "Nach Mitarbeiter" and confirmed the original grid still rendered correctly — no
   console errors beyond the pre-existing benign 401 `stores/auth.ts`'s silent-refresh-on-boot
   already produces elsewhere in this file.
+- **"Nach Schicht" sidebar: eligibility hints** (no issue filed, requested directly as a
+  follow-up on the view above — "you'd only find out via a toast after dropping") —
+  `EmployeeSidebar.vue`'s chips gain two static signals so dragging isn't blind: a small dot per
+  visible `ShiftType` (dim + ringed when the employee isn't eligible for it — same "empty
+  `EligibleShiftTypes` list means unrestricted" rule `EligibilityValidator` itself uses, not a
+  new one invented here) and an "Abwesend" badge when the employee is absent on any day of the
+  displayed period (reusing `isAbsentOn`, already loaded — no new fetch for that half). Backend
+  is still the sole source of truth — dropping on a flagged cell still round-trips through the
+  same validators/409s as before, this only surfaces what those would say up front. The
+  eligibility half needed new data no batch endpoint returns (`GET /employees` doesn't carry
+  it, and `GET /employees/{id}/eligible-shift-types` has no bulk equivalent), so
+  `usePlanningBoard.ts` gained `loadEligibility()` — one request per employee, same N+1 shape
+  `load()`'s own contracts/absences fetches already use — called **on demand** from
+  `ScheduleView.vue`'s `onMounted` (after `load()`, not folded into it) rather than eagerly for
+  every `usePlanningBoard` consumer, so `MonthOverviewView.vue` (a separate instance, never
+  needs this) doesn't pay for it. Also: the sidebar's own Xh/Yh line now distinguishes
+  over-target (rose) from under-target (amber) — previously both were the same amber, and
+  over-target is the sharper signal in a view a manager is actively assigning more work from
+  (`EmployeeScheduleRow.vue`'s equivalent line in the "Nach Mitarbeiter" grid is untouched).
+  Verified: `npm run lint` (0 errors) and `npm run build` (`vue-tsc -b` + `vite build`) both
+  clean; no backend touched. Clicked through in real headless Chromium against the dev server
+  with `/api/*` mocked (a hand-built scenario: one employee unrestricted, one eligible for only
+  one of two shown ShiftTypes, one absent across the displayed week): confirmed the restricted
+  employee's dot for the ineligible ShiftType renders dim/ringed with the right title while the
+  eligible one renders solid, the unrestricted employee shows both as eligible, the absent
+  employee's "Abwesend" badge renders (and doesn't on a non-absent one), and drag-to-create
+  still round-trips the correct `POST` body with the hints present — no console errors beyond
+  the pre-existing benign 401.
 - **Docker/deploy**: `docker-compose.yml` (db/api/web) validated with `docker compose config`,
   never actually deployed. No `.env` exists anywhere yet (only `.env.example`).
 - **Versioning**: same scheme as vanspace3d. `frontend/package.json`'s `version` is shown
