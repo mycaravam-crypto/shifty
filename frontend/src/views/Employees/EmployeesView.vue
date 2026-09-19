@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
+import axios from 'axios'
 import { Plus, Printer, Trash2 } from '@lucide/vue'
 import api from '@/services/api'
 import { useToastStore } from '@/stores/toast'
@@ -43,6 +44,11 @@ const form = ref({
 })
 const selectedEmployee = ref<Employee | null>(null)
 const employeeToDelete = ref<Employee | null>(null)
+// Set only after a plain delete 409s because the employee still has shifts assigned — offers a
+// second, more explicit confirmation for actually removing the employee *and* that history
+// (e.g. leftover test/demo data nobody wants to keep), rather than requiring the shifts to be
+// removed one by one or the employee kept around deactivated.
+const employeeToForceDelete = ref<Employee | null>(null)
 const hoursReportEmployee = ref<Employee | null>(null)
 
 function teamName(teamId: string | null) {
@@ -94,13 +100,36 @@ async function onCreate() {
 
 async function onDeleteConfirmed() {
   if (!employeeToDelete.value) return
+  const target = employeeToDelete.value
   try {
-    await api.delete(`/employees/${employeeToDelete.value.id}`)
+    await api.delete(`/employees/${target.id}`)
     toast.success('Mitarbeiter gelöscht.')
+    await load()
+  } catch (e) {
+    // A blocked delete (the employee still has shifts assigned) shows the backend's specific
+    // reason via the toast, then offers a second, more explicit confirmation for deleting the
+    // employee and those shifts together — rather than only ever suggesting the "remove shifts
+    // first" / "deactivate instead" alternatives, for callers who genuinely don't need that
+    // history kept (leftover test/demo employees, mainly).
+    toast.error(extractErrorMessage(e, 'Mitarbeiter konnte nicht gelöscht werden.'))
+    if (axios.isAxiosError(e) && e.response?.status === 409) employeeToForceDelete.value = target
+  } finally {
     employeeToDelete.value = null
+  }
+}
+
+async function onForceDeleteConfirmed() {
+  if (!employeeToForceDelete.value) return
+  try {
+    await api.delete(`/employees/${employeeToForceDelete.value.id}`, {
+      params: { deleteAssignments: true },
+    })
+    toast.success('Mitarbeiter und zugewiesene Schichten gelöscht.')
     await load()
   } catch (e) {
     toast.error(extractErrorMessage(e, 'Mitarbeiter konnte nicht gelöscht werden.'))
+  } finally {
+    employeeToForceDelete.value = null
   }
 }
 
@@ -296,6 +325,15 @@ onMounted(load)
       :message="`${employeeToDelete.firstName} ${employeeToDelete.lastName} wirklich löschen?`"
       @confirm="onDeleteConfirmed"
       @close="employeeToDelete = null"
+    />
+
+    <ConfirmDialog
+      v-if="employeeToForceDelete"
+      title="Mitarbeiter endgültig löschen"
+      :message="`${employeeToForceDelete.firstName} ${employeeToForceDelete.lastName} hat noch Schichten im Dienstplan zugewiesen. Mitarbeiter UND alle zugewiesenen Schichten unwiderruflich löschen? Das kann nicht rückgängig gemacht werden.`"
+      confirm-label="Endgültig löschen"
+      @confirm="onForceDeleteConfirmed"
+      @close="employeeToForceDelete = null"
     />
 
     <HoursReportModal

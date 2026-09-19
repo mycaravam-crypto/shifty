@@ -322,10 +322,13 @@ async function onDeleteContractConfirmed() {
     await api.delete(`/contracts/${contractToDelete.value.id}`)
     toast.success('Vertrag gelöscht.')
     if (editingContractId.value === contractToDelete.value.id) onCancelEditContract()
-    contractToDelete.value = null
     await loadContracts()
   } catch (e) {
     toast.error(extractErrorMessage(e, 'Vertrag konnte nicht gelöscht werden.'))
+  } finally {
+    // Close the confirm dialog either way — leaving it open on failure just traps the user
+    // behind its backdrop with no obvious way out (the toast already explains what went wrong).
+    contractToDelete.value = null
   }
 }
 
@@ -372,10 +375,11 @@ async function onDeleteAbsenceConfirmed() {
   try {
     await api.delete(`/absences/${absenceToDelete.value.id}`)
     toast.success('Abwesenheit gelöscht.')
-    absenceToDelete.value = null
     await loadAbsences()
   } catch (e) {
     toast.error(extractErrorMessage(e, 'Abwesenheit konnte nicht gelöscht werden.'))
+  } finally {
+    absenceToDelete.value = null
   }
 }
 
@@ -418,10 +422,11 @@ async function onDeleteHoursAdjustmentConfirmed() {
   try {
     await api.delete(`/hours-adjustments/${hoursAdjustmentToDelete.value.id}`)
     toast.success('Korrektur gelöscht.')
-    hoursAdjustmentToDelete.value = null
     await loadHoursAdjustments()
   } catch (e) {
     toast.error(extractErrorMessage(e, 'Korrektur konnte nicht gelöscht werden.'))
+  } finally {
+    hoursAdjustmentToDelete.value = null
   }
 }
 

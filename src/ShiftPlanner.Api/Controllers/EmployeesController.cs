@@ -212,9 +212,15 @@ public class EmployeesController(ApplicationDbContext db) : ControllerBase
         return NoContent();
     }
 
+    // `deleteAssignments=true` is the escape hatch for data nobody wants to keep (test/demo
+    // employees, mainly) — it deletes the employee's ShiftAssignments right along with them
+    // instead of stopping at the 409 below. Defaults to false so the safe path (the 409 telling
+    // the caller to remove shifts first or deactivate instead) stays the default for every
+    // existing caller; the frontend only ever sends true as an explicit second confirmation
+    // after the user has already seen and dismissed that 409 once.
     [HttpDelete("{id:guid}")]
     [Authorize(Policy = "ManagerWrite")]
-    public async Task<IActionResult> Delete(Guid id)
+    public async Task<IActionResult> Delete(Guid id, bool deleteAssignments = false)
     {
         var employee = await db.Employees.FindAsync(id);
         if (employee is null)
@@ -225,16 +231,25 @@ public class EmployeesController(ApplicationDbContext db) : ControllerBase
         // with an opaque foreign-key-violation 500 (caught generically by
         // GlobalExceptionMiddleware, but with no way to say *why* or what to do about it).
         // Checked explicitly here instead so the manager gets a specific, actionable reason.
-        var assignmentCount = await db.ShiftAssignments.CountAsync(a => a.EmployeeId == id);
-        if (assignmentCount > 0)
+        var assignments = await db.ShiftAssignments.Where(a => a.EmployeeId == id).ToListAsync();
+        if (assignments.Count > 0 && !deleteAssignments)
             return Conflict(
                 $"Mitarbeiter '{employee.FirstName} {employee.LastName}' kann nicht gelöscht werden: " +
-                (assignmentCount == 1
+                (assignments.Count == 1
                     ? "es ist noch 1 Schicht"
-                    : $"es sind noch {assignmentCount} Schichten") +
+                    : $"es sind noch {assignments.Count} Schichten") +
                 " im Dienstplan zugewiesen. Bitte entfernen Sie zuerst die betroffenen Schichten, " +
                 "oder deaktivieren Sie den Mitarbeiter stattdessen über das Feld „Aktiv“, um die " +
                 "Historie zu erhalten.");
+
+        // Deletes in the same SaveChangesAsync call as the Employee itself below, so EF Core's
+        // single implicit transaction covers both — either everything goes, or (on any failure)
+        // nothing does, same atomicity every other multi-row write in this codebase relies on
+        // (e.g. issue #82's /copy). AuditSaveChangesInterceptor still logs every one of these
+        // Deletes individually, so the "no history kept" the caller asked for is about the
+        // Dienstplan, not about losing the audit trail of what was deleted and by whom.
+        if (assignments.Count > 0)
+            db.ShiftAssignments.RemoveRange(assignments);
 
         db.Employees.Remove(employee);
         await db.SaveChangesAsync();

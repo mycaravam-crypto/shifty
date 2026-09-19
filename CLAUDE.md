@@ -81,7 +81,16 @@ employees with a fixed monthly hours budget instead of a regular weekly schedule
 A cross-cutting error-message clarity pass followed (no issue filed, requested directly —
 "delete a user fails with no significant error message") — a global exception-handling
 middleware plus a specific pre-check on `EmployeesController.Delete`, and a shared frontend
-error-extraction helper wired into every write flow's error handling — see below.
+error-extraction helper wired into every write flow's error handling — see below. A follow-up
+report on that same flow ("disabling a member while trying to delete him caused an error")
+turned out to be a separate, frontend-only bug: every `ConfirmDialog`-driven delete handler but
+one left its dialog open (backdrop blocking every click) after a failed delete instead of
+closing it the way the one correct existing example already did — fixed across all five
+affected handlers — see below. A direct follow-up on that same report then added the actual
+escape hatch for the underlying "old test data I don't care about" case: a `deleteAssignments`
+option on the employee-delete endpoint, offered as a second, more explicit confirmation once
+the plain delete 409s, that deletes the employee's shift history right along with them — see
+below.
 Only #61 (verify the compose stack against a real deployment — needs actual VPS access this
 environment doesn't have) remains open.
 What's built:
@@ -1904,6 +1913,69 @@ What's built:
   and `npm run build` (`vue-tsc -b` + `vite build`) both clean — the frontend message changes
   were not clicked through in an actual browser this session (verified at the type-check/lint
   level plus the backend behavior they now surface being confirmed for real via curl above).
+- **Fix: the delete-confirm dialog stayed open (and blocking) after a failed delete** (no issue
+  filed, reported directly — "disabling a member while trying to delete him caused an error").
+  Root cause turned out to be frontend-only, not the `EmployeesController.Delete` 409 flow
+  itself (verified that already works correctly, backend and frontend, end-to-end — a real
+  local Postgres + the API run via `dotnet run`, and a scratch Playwright script against the
+  real dev server hitting that real backend, not mocked): every `ConfirmDialog`-driven delete
+  handler except one (`usePlanningActions.ts`'s `onArchiveConfirmed`, and `ScheduleView.vue`'s
+  `onDeleteAssignmentConfirmed` from issue #80) only cleared its `xxxToDelete` ref — the flag
+  controlling the dialog's `v-if` — on the success path, never in the `catch`. So a failed
+  delete (e.g. exactly the "still has shifts assigned, deactivate instead?" `409` this
+  session's own error-message clarity pass above made specific and actionable) left the
+  `ConfirmDialog` open with its fixed `bg-black/60` backdrop still up, silently intercepting
+  every click on the page underneath it — a user who read the toast's suggestion to deactivate
+  the employee instead of deleting them would click on the row to open `EmployeeDetailModal`
+  and nothing would happen, reads as the app being broken/erroring rather than as a dialog they
+  still need to dismiss. Reproduced directly this way (a scratch Playwright script driving the
+  real dev server against a real local `dotnet run` API + local Postgres, not mocked — create
+  an employee with a shift assigned, click delete, confirm, see the `409` toast, then try to
+  click the row again to open the edit modal and disable them): the click timed out because the
+  still-open `ConfirmDialog`'s backdrop intercepted it. Fixed by moving each handler's
+  `xxxToDelete.value = null` (and `ShiftAssignmentModal.vue`'s own `confirmingDelete.value =
+  false`, same bug, separate component) into a `finally` block instead of only the success
+  path — matching the pattern the two exceptions above already used correctly, so this was a
+  missed-elsewhere fix, not a new pattern: `EmployeesView.vue`'s `onDeleteConfirmed` (the
+  employee-delete flow the report actually hit), `EmployeeDetailModal.vue`'s
+  `onDeleteContractConfirmed`/`onDeleteAbsenceConfirmed`/`onDeleteHoursAdjustmentConfirmed`, and
+  `ShiftAssignmentModal.vue`'s `onDeleteConfirmed`. Re-ran the same Playwright script after the
+  fix against the same real backend: the dialog now closes on the `409`, the toast still shows
+  the full actionable message, and the previously-blocked click on the employee row now opens
+  the modal, where unchecking "Aktiv" and saving succeeds cleanly (confirmed via the API too —
+  `active: false` persisted). `npm run lint` (0 errors) and `npm run build` (`vue-tsc -b` +
+  `vite build`) both clean.
+- **Force-delete an employee along with their shift history** (no issue filed, requested
+  directly as a follow-up on the fix above — "I had old test user data I wanted to remove and
+  don't care about the history"). `EmployeesController.Delete` gains an optional
+  `deleteAssignments` query bool (default `false`, so every existing caller keeps the safe
+  409-and-suggest-alternatives behavior unchanged): when `true` and the employee has
+  `ShiftAssignment`s, those are `RemoveRange`d in the same `SaveChangesAsync` call as the
+  `Employee` itself, so EF Core's one implicit transaction covers both — no separate
+  `BeginTransactionAsync` needed, same reasoning issue #82's `/copy` already documented for
+  atomicity. `AuditSaveChangesInterceptor` still logs each deleted `ShiftAssignment` and the
+  `Employee` individually, so "don't care about the Dienstplan history" doesn't mean losing the
+  audit trail of what was force-deleted and by whom. Frontend: `EmployeesView.vue`'s
+  `onDeleteConfirmed` now also sets a new `employeeToForceDelete` ref when the plain delete
+  409s (in addition to still toasting the reason) — a second `ConfirmDialog` ("Mitarbeiter
+  endgültig löschen", rose-styled, explicit "Das kann nicht rückgängig gemacht werden." wording)
+  offers deleting the employee and their shifts together; confirming calls the same endpoint
+  with `?deleteAssignments=true`. Same `ManagerWrite` policy as the plain delete — this doesn't
+  need Admin, since a Manager can already delete every one of those shift assignments
+  individually via the Dienstplan; the new endpoint parameter is a shortcut for that, not a new
+  capability. Verified against a real local Postgres + API (`dotnet run`, same setup as the fix
+  above): `dotnet build`/`dotnet test` clean (324/324, unaffected — this is controller-level
+  behavior, no `ShiftPlanner.Tests` project has ASP.NET Core hosting, same reasoning issue #71/
+  #68 documented for their own controller-level checks), then curl-round-tripped directly — a
+  plain `DELETE` on an employee with 2 assignments still 409s with the exact original message,
+  `DELETE ?deleteAssignments=true` on the same employee returns `204` and removes both the
+  employee and both assignments in one call, and the `AuditLogs` table confirms 3 `Delete` rows
+  (`Employee` + 2 `ShiftAssignment`) alongside the original `Create` rows. Then re-verified the
+  full UI flow with a scratch Playwright script against that same real backend (not mocked):
+  clicking delete on an employee with a shift shows the original confirm dialog → 409 toast →
+  the new "Mitarbeiter endgültig löschen" dialog appears automatically → confirming it removes
+  the employee, closes the dialog, and the list correctly shows "Keine Mitarbeiter." afterward.
+  `npm run lint` (0 errors) and `npm run build` (`vue-tsc -b` + `vite build`) both clean.
 - **Docker/deploy**: `docker-compose.yml` (db/api/web) validated with `docker compose config`,
   never actually deployed. No `.env` exists anywhere yet (only `.env.example`).
 - **Versioning**: same scheme as vanspace3d. `frontend/package.json`'s `version` is shown
