@@ -97,10 +97,15 @@ async function onDeleteConfirmed() {
   try {
     await api.delete(`/employees/${employeeToDelete.value.id}`)
     toast.success('Mitarbeiter gelöscht.')
-    employeeToDelete.value = null
     await load()
   } catch (e) {
+    // A blocked delete (e.g. the employee still has shifts assigned) shows a specific reason
+    // via the toast and suggests deactivating instead — closing the confirm dialog here (rather
+    // than only on success) is what actually lets the user act on that suggestion, since its
+    // backdrop otherwise stays up and blocks every click on the page underneath it.
     toast.error(extractErrorMessage(e, 'Mitarbeiter konnte nicht gelöscht werden.'))
+  } finally {
+    employeeToDelete.value = null
   }
 }
 

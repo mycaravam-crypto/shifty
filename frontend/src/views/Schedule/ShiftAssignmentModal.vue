@@ -133,6 +133,10 @@ async function onDeleteConfirmed() {
     } else {
       toast.error(extractErrorMessage(err, 'Schicht konnte nicht gelöscht werden.'))
     }
+  } finally {
+    // Close the confirm dialog either way — on a non-concurrency failure neither branch above
+    // did, leaving its backdrop up and blocking every click on the modal underneath it.
+    confirmingDelete.value = false
   }
 }
 </script>

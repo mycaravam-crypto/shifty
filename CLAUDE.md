@@ -81,7 +81,12 @@ employees with a fixed monthly hours budget instead of a regular weekly schedule
 A cross-cutting error-message clarity pass followed (no issue filed, requested directly —
 "delete a user fails with no significant error message") — a global exception-handling
 middleware plus a specific pre-check on `EmployeesController.Delete`, and a shared frontend
-error-extraction helper wired into every write flow's error handling — see below.
+error-extraction helper wired into every write flow's error handling — see below. A follow-up
+report on that same flow ("disabling a member while trying to delete him caused an error")
+turned out to be a separate, frontend-only bug: every `ConfirmDialog`-driven delete handler but
+one left its dialog open (backdrop blocking every click) after a failed delete instead of
+closing it the way the one correct existing example already did — fixed across all five
+affected handlers — see below.
 Only #61 (verify the compose stack against a real deployment — needs actual VPS access this
 environment doesn't have) remains open.
 What's built:
@@ -1904,6 +1909,38 @@ What's built:
   and `npm run build` (`vue-tsc -b` + `vite build`) both clean — the frontend message changes
   were not clicked through in an actual browser this session (verified at the type-check/lint
   level plus the backend behavior they now surface being confirmed for real via curl above).
+- **Fix: the delete-confirm dialog stayed open (and blocking) after a failed delete** (no issue
+  filed, reported directly — "disabling a member while trying to delete him caused an error").
+  Root cause turned out to be frontend-only, not the `EmployeesController.Delete` 409 flow
+  itself (verified that already works correctly, backend and frontend, end-to-end — a real
+  local Postgres + the API run via `dotnet run`, and a scratch Playwright script against the
+  real dev server hitting that real backend, not mocked): every `ConfirmDialog`-driven delete
+  handler except one (`usePlanningActions.ts`'s `onArchiveConfirmed`, and `ScheduleView.vue`'s
+  `onDeleteAssignmentConfirmed` from issue #80) only cleared its `xxxToDelete` ref — the flag
+  controlling the dialog's `v-if` — on the success path, never in the `catch`. So a failed
+  delete (e.g. exactly the "still has shifts assigned, deactivate instead?" `409` this
+  session's own error-message clarity pass above made specific and actionable) left the
+  `ConfirmDialog` open with its fixed `bg-black/60` backdrop still up, silently intercepting
+  every click on the page underneath it — a user who read the toast's suggestion to deactivate
+  the employee instead of deleting them would click on the row to open `EmployeeDetailModal`
+  and nothing would happen, reads as the app being broken/erroring rather than as a dialog they
+  still need to dismiss. Reproduced directly this way (a scratch Playwright script driving the
+  real dev server against a real local `dotnet run` API + local Postgres, not mocked — create
+  an employee with a shift assigned, click delete, confirm, see the `409` toast, then try to
+  click the row again to open the edit modal and disable them): the click timed out because the
+  still-open `ConfirmDialog`'s backdrop intercepted it. Fixed by moving each handler's
+  `xxxToDelete.value = null` (and `ShiftAssignmentModal.vue`'s own `confirmingDelete.value =
+  false`, same bug, separate component) into a `finally` block instead of only the success
+  path — matching the pattern the two exceptions above already used correctly, so this was a
+  missed-elsewhere fix, not a new pattern: `EmployeesView.vue`'s `onDeleteConfirmed` (the
+  employee-delete flow the report actually hit), `EmployeeDetailModal.vue`'s
+  `onDeleteContractConfirmed`/`onDeleteAbsenceConfirmed`/`onDeleteHoursAdjustmentConfirmed`, and
+  `ShiftAssignmentModal.vue`'s `onDeleteConfirmed`. Re-ran the same Playwright script after the
+  fix against the same real backend: the dialog now closes on the `409`, the toast still shows
+  the full actionable message, and the previously-blocked click on the employee row now opens
+  the modal, where unchecking "Aktiv" and saving succeeds cleanly (confirmed via the API too —
+  `active: false` persisted). `npm run lint` (0 errors) and `npm run build` (`vue-tsc -b` +
+  `vite build`) both clean.
 - **Docker/deploy**: `docker-compose.yml` (db/api/web) validated with `docker compose config`,
   never actually deployed. No `.env` exists anywhere yet (only `.env.example`).
 - **Versioning**: same scheme as vanspace3d. `frontend/package.json`'s `version` is shown
