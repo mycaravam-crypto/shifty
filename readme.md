@@ -163,6 +163,7 @@ ValidTo
 WeeklyHours
 WorkingDaysPerWeek
 DailyTargetHours
+MonthlyHours (optional)
 ```
 
 Beispiel:
@@ -172,6 +173,18 @@ Max Müller
 32 h/Woche
 4 Arbeitstage
 8 h/Tag
+```
+
+Für Mitarbeiter mit einem monatlichen Stundenkontingent statt einer regelmäßigen Wochenarbeitszeit
+(z. B. Aushilfen "auf Abruf") kann statt `WeeklyHours` ein `MonthlyHours`-Wert gesetzt werden — ein
+fester Stundenumfang **pro Kalendermonat** statt einer Woche. Ist `MonthlyHours` gesetzt, hat es
+Vorrang vor `WeeklyHours`; ein vollständig im Kalendermonat liegender Zeitraum (der Normalfall eines
+monatslangen Schedules) ergibt dann exakt `MonthlyHours`, ein Teilzeitraum wird linear anteilig
+innerhalb des jeweiligen Kalendermonats berechnet.
+
+```text
+Petra Beispiel
+60 h/Monat (Stundenkontingent)
 ```
 
 Wichtig: Vertragsdaten gehören **nicht direkt in Employee**.

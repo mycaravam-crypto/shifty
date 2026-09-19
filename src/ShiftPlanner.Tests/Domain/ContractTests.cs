@@ -161,4 +161,24 @@ public class ContractTests
 
         contract.Validate(); // should not throw
     }
+
+    // Monthly-hours contingent employees: MonthlyHours is an additive, optional trailing
+    // parameter — omitting it (every pre-existing call site) leaves it null.
+    [Fact]
+    public void Create_MonthlyHoursOmitted_DefaultsToNull()
+    {
+        var contract = Contract.Create(
+            Guid.NewGuid(), Guid.NewGuid(), new DateOnly(2026, 1, 1), null, 40m, 5, 8m, null);
+
+        Assert.Null(contract.MonthlyHours);
+    }
+
+    [Fact]
+    public void Create_MonthlyHoursProvided_IsPersistedOnTheContract()
+    {
+        var contract = Contract.Create(
+            Guid.NewGuid(), Guid.NewGuid(), new DateOnly(2026, 1, 1), null, 0m, 0, 0m, null, monthlyHours: 60m);
+
+        Assert.Equal(60m, contract.MonthlyHours);
+    }
 }

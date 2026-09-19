@@ -46,6 +46,10 @@ interface Contract {
   workingDaysPerWeek: number
   dailyTargetHours: number
   hourlyRate: number | null
+  // Monthly-hours contingent employees (e.g. Aushilfen "auf Abruf" with a fixed monthly hours
+  // budget rather than a weekly average): set means this contract's target hours are a fixed
+  // figure per calendar month instead of weeklyHours scaled by day-span.
+  monthlyHours: number | null
 }
 // Domain/Employees/Absence.cs's AbsenceType, serialized as its numeric ordinal.
 type AbsenceType = 0 | 1 | 2 | 3
@@ -208,10 +212,16 @@ async function onSavePreferences() {
 }
 
 const contracts = ref<Contract[]>([])
+// 'weekly' (the default, every pre-existing contract) scales weeklyHours by the viewed period's
+// day-span/7; 'monthly' is a fixed budget per calendar month instead — for employees with a
+// monthly hours contingent (e.g. Aushilfen "auf Abruf") rather than a regular weekly schedule.
+type HoursModel = 'weekly' | 'monthly'
 const contractForm = ref({
   validFrom: '',
   validTo: '',
+  hoursModel: 'weekly' as HoursModel,
   weeklyHours: 40,
+  monthlyHours: 60,
   workingDaysPerWeek: 5,
   dailyTargetHours: 8,
   hourlyRate: null as number | null,
@@ -235,7 +245,9 @@ function resetContractForm() {
   contractForm.value = {
     validFrom: '',
     validTo: '',
+    hoursModel: 'weekly',
     weeklyHours: 40,
+    monthlyHours: 60,
     workingDaysPerWeek: 5,
     dailyTargetHours: 8,
     hourlyRate: null,
@@ -248,7 +260,9 @@ function onEditContract(c: Contract) {
   contractForm.value = {
     validFrom: c.validFrom,
     validTo: c.validTo ?? '',
+    hoursModel: c.monthlyHours !== null ? 'monthly' : 'weekly',
     weeklyHours: c.weeklyHours,
+    monthlyHours: c.monthlyHours ?? 60,
     workingDaysPerWeek: c.workingDaysPerWeek,
     dailyTargetHours: c.dailyTargetHours,
     hourlyRate: c.hourlyRate,
@@ -264,10 +278,16 @@ function onCancelEditContract() {
 async function onSubmitContract() {
   savingContract.value = true
   contractError.value = ''
+  const isMonthly = contractForm.value.hoursModel === 'monthly'
   const payload = {
     validFrom: contractForm.value.validFrom,
     validTo: contractForm.value.validTo || null,
-    weeklyHours: contractForm.value.weeklyHours,
+    // Only one model applies at a time — the unused figure is sent as 0/null rather than
+    // whatever stale value sits in the other input, so the table/backend never show a
+    // WeeklyHours number that isn't actually in effect (MonthlyHours takes priority whenever
+    // it's set — see WorkingTimeCalculator.ExpectedHours).
+    weeklyHours: isMonthly ? 0 : contractForm.value.weeklyHours,
+    monthlyHours: isMonthly ? contractForm.value.monthlyHours : null,
     workingDaysPerWeek: contractForm.value.workingDaysPerWeek,
     dailyTargetHours: contractForm.value.dailyTargetHours,
     hourlyRate: contractForm.value.hourlyRate || null,
@@ -572,7 +592,7 @@ onMounted(() => {
               >
                 <th class="px-3 py-2">Gültig ab</th>
                 <th class="px-3 py-2">Gültig bis</th>
-                <th class="px-3 py-2 font-mono">Std/Wo</th>
+                <th class="px-3 py-2 font-mono">Stunden</th>
                 <th class="px-3 py-2">Tage/Wo</th>
                 <th class="px-3 py-2 font-mono">Std/Tag</th>
                 <th class="px-3 py-2 font-mono">€/Std</th>
@@ -588,7 +608,10 @@ onMounted(() => {
               >
                 <td class="px-3 py-2">{{ formatDate(c.validFrom) }}</td>
                 <td class="px-3 py-2 text-slate-400">{{ formatDate(c.validTo) }}</td>
-                <td class="px-3 py-2 font-mono">{{ c.weeklyHours }}</td>
+                <td class="px-3 py-2 font-mono">
+                  <span v-if="c.monthlyHours !== null">{{ c.monthlyHours }} Std/Mon</span>
+                  <span v-else>{{ c.weeklyHours }} Std/Wo</span>
+                </td>
                 <td class="px-3 py-2">{{ c.workingDaysPerWeek }}</td>
                 <td class="px-3 py-2 font-mono">{{ c.dailyTargetHours }}</td>
                 <td class="px-3 py-2 font-mono">{{ c.hourlyRate ?? '—' }}</td>
@@ -634,13 +657,29 @@ onMounted(() => {
             :class="inputClass"
             placeholder="Gültig bis (optional)"
           />
+          <select v-model="contractForm.hoursModel" :class="inputClass">
+            <option value="weekly">Wochenstunden</option>
+            <option value="monthly">Stundenkontingent (monatlich)</option>
+          </select>
           <input
+            v-if="contractForm.hoursModel === 'weekly'"
             v-model.number="contractForm.weeklyHours"
             type="number"
             step="0.5"
             min="0"
             max="168"
             placeholder="Std/Woche"
+            required
+            :class="inputClass"
+          />
+          <input
+            v-else
+            v-model.number="contractForm.monthlyHours"
+            type="number"
+            step="0.5"
+            min="0"
+            max="750"
+            placeholder="Std/Monat"
             required
             :class="inputClass"
           />

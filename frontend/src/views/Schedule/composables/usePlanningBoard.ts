@@ -182,8 +182,17 @@ export function usePlanningBoard(filters: ReturnType<typeof useScheduleFilters>)
   // unique-per-employee validFrom) applies. weeklyHours*days/7 is then applied once per contract
   // rather than once for the whole month — the single-contract common case reduces to exactly the
   // old flat formula, while a mid-month contract change now correctly gets two segments.
-  function daysByContract(contracts: Contract[], absenceDays: Set<string>): Map<string, number> {
-    const days = new Map<string, number>()
+  //
+  // Monthly-hours contingent contracts (monthlyHours set) are kept in a separate map, further
+  // split by calendar month (since a contract can span more than one), mirroring
+  // WorkingTimeCalculator.ExpectedHours (backend) — a full-calendar-month view then reduces to
+  // exactly monthlyHours instead of a weeklyHours-scaled approximation.
+  function daysByContract(
+    contracts: Contract[],
+    absenceDays: Set<string>,
+  ): { weekly: Map<string, number>; monthly: Map<string, number> } {
+    const weekly = new Map<string, number>()
+    const monthly = new Map<string, number>()
     for (
       let d = parseIso(monthStartIso.value);
       d <= parseIso(monthEndIso.value);
@@ -192,22 +201,36 @@ export function usePlanningBoard(filters: ReturnType<typeof useScheduleFilters>)
       const dateIso = toIso(d)
       if (absenceDays.has(dateIso)) continue
       const contract = activeContractOn(contracts, dateIso)
-      if (contract) days.set(contract.validFrom, (days.get(contract.validFrom) ?? 0) + 1)
+      if (!contract) continue
+      if (contract.monthlyHours !== null) {
+        const key = `${contract.validFrom}|${dateIso.slice(0, 7)}`
+        monthly.set(key, (monthly.get(key) ?? 0) + 1)
+      } else {
+        weekly.set(contract.validFrom, (weekly.get(contract.validFrom) ?? 0) + 1)
+      }
     }
-    return days
+    return { weekly, monthly }
   }
   function targetHoursFor(employeeId: string): number | null {
     const contracts = contractsByEmployee.value.get(employeeId) ?? []
     if (!contracts.length) return null
 
     const absences = absencesByEmployee.value.get(employeeId) ?? []
-    const byContract = daysByContract(contracts, absenceDaySet(absences))
-    if (byContract.size === 0) return null
+    const { weekly, monthly } = daysByContract(contracts, absenceDaySet(absences))
+    if (weekly.size === 0 && monthly.size === 0) return null
 
     let total = 0
-    for (const [validFrom, days] of byContract) {
+    for (const [validFrom, days] of weekly) {
       const contract = contracts.find((c) => c.validFrom === validFrom)
       if (contract) total += (contract.weeklyHours * days) / 7
+    }
+    for (const [key, days] of monthly) {
+      const [validFrom, yearMonth] = key.split('|')
+      const contract = contracts.find((c) => c.validFrom === validFrom)
+      if (!contract || contract.monthlyHours === null) continue
+      const [year, month] = yearMonth.split('-').map(Number)
+      const daysInMonth = new Date(year, month, 0).getDate()
+      total += (contract.monthlyHours * days) / daysInMonth
     }
     return Math.round(total * 10) / 10
   }
