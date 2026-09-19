@@ -101,6 +101,9 @@ export function usePlanningBoard(filters: ReturnType<typeof useScheduleFilters>)
   function shiftTypeById(id: string) {
     return shiftTypes.value.find((s) => s.id === id)
   }
+  function employeeById(id: string) {
+    return employees.value.find((e) => e.id === id)
+  }
   // issue #77: inline per-day/shift-type staffing coverage on the grid itself, not only in the
   // validation panel above it. Only ShiftTypes with a MinStaffing/MaxStaffing target defined are
   // shown at all — most ShiftTypes have neither set and would just be noise here.
@@ -151,6 +154,17 @@ export function usePlanningBoard(filters: ReturnType<typeof useScheduleFilters>)
   }
   function assignmentsFor(employeeId: string, dateIso: string) {
     return assignments.value.filter((a) => a.employeeId === employeeId && a.date === dateIso)
+  }
+  // "Nach Schicht" view (requested directly — a handful of shift types with 20+ employees
+  // makes dragging shifts onto employees the wrong way round; shift types become the grid's
+  // rows and employees are dragged onto them instead). Only considers assignments for employees
+  // the search/team filter would also show, matching how the employee-rows grid already hides
+  // filtered-out employees' rows entirely rather than just dimming them.
+  function assignmentsForShift(shiftTypeId: string, dateIso: string) {
+    const visibleIds = new Set(visibleEmployees.value.map((e) => e.id))
+    return assignments.value.filter(
+      (a) => a.shiftTypeId === shiftTypeId && a.date === dateIso && visibleIds.has(a.employeeId),
+    )
   }
   function netHoursFor(employeeId: string) {
     return assignments.value
@@ -373,12 +387,14 @@ export function usePlanningBoard(filters: ReturnType<typeof useScheduleFilters>)
     publishBlockReason,
     days,
     shiftTypeById,
+    employeeById,
     coverageShiftTypes,
     coverageFor,
     holidayFor,
     isWeekend,
     isAbsentOn,
     assignmentsFor,
+    assignmentsForShift,
     netHoursFor,
     targetHoursFor,
     carriedOverFor,

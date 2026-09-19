@@ -107,7 +107,7 @@ function barWidth(employeeId: string): number {
         'bg-blue-500/10 ring-1 ring-inset ring-blue-500/50': isCellHighlighted(toIso(d)),
         'bg-white/[0.03]': isWeekend(d) && !isCellHighlighted(toIso(d)),
       }"
-      :data-employee-id="employee.id"
+      :data-row-id="employee.id"
       :data-date="toIso(d)"
       :tabindex="isFocusableCell(employee.id, toIso(d)) ? 0 : -1"
       role="gridcell"

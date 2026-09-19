@@ -19,6 +19,7 @@ defineProps<{
   archiving: boolean
   blockingErrorCount: number
   publishBlockReason: string | undefined
+  viewMode: 'employee' | 'shift'
 }>()
 const emit = defineEmits<{
   prev: []
@@ -27,6 +28,7 @@ const emit = defineEmits<{
   'export-all': []
   publish: []
   archive: []
+  'set-view-mode': [mode: 'employee' | 'shift']
 }>()
 </script>
 
@@ -34,6 +36,35 @@ const emit = defineEmits<{
   <div class="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 mb-6 print:hidden">
     <h1 class="text-2xl font-semibold">Dienstplan</h1>
     <div class="flex flex-wrap items-center gap-x-3 gap-y-2">
+      <!-- Requested directly: with only a handful of shift types but 20+ employees, dragging
+           shifts onto employee rows is the wrong way round — this toggles to a grid with
+           shift types as rows and employees as the draggable palette instead. -->
+      <div class="flex rounded-lg bg-white/5 border border-white/10 p-0.5 text-xs print:hidden">
+        <button
+          class="rounded px-2.5 py-1 transition-colors"
+          :class="
+            viewMode === 'employee'
+              ? 'bg-white/10 text-slate-100'
+              : 'text-slate-400 hover:text-slate-200'
+          "
+          title="Mitarbeiter als Zeilen, Schichten ziehen"
+          @click="emit('set-view-mode', 'employee')"
+        >
+          Nach Mitarbeiter
+        </button>
+        <button
+          class="rounded px-2.5 py-1 transition-colors"
+          :class="
+            viewMode === 'shift'
+              ? 'bg-white/10 text-slate-100'
+              : 'text-slate-400 hover:text-slate-200'
+          "
+          title="Schichten als Zeilen, Mitarbeiter ziehen"
+          @click="emit('set-view-mode', 'shift')"
+        >
+          Nach Schicht
+        </button>
+      </div>
       <button
         class="flex items-center justify-center p-3 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-white/5 transition-colors print:hidden"
         @click="emit('prev')"

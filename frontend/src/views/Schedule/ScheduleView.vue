@@ -12,16 +12,18 @@ import ShiftAssignmentModal from './ShiftAssignmentModal.vue'
 import ShiftSuggestionModal from './ShiftSuggestionModal.vue'
 import PlanningToolbar from './PlanningToolbar.vue'
 import ShiftPalette from './ShiftPalette.vue'
+import EmployeeSidebar from './EmployeeSidebar.vue'
 import ValidationSummary from './ValidationSummary.vue'
 import PlanningGrid from './PlanningGrid.vue'
+import ShiftPlanningGrid from './ShiftPlanningGrid.vue'
 import SchedulePrintSheet from './SchedulePrintSheet.vue'
 import { useScheduleFilters } from './composables/useScheduleFilters'
 import { usePlanningBoard } from './composables/usePlanningBoard'
 import { usePlanningActions } from './composables/usePlanningActions'
 import { useScheduleDnD } from './composables/useScheduleDnD'
 import { useGridKeyboardNav } from './composables/useGridKeyboardNav'
-import { addDays, parseIso, startOfWeek, toIso } from './format'
-import type { Assignment, ShiftType, ValidationIssue, ValidationResult } from './types'
+import { addDays, currencyFmt, parseIso, startOfWeek, toIso, weekdayFmt } from './format'
+import type { Assignment, Employee, ShiftType, ValidationIssue, ValidationResult } from './types'
 
 const toast = useToastStore()
 const route = useRoute()
@@ -60,12 +62,14 @@ const {
   publishBlockReason,
   days,
   shiftTypeById,
+  employeeById,
   coverageShiftTypes,
   coverageFor,
   holidayFor,
   isWeekend,
   isAbsentOn,
   assignmentsFor,
+  assignmentsForShift,
   netHoursFor,
   targetHoursFor,
   carriedOverFor,
@@ -87,8 +91,16 @@ const {
   onPublish,
   onArchiveConfirmed,
   performDrop,
+  performShiftDrop,
   onAssignmentUpdated,
 } = actions
+
+// Requested directly: with only a handful of shift types but 20+ employees, dragging shifts
+// onto employee rows is the wrong way round for day-to-day assigning — this toggles between
+// that original layout ('employee': rows = employees, drag shift types) and its axes-swapped
+// counterpart ('shift': rows = shift types, drag employees). Both read/write the exact same
+// board state; only which grid/palette pair is rendered and how a drop is interpreted differs.
+const viewMode = ref<'employee' | 'shift'>('employee')
 
 // The route's `:date` drives which month's Schedule is active (board.anchorDate) — the same
 // single-date resolution the old full-month grid used, just fed a week-anchor date instead of
@@ -162,19 +174,55 @@ const showShortcuts = ref(false)
 const highlightKey = ref<string | null>(null)
 const suggestingShiftType = ref<ShiftType | null>(null)
 
+function onOpenAssignment(assignment: Assignment) {
+  selectedAssignment.value = assignment
+}
+function onRequestDeleteAssignment(assignment: Assignment) {
+  deletingAssignment.value = assignment
+}
+
 const { isFocusableCell, cellAriaLabel, onCellFocus, focusedGridCellEl, onGridCellKeydown } =
   useGridKeyboardNav({
-    visibleEmployees: () => visibleEmployees.value,
+    rows: () => visibleEmployees.value,
     days: () => weekDays.value,
-    assignmentsFor,
-    shiftTypeById,
-    onOpen: (assignment) => {
-      selectedAssignment.value = assignment
+    assignmentsForCell: assignmentsFor,
+    describeCell: (employeeId, dateIso) => {
+      const employee = visibleEmployees.value.find((e) => e.id === employeeId)
+      const who = employee ? `${employee.firstName} ${employee.lastName}` : ''
+      const when = weekdayFmt.format(parseIso(dateIso))
+      const shifts = assignmentsFor(employeeId, dateIso)
+        .map((a) => shiftTypeById(a.shiftTypeId)?.name)
+        .filter(Boolean)
+      return `${who}, ${when}${shifts.length ? ', ' + shifts.join(', ') : ', frei'}`
     },
-    onDelete: (assignment) => {
-      deletingAssignment.value = assignment
-    },
+    onOpen: onOpenAssignment,
+    onDelete: onRequestDeleteAssignment,
   })
+
+// The "Nach Schicht" view's own keyboard nav — same composable, rows = shift types instead of
+// employees, so a cell's identity/description/open-delete targets differ accordingly.
+const {
+  isFocusableCell: isFocusableShiftCell,
+  cellAriaLabel: shiftCellAriaLabel,
+  onCellFocus: onShiftCellFocus,
+  focusedGridCellEl: focusedShiftGridCellEl,
+  onGridCellKeydown: onShiftGridCellKeydown,
+} = useGridKeyboardNav({
+  rows: () => activeShiftTypes.value,
+  days: () => weekDays.value,
+  assignmentsForCell: assignmentsForShift,
+  describeCell: (shiftTypeId, dateIso) => {
+    const shiftType = shiftTypeById(shiftTypeId)
+    const when = weekdayFmt.format(parseIso(dateIso))
+    const names = assignmentsForShift(shiftTypeId, dateIso)
+      .map((a) => employeeById(a.employeeId))
+      .filter((e): e is Employee => !!e)
+      .map((e) => `${e.firstName} ${e.lastName}`)
+    return `${shiftType?.name ?? ''}, ${when}${names.length ? ', ' + names.join(', ') : ', unbesetzt'}`
+  },
+  onOpen: onOpenAssignment,
+  onDelete: onRequestDeleteAssignment,
+})
 
 // issue #80: Delete/Backspace on a focused grid cell — the same delete call and toast pattern
 // ShiftAssignmentModal's own delete button uses, just reachable without opening the edit modal
@@ -210,14 +258,24 @@ async function onDeleteAssignmentConfirmed() {
 }
 
 const gridRef = ref<InstanceType<typeof PlanningGrid> | null>(null)
+const shiftGridRef = ref<InstanceType<typeof ShiftPlanningGrid> | null>(null)
+// One shared drag/pointer-tracking instance for both grids (only one is ever mounted at a
+// time) — onDrop/onAutoScroll dispatch on the active viewMode to interpret the dropped-on
+// cell's rowId (an employeeId in 'employee' mode, a ShiftType id in 'shift' mode) correctly.
 const { drag, dragOverKey, onChipPointerDown } = useScheduleDnD({
-  onDrop: performDrop,
+  onDrop: (payload, rowId, dateIso) =>
+    viewMode.value === 'shift'
+      ? performShiftDrop(payload, rowId, dateIso)
+      : performDrop(payload, rowId, dateIso),
   onTap: (payload) => {
     if (payload.kind !== 'assignment') return
     const assignment = assignments.value.find((a) => a.id === payload.assignmentId)
     if (assignment) selectedAssignment.value = assignment
   },
-  onAutoScroll: (clientX) => gridRef.value?.autoScrollTableWrap(clientX),
+  onAutoScroll: (clientX) =>
+    viewMode.value === 'shift'
+      ? shiftGridRef.value?.autoScrollTableWrap(clientX)
+      : gridRef.value?.autoScrollTableWrap(clientX),
 })
 
 // issue #79: once a Schedule isn't Draft, PlanningGrid/EmployeeScheduleRow don't attach the
@@ -232,19 +290,25 @@ async function handleAssignmentUpdated() {
   await onAssignmentUpdated()
 }
 
-// issue #39: jump to and briefly highlight the row/cell a validation issue is about.
+// issue #39: jump to and briefly highlight the row/cell a validation issue is about. In the
+// 'shift' view a validation issue still only carries an employeeId, not a shiftTypeId, so this
+// can only locate a cell when the issue also resolves to a specific assignment (which does
+// carry a shiftTypeId) — a whole-employee issue with no assignment (e.g. ContractHoursExceeded)
+// has no row to jump to in that view and is left a no-op there.
 function focusIssue(issue: ValidationIssue) {
   if (!issue.employeeId) return
   const assignment = issue.shiftAssignmentId
     ? assignments.value.find((a) => a.id === issue.shiftAssignmentId)
     : undefined
+  if (viewMode.value === 'shift' && !assignment) return
+  const rowId = viewMode.value === 'shift' && assignment ? assignment.shiftTypeId : issue.employeeId
   const selector = assignment
-    ? `[data-employee-id="${issue.employeeId}"][data-date="${assignment.date}"]`
-    : `[data-employee-id="${issue.employeeId}"]`
+    ? `[data-row-id="${rowId}"][data-date="${assignment.date}"]`
+    : `[data-row-id="${rowId}"]`
   document
     .querySelector(selector)
     ?.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' })
-  highlightKey.value = assignment ? `${issue.employeeId}|${assignment.date}` : issue.employeeId
+  highlightKey.value = assignment ? `${rowId}|${assignment.date}` : rowId
   window.setTimeout(() => {
     highlightKey.value = null
   }, 1500)
@@ -267,11 +331,20 @@ function onKeydown(e: KeyboardEvent) {
   }
   // issue #80: keyboard nav for the grid coexists with month-nav below — it only fires once a
   // day cell already has keyboard focus (Tab into the grid, or click a cell); otherwise the
-  // pre-existing ArrowLeft/Right month-nav applies as before.
-  const gridCell = focusedGridCellEl()
-  if (gridCell) {
-    onGridCellKeydown(e, gridCell.dataset.employeeId!, gridCell.dataset.date!)
-    return
+  // pre-existing ArrowLeft/Right month-nav applies as before. Only one of the two grids is ever
+  // mounted at a time (viewMode), so its own nav instance is the one to dispatch to.
+  if (viewMode.value === 'shift') {
+    const shiftGridCell = focusedShiftGridCellEl()
+    if (shiftGridCell) {
+      onShiftGridCellKeydown(e, shiftGridCell.dataset.rowId!, shiftGridCell.dataset.date!)
+      return
+    }
+  } else {
+    const gridCell = focusedGridCellEl()
+    if (gridCell) {
+      onGridCellKeydown(e, gridCell.dataset.rowId!, gridCell.dataset.date!)
+      return
+    }
   }
   if (e.key === 'ArrowLeft' && !isTyping()) {
     prevWeek()
@@ -345,12 +418,14 @@ window.addEventListener('afterprint', () => {
       :archiving="archiving"
       :blocking-error-count="blockingErrorCount"
       :publish-block-reason="publishBlockReason"
+      :view-mode="viewMode"
       @prev="prevWeek"
       @next="nextWeek"
       @show-shortcuts="showShortcuts = true"
       @export-all="exportAllPdf"
       @publish="onPublish"
       @archive="confirmingArchive = true"
+      @set-view-mode="viewMode = $event"
     />
 
     <p v-if="error" class="mb-4 text-sm text-rose-400">{{ error }}</p>
@@ -385,6 +460,7 @@ window.addEventListener('afterprint', () => {
         <ValidationSummary :validation="weekValidation" @focus="focusIssue" />
 
         <ShiftPalette
+          v-if="viewMode === 'employee'"
           :active-shift-types="activeShiftTypes"
           :has-assignments="assignments.length > 0"
           :copying-month="false"
@@ -394,6 +470,9 @@ window.addEventListener('afterprint', () => {
           :chip-pointer-down="onChipPointerDown"
           @suggest="suggestingShiftType = $event"
         />
+        <p v-else-if="totalLaborCost !== null" class="font-mono text-sm text-emerald-400 mb-4">
+          Lohnkosten: {{ currencyFmt.format(totalLaborCost) }}
+        </p>
 
         <div class="flex flex-wrap items-center gap-2 mb-4 print:hidden">
           <div class="relative">
@@ -416,6 +495,7 @@ window.addEventListener('afterprint', () => {
         </div>
 
         <PlanningGrid
+          v-if="viewMode === 'employee'"
           ref="gridRef"
           :days="weekDays"
           :visible-employees="visibleEmployees"
@@ -442,6 +522,40 @@ window.addEventListener('afterprint', () => {
           @export-employee-pdf="exportEmployeePdf"
           @view-readonly="viewAssignmentReadonly"
         />
+
+        <div v-else class="flex gap-4 items-start">
+          <EmployeeSidebar
+            :employees="visibleEmployees"
+            :active-employees-count="activeEmployees.length"
+            :target-hours-for="targetHoursFor"
+            :net-hours-for="netHoursFor"
+            :carried-over-for="carriedOverFor"
+            :labor-cost-for="laborCostFor"
+            :drag="drag"
+            :is-editable="!!isEditable"
+            :chip-pointer-down="onChipPointerDown"
+          />
+          <ShiftPlanningGrid
+            ref="shiftGridRef"
+            :days="weekDays"
+            :shift-types="activeShiftTypes"
+            :holiday-for="holidayFor"
+            :is-weekend="isWeekend"
+            :drag-over-key="dragOverKey"
+            :highlight-key="highlightKey"
+            :employee-by-id="employeeById"
+            :assignments-for-shift="assignmentsForShift"
+            :coverage-for="coverageFor"
+            :drag="drag"
+            :is-editable="!!isEditable"
+            :chip-pointer-down="onChipPointerDown"
+            :is-focusable-cell="isFocusableShiftCell"
+            :cell-aria-label="shiftCellAriaLabel"
+            :on-cell-focus="onShiftCellFocus"
+            @view-readonly="viewAssignmentReadonly"
+            @suggest="suggestingShiftType = $event"
+          />
+        </div>
 
         <SchedulePrintSheet
           :print-employee-id="printEmployeeId"
