@@ -5,6 +5,7 @@ import axios from 'axios'
 import { ChevronsLeft, Search } from '@lucide/vue'
 import api from '@/services/api'
 import { useToastStore } from '@/stores/toast'
+import { extractErrorMessage } from '@/utils/errors'
 import ModalShell from '@/components/ModalShell.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import ShiftAssignmentModal from './ShiftAssignmentModal.vue'
@@ -187,14 +188,21 @@ async function onDeleteAssignmentConfirmed() {
     toast.success('Schicht gelöscht.')
     await loadDetail()
   } catch (err) {
-    // issue #156: someone else changed this assignment since the grid last loaded.
-    if (axios.isAxiosError(err) && err.response?.status === 409) {
+    // issue #156: someone else changed this assignment since the grid last loaded — reload
+    // instead of leaving the grid showing a delete that didn't actually apply. Any other 409
+    // (e.g. the schedule got archived in the meantime) shows its own real message instead.
+    if (
+      axios.isAxiosError(err) &&
+      err.response?.status === 409 &&
+      typeof err.response.data === 'string' &&
+      err.response.data.includes('changed by someone else')
+    ) {
       toast.error(
         'Diese Schicht wurde inzwischen von jemand anderem geändert. Ansicht aktualisiert.',
       )
       await loadDetail()
     } else {
-      toast.error('Schicht konnte nicht gelöscht werden.')
+      toast.error(extractErrorMessage(err, 'Schicht konnte nicht gelöscht werden.'))
     }
   } finally {
     deletingAssignment.value = null

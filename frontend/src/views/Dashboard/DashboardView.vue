@@ -3,6 +3,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '@/services/api'
 import { useSettingsStore } from '@/stores/settings'
+import { extractErrorMessage } from '@/utils/errors'
 
 interface Team {
   id: string
@@ -159,8 +160,8 @@ async function load() {
       newPainPointKeys.value = new Set()
     }
     settings.markDashboardSeen(currentKeys)
-  } catch {
-    error.value = 'Übersicht konnte nicht geladen werden.'
+  } catch (e) {
+    error.value = extractErrorMessage(e, 'Übersicht konnte nicht geladen werden.')
   } finally {
     loading.value = false
   }

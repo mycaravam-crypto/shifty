@@ -195,6 +195,11 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+// First in the pipeline so it wraps every other middleware/controller below — see
+// GlobalExceptionMiddleware's own comment for why this exists (a bare foreign-key-violation
+// 500 with no body was the actual bug behind "delete fails with no significant error message").
+app.UseMiddleware<GlobalExceptionMiddleware>();
+
 app.UseHsts();
 app.UseCors();
 app.UseRateLimiter();

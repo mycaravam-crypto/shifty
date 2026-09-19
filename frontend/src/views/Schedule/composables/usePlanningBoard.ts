@@ -1,5 +1,6 @@
 import { computed, ref, watch } from 'vue'
 import api from '@/services/api'
+import { extractErrorMessage } from '@/utils/errors'
 import {
   addDays,
   addMonths,
@@ -320,8 +321,8 @@ export function usePlanningBoard(filters: ReturnType<typeof useScheduleFilters>)
         employees.value.map((e, i) => [e.id, absencesResults[i].data]),
       )
       await Promise.all([loadBalances(), loadHolidays()])
-    } catch {
-      error.value = 'Dienstplan konnte nicht geladen werden.'
+    } catch (e) {
+      error.value = extractErrorMessage(e, 'Dienstplan konnte nicht geladen werden.')
     } finally {
       loading.value = false
     }

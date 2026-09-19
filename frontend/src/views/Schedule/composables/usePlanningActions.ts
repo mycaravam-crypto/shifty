@@ -2,9 +2,23 @@ import { ref } from 'vue'
 import axios from 'axios'
 import api from '@/services/api'
 import { useToastStore } from '@/stores/toast'
+import { extractErrorMessage } from '@/utils/errors'
 import { addMonths, lastOfMonth, monthFmt, toIso } from '@/views/Schedule/format'
 import type { DragPayload } from './useScheduleDnD'
 import type { usePlanningBoard } from './usePlanningBoard'
+
+// issue #156's optimistic-concurrency 409 always carries this exact backend message — used to
+// tell it apart from every other reason a write against .../assignments can 409 (e.g. the
+// Schedule having been Archived/locked in the meantime), which need their own real message
+// instead of this one's "someone else changed it" wording.
+function isConcurrencyConflict(err: unknown): boolean {
+  return (
+    axios.isAxiosError(err) &&
+    err.response?.status === 409 &&
+    typeof err.response.data === 'string' &&
+    err.response.data.includes('changed by someone else')
+  )
+}
 
 // Create/move/copy mutations for the Dienstplan (issue #73's `usePlanningActions`). Reads and
 // mutates the board's state directly (same access pattern ScheduleView.vue used before the
@@ -27,8 +41,8 @@ export function usePlanningActions(board: ReturnType<typeof usePlanningBoard>) {
       })
       board.schedules.value = (await api.get('/schedules')).data
       toast.success('Dienstplan angelegt.')
-    } catch {
-      toast.error('Dienstplan konnte nicht angelegt werden.')
+    } catch (err) {
+      toast.error(extractErrorMessage(err, 'Dienstplan konnte nicht angelegt werden.'))
     } finally {
       creatingSchedule.value = false
     }
@@ -36,6 +50,11 @@ export function usePlanningActions(board: ReturnType<typeof usePlanningBoard>) {
 
   // issue #68/#79: the button is already disabled while blockingErrorCount > 0, but re-checks
   // the 409 case too (e.g. another manager changed something between page load and this click).
+  // Publish can 409 for two different reasons (SchedulesController.Publish): a JSON
+  // ValidationResult body when blocking Errors exist (handled below by reloading and showing the
+  // "unresolved errors" message), or a plain string when the schedule simply isn't Draft anymore
+  // (e.g. someone else already published/archived it) — that case needs its own real message,
+  // not the misleading "unresolved errors" one.
   async function onPublish() {
     if (!board.currentSchedule.value) return
     publishing.value = true
@@ -44,11 +63,15 @@ export function usePlanningActions(board: ReturnType<typeof usePlanningBoard>) {
       board.updateCurrentScheduleFrom(res.data)
       toast.success('Dienstplan veröffentlicht.')
     } catch (err) {
-      if (axios.isAxiosError(err) && err.response?.status === 409) {
+      if (
+        axios.isAxiosError(err) &&
+        err.response?.status === 409 &&
+        typeof err.response.data !== 'string'
+      ) {
         await board.loadDetail()
         toast.error('Veröffentlichen nicht möglich — es bestehen noch ungelöste Fehler.')
       } else {
-        toast.error('Dienstplan konnte nicht veröffentlicht werden.')
+        toast.error(extractErrorMessage(err, 'Dienstplan konnte nicht veröffentlicht werden.'))
       }
     } finally {
       publishing.value = false
@@ -62,8 +85,8 @@ export function usePlanningActions(board: ReturnType<typeof usePlanningBoard>) {
       const res = await api.post(`/schedules/${board.currentSchedule.value.id}/archive`)
       board.updateCurrentScheduleFrom(res.data)
       toast.success('Dienstplan archiviert.')
-    } catch {
-      toast.error('Dienstplan konnte nicht archiviert werden.')
+    } catch (err) {
+      toast.error(extractErrorMessage(err, 'Dienstplan konnte nicht archiviert werden.'))
     } finally {
       archiving.value = false
       confirmingArchive.value = false
@@ -89,11 +112,17 @@ export function usePlanningActions(board: ReturnType<typeof usePlanningBoard>) {
       toast.success('Monat kopiert.')
       board.nextMonth()
     } catch (err) {
+      // issue #82: /copy 409s for one of two reasons — the target month already has
+      // assignments, or the target schedule itself isn't Draft — both come back as the
+      // backend's own plain-string message, so show that instead of guessing which one it was.
       if (axios.isAxiosError(err) && err.response?.status === 409) {
-        board.error.value = 'Nächster Monat hat bereits Schichten — Kopieren abgebrochen.'
+        board.error.value = extractErrorMessage(
+          err,
+          'Kopieren nicht möglich — bitte erneut versuchen.',
+        )
         toast.error(board.error.value)
       } else {
-        toast.error('Monat konnte nicht kopiert werden.')
+        toast.error(extractErrorMessage(err, 'Monat konnte nicht kopiert werden.'))
       }
     } finally {
       copyingMonth.value = false
@@ -134,12 +163,13 @@ export function usePlanningActions(board: ReturnType<typeof usePlanningBoard>) {
       await board.loadDetail()
     } catch (err) {
       // issue #156: someone else changed this assignment since the grid last loaded — reload
-      // instead of leaving the grid showing a move that didn't actually apply.
-      if (axios.isAxiosError(err) && err.response?.status === 409) {
+      // instead of leaving the grid showing a move that didn't actually apply. Any other 409
+      // (e.g. the schedule got archived in the meantime) shows its own real message instead.
+      if (isConcurrencyConflict(err)) {
         toast.error('Schicht wurde inzwischen von jemand anderem geändert — Ansicht aktualisiert.')
         await board.loadDetail()
       } else {
-        toast.error('Schicht konnte nicht gespeichert werden.')
+        toast.error(extractErrorMessage(err, 'Schicht konnte nicht gespeichert werden.'))
       }
     }
   }
