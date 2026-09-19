@@ -32,7 +32,8 @@ public sealed class AuditSaveChangesInterceptor(IHttpContextAccessor httpContext
     private static readonly Type[] AuditedTypes =
     [
         typeof(Team), typeof(Employee), typeof(Contract), typeof(ShiftType),
-        typeof(Schedule), typeof(ShiftAssignment), typeof(Absence), typeof(StaffingRequirement)
+        typeof(Schedule), typeof(ShiftAssignment), typeof(Absence), typeof(StaffingRequirement),
+        typeof(HoursAdjustment)
     ];
 
     public override InterceptionResult<int> SavingChanges(DbContextEventData eventData, InterceptionResult<int> result)

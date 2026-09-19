@@ -65,6 +65,13 @@ public class PlanningBoardController(ApplicationDbContext db) : ControllerBase
             .Where(a => employeeIds.Contains(a.EmployeeId) && priorScheduleIds.Contains(a.ScheduleId))
             .ToListAsync();
 
+        // issue #165: admin-entered HoursAdjustments feed the same balance HoursBalanceCalculator
+        // computes from elapsed Schedules — batched once across every employee in view, same
+        // pattern priorSchedules/priorAssignments above already use.
+        var adjustments = await db.HoursAdjustments.AsNoTracking()
+            .Where(a => employeeIds.Contains(a.EmployeeId) && a.Date < from)
+            .ToListAsync();
+
         // issue #57: which nationwide-vs-Bundesland holiday set applies depends on each
         // employee's Team, same pattern SchedulesController.GetById/DashboardController already
         // use for the wage-surcharge holiday lookup — resolves a HashSet per distinct
@@ -94,7 +101,7 @@ public class PlanningBoardController(ApplicationDbContext db) : ControllerBase
 
             var stats = PlanningBoardAggregator.BuildStats(
                 employee.Id, from, to, assignmentsInRange, contracts, absences,
-                priorSchedules, priorAssignments);
+                priorSchedules, priorAssignments, adjustments);
 
             var employeeAbsences = absences.Where(a => a.EmployeeId == employee.Id
                 && a.From <= to && a.To >= from)

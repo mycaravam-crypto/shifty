@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
-import { Plus, Trash2 } from '@lucide/vue'
+import { Plus, Printer, Trash2 } from '@lucide/vue'
 import axios from 'axios'
 import api from '@/services/api'
 import { useToastStore } from '@/stores/toast'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import EmployeeDetailModal from './EmployeeDetailModal.vue'
+import HoursReportModal from './HoursReportModal.vue'
 
 const toast = useToastStore()
 
@@ -42,6 +43,7 @@ const form = ref({
 })
 const selectedEmployee = ref<Employee | null>(null)
 const employeeToDelete = ref<Employee | null>(null)
+const hoursReportEmployee = ref<Employee | null>(null)
 
 function teamName(teamId: string | null) {
   return teams.value.find((t) => t.id === teamId)?.name ?? '—'
@@ -206,6 +208,13 @@ onMounted(load)
               {{ e.active ? 'Aktiv' : 'Inaktiv' }}
             </span>
             <button
+              class="text-slate-500 hover:text-slate-200 transition-colors"
+              title="Monatsbericht drucken"
+              @click.stop="hoursReportEmployee = e"
+            >
+              <Printer :size="16" />
+            </button>
+            <button
               class="text-slate-500 hover:text-rose-400 transition-colors"
               @click.stop="employeeToDelete = e"
             >
@@ -253,7 +262,14 @@ onMounted(load)
                   {{ e.active ? 'Aktiv' : 'Inaktiv' }}
                 </span>
               </td>
-              <td class="px-4 py-3 text-right">
+              <td class="px-4 py-3 text-right whitespace-nowrap">
+                <button
+                  class="text-slate-500 hover:text-slate-200 transition-colors mr-2"
+                  title="Monatsbericht drucken"
+                  @click.stop="hoursReportEmployee = e"
+                >
+                  <Printer :size="16" />
+                </button>
                 <button
                   class="text-slate-500 hover:text-rose-400 transition-colors"
                   @click.stop="employeeToDelete = e"
@@ -284,6 +300,12 @@ onMounted(load)
       :message="`${employeeToDelete.firstName} ${employeeToDelete.lastName} wirklich löschen?`"
       @confirm="onDeleteConfirmed"
       @close="employeeToDelete = null"
+    />
+
+    <HoursReportModal
+      v-if="hoursReportEmployee"
+      :employee="hoursReportEmployee"
+      @close="hoursReportEmployee = null"
     />
   </div>
 </template>

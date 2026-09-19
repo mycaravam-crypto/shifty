@@ -30,7 +30,8 @@ public static class PlanningBoardAggregator
         IReadOnlyList<Contract> contracts,
         IReadOnlyList<Absence> absences,
         IReadOnlyList<Schedule> priorSchedules,
-        IReadOnlyList<ShiftAssignment> priorAssignments)
+        IReadOnlyList<ShiftAssignment> priorAssignments,
+        IReadOnlyList<HoursAdjustment>? adjustments = null)
     {
         var employeeContracts = contracts.Where(c => c.EmployeeId == employeeId).ToList();
         var employeeAbsences = absences.Where(a => a.EmployeeId == employeeId).ToList();
@@ -45,7 +46,8 @@ public static class PlanningBoardAggregator
         var balanceHours = HoursBalanceCalculator.CumulativeBalance(
             employeeId, from, priorSchedules,
             priorAssignments.Where(a => a.EmployeeId == employeeId).ToList(),
-            employeeContracts, employeeAbsences);
+            employeeContracts, employeeAbsences,
+            adjustments?.Where(a => a.EmployeeId == employeeId).ToList());
 
         return new PlanningBoardEmployeeStats(targetHours, plannedHours, balanceHours);
     }
