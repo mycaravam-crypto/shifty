@@ -4,11 +4,18 @@ import { Pencil, Trash2 } from '@lucide/vue'
 import axios from 'axios'
 import api from '@/services/api'
 import { useToastStore } from '@/stores/toast'
+import { useAuthStore } from '@/stores/auth'
 import ModalShell from '@/components/ModalShell.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import { formatDate } from '@/utils/date'
 
 const toast = useToastStore()
+const auth = useAuthStore()
+// issue #165: HoursAdjustment writes are AdminWrite-only server-side (a manual correction to
+// a computed balance, stricter than the ManagerWrite Absence/Contract use) — gate the
+// create/delete controls the same way client-side; the list itself stays visible to any
+// signed-in Staff user (ApiRead), same read/write split the backend enforces.
+const isAdmin = computed(() => auth.claims.role === 'Admin')
 
 interface Employee {
   id: string
@@ -55,6 +62,15 @@ interface Absence {
   to: string
   type: AbsenceType
   comment: string | null
+}
+interface HoursAdjustment {
+  id: string
+  employeeId: string
+  date: string
+  hoursDelta: number
+  reason: string
+  createdBy: string
+  createdAt: string
 }
 
 const props = defineProps<{ employee: Employee; teams: Team[] }>()
@@ -348,11 +364,61 @@ async function onDeleteAbsenceConfirmed() {
   }
 }
 
+// issue #165: admin-entered corrections to the Ist/Soll balance, always carrying a Reason —
+// same list/create/delete table pattern as Verträge/Abwesenheiten above.
+const hoursAdjustments = ref<HoursAdjustment[]>([])
+const hoursAdjustmentForm = ref({ date: '', hoursDelta: null as number | null, reason: '' })
+const savingHoursAdjustment = ref(false)
+const hoursAdjustmentError = ref('')
+
+async function loadHoursAdjustments() {
+  const res = await api.get(`/employees/${props.employee.id}/hours-adjustments`)
+  hoursAdjustments.value = res.data
+}
+
+async function onCreateHoursAdjustment() {
+  savingHoursAdjustment.value = true
+  hoursAdjustmentError.value = ''
+  try {
+    await api.post(`/employees/${props.employee.id}/hours-adjustments`, {
+      date: hoursAdjustmentForm.value.date,
+      hoursDelta: hoursAdjustmentForm.value.hoursDelta,
+      reason: hoursAdjustmentForm.value.reason,
+    })
+    hoursAdjustmentForm.value = { date: '', hoursDelta: null, reason: '' }
+    toast.success('Korrektur angelegt.')
+    await loadHoursAdjustments()
+  } catch (e) {
+    hoursAdjustmentError.value =
+      axios.isAxiosError(e) && e.response?.data
+        ? e.response.data
+        : 'Korrektur konnte nicht angelegt werden.'
+    toast.error(hoursAdjustmentError.value)
+  } finally {
+    savingHoursAdjustment.value = false
+  }
+}
+
+const hoursAdjustmentToDelete = ref<HoursAdjustment | null>(null)
+
+async function onDeleteHoursAdjustmentConfirmed() {
+  if (!hoursAdjustmentToDelete.value) return
+  try {
+    await api.delete(`/hours-adjustments/${hoursAdjustmentToDelete.value.id}`)
+    toast.success('Korrektur gelöscht.')
+    hoursAdjustmentToDelete.value = null
+    await loadHoursAdjustments()
+  } catch {
+    toast.error('Korrektur konnte nicht gelöscht werden.')
+  }
+}
+
 onMounted(() => {
   loadEligibleShiftTypes()
   loadPreferences()
   loadContracts()
   loadAbsences()
+  loadHoursAdjustments()
 })
 </script>
 
@@ -697,6 +763,100 @@ onMounted(() => {
           <p v-if="absenceError" class="col-span-2 text-sm text-rose-400">{{ absenceError }}</p>
         </form>
       </section>
+
+      <section>
+        <h3 class="text-[10px] uppercase tracking-wider font-bold text-slate-500 mb-3">
+          Korrekturen
+        </h3>
+        <p class="text-xs text-slate-500 mb-2">
+          Manuelle Anpassungen der Ist/Soll-Stundenbilanz, jeweils mit Begründung — erscheinen auf
+          dem gedruckten Monatsbericht.
+        </p>
+        <div class="rounded-xl border border-white/8 overflow-hidden mb-3">
+          <table class="w-full text-sm">
+            <thead>
+              <tr
+                class="text-left text-[10px] uppercase tracking-wider font-bold text-slate-500 border-b border-white/8"
+              >
+                <th class="px-3 py-2">Datum</th>
+                <th class="px-3 py-2 font-mono">Stunden</th>
+                <th class="px-3 py-2">Grund</th>
+                <th class="px-3 py-2">Von</th>
+                <th v-if="isAdmin" class="px-3 py-2"></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr
+                v-for="a in hoursAdjustments"
+                :key="a.id"
+                class="border-b border-white/5 last:border-0"
+              >
+                <td class="px-3 py-2">{{ formatDate(a.date) }}</td>
+                <td
+                  class="px-3 py-2 font-mono"
+                  :class="a.hoursDelta >= 0 ? 'text-emerald-400' : 'text-rose-400'"
+                >
+                  {{ a.hoursDelta >= 0 ? '+' : '' }}{{ a.hoursDelta }}h
+                </td>
+                <td class="px-3 py-2 text-slate-400">{{ a.reason }}</td>
+                <td class="px-3 py-2 text-slate-500">{{ a.createdBy }}</td>
+                <td v-if="isAdmin" class="px-3 py-2 text-right">
+                  <button
+                    class="text-slate-500 hover:text-rose-400 transition-colors"
+                    @click="hoursAdjustmentToDelete = a"
+                  >
+                    <Trash2 :size="14" />
+                  </button>
+                </td>
+              </tr>
+              <tr v-if="!hoursAdjustments.length">
+                <td :colspan="isAdmin ? 5 : 4" class="px-3 py-4 text-center text-slate-500">
+                  Keine Korrekturen.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <form
+          v-if="isAdmin"
+          class="grid grid-cols-2 gap-2"
+          @submit.prevent="onCreateHoursAdjustment"
+        >
+          <label class="text-xs text-slate-500 col-span-2 -mb-1">Neue Korrektur</label>
+          <input
+            v-model="hoursAdjustmentForm.date"
+            type="date"
+            lang="de-DE"
+            required
+            :class="inputClass"
+          />
+          <input
+            v-model.number="hoursAdjustmentForm.hoursDelta"
+            type="number"
+            step="0.25"
+            placeholder="Stunden (z. B. -1.5)"
+            required
+            :class="inputClass"
+          />
+          <input
+            v-model="hoursAdjustmentForm.reason"
+            placeholder="Grund (Pflichtfeld)"
+            required
+            class="col-span-2"
+            :class="inputClass"
+          />
+          <button
+            type="submit"
+            :disabled="savingHoursAdjustment"
+            class="col-span-2 rounded-lg bg-white/10 hover:bg-white/15 transition-colors py-2 text-sm font-medium disabled:opacity-50"
+          >
+            {{ savingHoursAdjustment ? 'Anlegen…' : 'Anlegen' }}
+          </button>
+          <p v-if="hoursAdjustmentError" class="col-span-2 text-sm text-rose-400">
+            {{ hoursAdjustmentError }}
+          </p>
+        </form>
+      </section>
     </div>
 
     <ConfirmDialog
@@ -712,6 +872,13 @@ onMounted(() => {
       :message="`${ABSENCE_TYPE_LABELS[absenceToDelete.type]} vom ${formatDate(absenceToDelete.from)} bis ${formatDate(absenceToDelete.to)} wirklich löschen?`"
       @confirm="onDeleteAbsenceConfirmed"
       @close="absenceToDelete = null"
+    />
+    <ConfirmDialog
+      v-if="hoursAdjustmentToDelete"
+      title="Korrektur löschen"
+      :message="`Korrektur vom ${formatDate(hoursAdjustmentToDelete.date)} (${hoursAdjustmentToDelete.hoursDelta}h) wirklich löschen?`"
+      @confirm="onDeleteHoursAdjustmentConfirmed"
+      @close="hoursAdjustmentToDelete = null"
     />
   </ModalShell>
 </template>

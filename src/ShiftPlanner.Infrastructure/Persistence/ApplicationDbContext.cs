@@ -25,6 +25,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<Employee> Employees => Set<Employee>();
     public DbSet<Contract> Contracts => Set<Contract>();
     public DbSet<Absence> Absences => Set<Absence>();
+    public DbSet<HoursAdjustment> HoursAdjustments => Set<HoursAdjustment>();
     public DbSet<ShiftType> ShiftTypes => Set<ShiftType>();
     public DbSet<Schedule> Schedules => Set<Schedule>();
     public DbSet<ShiftAssignment> ShiftAssignments => Set<ShiftAssignment>();
@@ -61,6 +62,17 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
         builder.Entity<Absence>(a =>
         {
             a.HasOne<Employee>()
+                .WithMany()
+                .HasForeignKey(x => x.EmployeeId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // issue #165: same cascade shape as Absence.
+        builder.Entity<HoursAdjustment>(h =>
+        {
+            h.Property(x => x.Reason).HasMaxLength(1000);
+            h.Property(x => x.CreatedBy).HasMaxLength(256);
+            h.HasOne<Employee>()
                 .WithMany()
                 .HasForeignKey(x => x.EmployeeId)
                 .OnDelete(DeleteBehavior.Cascade);

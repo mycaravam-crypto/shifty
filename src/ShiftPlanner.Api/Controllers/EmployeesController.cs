@@ -27,6 +27,17 @@ public record UpdateEmployeeRequest(
     bool Active,
     Guid? TeamId);
 
+public record HoursReportShiftDto(Guid ShiftTypeId, TimeOnly StartTime, TimeOnly EndTime, decimal NetHours, bool EndsNextDay);
+
+public record HoursReportDayDto(
+    DateOnly Date, List<HoursReportShiftDto> Shifts, decimal NetHours, AbsenceType? Absence, bool IsHoliday);
+
+public record HoursReportDto(
+    Guid EmployeeId, DateOnly From, DateOnly To,
+    decimal SollHours, decimal IstHours, decimal Deviation,
+    decimal BalanceBefore, decimal BalanceAfter,
+    List<HoursReportDayDto> Days, List<HoursAdjustmentDto> Adjustments);
+
 public record ShiftTypePreferenceDto(Guid ShiftTypeId, PreferenceLevel Level);
 public record WeekdayPreferenceDto(DayOfWeek DayOfWeek, PreferenceLevel Level);
 public record SetEligibleShiftTypesRequest(List<Guid> ShiftTypeIds);
@@ -79,8 +90,74 @@ public class EmployeesController(ApplicationDbContext db) : ControllerBase
             .Where(a => a.EmployeeId == id && scheduleIds.Contains(a.ScheduleId)).ToListAsync();
         var contracts = await db.Contracts.AsNoTracking().Where(c => c.EmployeeId == id).ToListAsync();
         var absences = await db.Absences.AsNoTracking().Where(a => a.EmployeeId == id).ToListAsync();
+        var adjustments = await db.HoursAdjustments.AsNoTracking()
+            .Where(a => a.EmployeeId == id && a.Date < cutoff).ToListAsync();
 
-        return Ok(HoursBalanceCalculator.CumulativeBalance(id, cutoff, schedules, assignments, contracts, absences));
+        return Ok(HoursBalanceCalculator.CumulativeBalance(id, cutoff, schedules, assignments, contracts, absences, adjustments));
+    }
+
+    // issue #165: the printable "sign this" monthly report — day-by-day Ist hours for [from,to],
+    // the period's Soll, the deviation, any admin HoursAdjustments in range (with their Reason),
+    // and the running balance carried in/out of the period (same CumulativeBalance math the
+    // Übertrag readout already uses, just exposed with both endpoints instead of one figure).
+    [HttpGet("{id:guid}/hours-report")]
+    public async Task<ActionResult<HoursReportDto>> HoursReport(Guid id, DateOnly from, DateOnly to)
+    {
+        var employee = await db.Employees.AsNoTracking().Include(e => e.Team).FirstOrDefaultAsync(e => e.Id == id);
+        if (employee is null)
+            return NotFound();
+        if (to < from)
+            return BadRequest("'to' must not be before 'from'.");
+
+        var assignments = await db.ShiftAssignments.AsNoTracking()
+            .Where(a => a.EmployeeId == id && a.Date >= from && a.Date <= to)
+            .OrderBy(a => a.Date).ThenBy(a => a.StartTime)
+            .ToListAsync();
+        var contracts = await db.Contracts.AsNoTracking().Where(c => c.EmployeeId == id).ToListAsync();
+        var absences = await db.Absences.AsNoTracking().Where(a => a.EmployeeId == id).ToListAsync();
+        var adjustmentsInRange = await db.HoursAdjustments.AsNoTracking()
+            .Where(a => a.EmployeeId == id && a.Date >= from && a.Date <= to)
+            .OrderBy(a => a.Date).ToListAsync();
+        var priorAdjustments = await db.HoursAdjustments.AsNoTracking()
+            .Where(a => a.EmployeeId == id && a.Date < from).ToListAsync();
+
+        var priorSchedules = await db.Schedules.AsNoTracking().Where(s => s.EndDate < from).ToListAsync();
+        var priorScheduleIds = priorSchedules.Select(s => s.Id).ToHashSet();
+        var priorAssignments = await db.ShiftAssignments.AsNoTracking()
+            .Where(a => a.EmployeeId == id && priorScheduleIds.Contains(a.ScheduleId)).ToListAsync();
+
+        var holidays = GermanPublicHolidays.InRange(from, to, employee.Team?.Bundesland)
+            .Select(h => h.Date).ToHashSet();
+
+        var days = new List<HoursReportDayDto>();
+        for (var date = from; date <= to; date = date.AddDays(1))
+        {
+            var dayAssignments = assignments.Where(a => a.Date == date).ToList();
+            var absence = absences.FirstOrDefault(a => a.From <= date && a.To >= date);
+            days.Add(new HoursReportDayDto(
+                date,
+                dayAssignments.Select(a => new HoursReportShiftDto(
+                    a.ShiftTypeId, a.StartTime, a.EndTime,
+                    WorkingTimeCalculator.NetHours(a.StartTime, a.EndTime, a.BreakMinutes, a.EndsNextDay),
+                    a.EndsNextDay)).ToList(),
+                dayAssignments.Sum(a => WorkingTimeCalculator.NetHours(a.StartTime, a.EndTime, a.BreakMinutes, a.EndsNextDay)),
+                absence?.Type,
+                holidays.Contains(date)));
+        }
+
+        var sollHours = WorkingTimeCalculator.ExpectedHours(contracts, absences, id, from, to);
+        var istHours = days.Sum(d => d.NetHours);
+        var balanceBefore = HoursBalanceCalculator.CumulativeBalance(
+            id, from, priorSchedules, priorAssignments, contracts, absences, priorAdjustments);
+        var balanceAfter = balanceBefore + (istHours - sollHours)
+            + adjustmentsInRange.Sum(a => a.HoursDelta);
+
+        var dto = new HoursReportDto(
+            employee.Id, from, to, sollHours, istHours, istHours - sollHours,
+            balanceBefore, balanceAfter, days,
+            adjustmentsInRange.Select(a => new HoursAdjustmentDto(
+                a.Id, a.EmployeeId, a.Date, a.HoursDelta, a.Reason, a.CreatedBy, a.CreatedAt)).ToList());
+        return Ok(dto);
     }
 
     [HttpPost]

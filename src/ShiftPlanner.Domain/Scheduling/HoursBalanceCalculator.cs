@@ -15,7 +15,8 @@ public static class HoursBalanceCalculator
         IReadOnlyList<Schedule> schedules,
         IReadOnlyList<ShiftAssignment> assignments,
         IReadOnlyList<Contract> contracts,
-        IReadOnlyList<Absence>? absences = null)
+        IReadOnlyList<Absence>? absences = null,
+        IReadOnlyList<HoursAdjustment>? adjustments = null)
     {
         decimal balance = 0;
         foreach (var schedule in schedules.Where(s => s.EndDate < before))
@@ -38,6 +39,15 @@ public static class HoursBalanceCalculator
                 .Sum(a => WorkingTimeCalculator.NetHours(a.StartTime, a.EndTime, a.BreakMinutes, a.EndsNextDay));
             balance += actual - expected;
         }
+
+        // issue #165: admin-entered corrections (HoursAdjustment) fold into the same running
+        // balance, gated by the same "before" cutoff as elapsed Schedules above — an adjustment
+        // dated within the still-open period isn't carried into the balance yet either, it only
+        // shows as its own line item on that period's printed report until the period elapses.
+        balance += (adjustments ?? [])
+            .Where(a => a.EmployeeId == employeeId && a.Date < before)
+            .Sum(a => a.HoursDelta);
+
         return balance;
     }
 }
