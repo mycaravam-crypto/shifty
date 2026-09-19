@@ -1774,6 +1774,59 @@ What's built:
   clean — the new "Stundenmodell" form control was not clicked through in an actual browser this
   session (time was spent on the backend curl round-trip above, which is where the proration
   arithmetic risk lived).
+- **Mobile/tablet responsiveness pass** (no issue filed, requested directly) — the app's mobile
+  layout was already largely in good shape (AppShell's off-canvas drawer nav, EmployeesView/
+  StammdatenView's stacked-card tables from issue #40, the Dienstplan grid's own horizontal-scroll-
+  by-design pattern), so this was a targeted audit rather than a rebuild: a scratch Playwright
+  script drove the real dev server with `/api/*` mocked, navigating every view client-side (not
+  `page.goto`, since the access token is memory-only — same lesson prior sessions' notes elsewhere
+  in this file already flag) at 375px (phone) and 768px (tablet, the iPad-portrait width other
+  fixes in this file hadn't specifically checked) and measuring actual `scrollWidth` vs
+  `clientWidth` on every element to catch real overflow rather than eyeballing screenshots alone.
+  Found and fixed three confirmed bugs: (1) `PlanningToolbar.vue`'s Dienstplan-week-view header
+  (title, month nav, status badge, help/publish/archive/PDF buttons) was one un-wrapped flex row
+  needing ~755px in as little as 311px of actual space at 375px width, visibly cutting off the
+  status badge and crowding every button — now `flex-wrap` on both the outer row and the button
+  group, so it degrades into 2-3 rows on narrow viewports instead of overflowing; (2) the
+  Dashboard's 6-card KPI grid jumped to 3 columns at exactly the `md` (768px) breakpoint, too
+  narrow for the Lohnkosten card's `4.820,50 €` figure at `text-2xl` — confirmed overflowing on
+  both 375px (2-column) and 768px (3-column) — regraded to `grid-cols-1 sm:grid-cols-2
+  lg:grid-cols-3 xl:grid-cols-6` so every breakpoint has enough room per card without touching
+  font sizes; (3) `EmployeeDetailModal.vue`'s three data tables (Verträge/Abwesenheiten/
+  Korrekturen, 5-7 columns each) wrapped their `<table>` in `overflow-hidden` rather than
+  `overflow-x-auto` — on a 375px phone (a ~300px-wide modal content area after padding) this
+  silently clipped columns with no way to scroll to them, unlike every other wide table in the
+  app; switched to `overflow-x-auto` (still visually clips to the container's `rounded-xl`
+  corners — `overflow: auto` establishes the same clipping context as `hidden`, it just also
+  allows scrolling) plus a `min-w-[…]` floor per table so cells scroll instead of squeezing/
+  wrapping. Also gave the Dashboard's "Auslastung nach Mitarbeiter" table (issue #56) the same
+  `md:hidden` stacked-card / `hidden md:block` table split issue #40 established for Employees/
+  Stammdaten, rather than leaving it as a scroll-only table — the one list-shaped table in the
+  app that had never gotten that treatment. Audited but found already correct, no changes needed:
+  `AppShell.vue`'s mobile nav drawer, `AutoFillModal.vue`/`ShiftSuggestionModal.vue`/
+  `ShiftAssignmentModal.vue` (all already use `min-w-0 flex-1`/`shrink-0` correctly), the
+  Dienstplan month-overview and week-grid's own horizontal-scroll (by design, matching the
+  sticky-column pattern issue #76 already built). Verified: `npm run build` (`vue-tsc -b` +
+  `vite build`) and `npm run lint` both clean; re-ran the same overflow-measurement script after
+  each fix to confirm zero unintended-overflow elements remained (excluding the app's existing
+  intentional horizontal-scroll containers and `absolute`-positioned issue #80 touch-target hit-
+  slop overlays, which register as "overflowing" their own bounding box by design but don't
+  affect layout) at both viewport widths, plus full-page screenshots re-confirming each fix
+  visually (toolbar wraps cleanly into 2-3 rows instead of clipping, KPI cards fit at every
+  breakpoint, the three EmployeeDetailModal tables scroll instead of clipping, the new
+  utilization card list renders correctly). Not clicked through with real touch input on an
+  actual device — verified via Chromium's viewport emulation only, consistent with how every
+  other frontend-only session in this file has been verified. Follow-up in the same session (user
+  feedback: "the sidenav on tablet is very wide") — `AppShell.vue`'s sidebar switched from the
+  off-canvas drawer to a permanently-visible `w-72` (288px) rail at the `md` breakpoint (768px),
+  the same width an iPad-portrait tablet uses, so it ate over a third of the screen there. Every
+  `md:` in that file (the mobile top bar's visibility, the drawer backdrop, the aside's
+  `static`/`translate-x-0`, its close button, `<main>`'s top padding) moved to `lg:` (1024px)
+  instead, so tablets now get the same compact hamburger/drawer nav phones already had, and only
+  genuinely desktop-width screens keep the persistent rail. Verified: `npm run build`/`npm run
+  lint` clean, and screenshots at 375/768/1024/1280px confirm the drawer-vs-rail switch now lands
+  at 1024px (768px shows the slim top bar + hamburger, full content width; 1024px+ shows the
+  rail).
 - **Error-message clarity pass** (no issue filed, requested directly — "trying to delete a
   user fails with no significant error message, we want maximal transparency"). The specific
   bug behind that report: `ShiftAssignment.EmployeeId` is a Restrict FK

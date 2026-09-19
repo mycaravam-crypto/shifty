@@ -56,7 +56,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
 <template>
   <div class="flex min-h-screen">
     <div
-      class="md:hidden fixed top-0 inset-x-0 z-30 flex items-center gap-3 px-4 py-3 bg-[#0d0f16] border-b border-white/8 print:hidden"
+      class="lg:hidden fixed top-0 inset-x-0 z-30 flex items-center gap-3 px-4 py-3 bg-[#0d0f16] border-b border-white/8 print:hidden"
     >
       <button
         class="text-slate-300 hover:text-white transition-colors focus-visible:ring-2 focus-visible:ring-indigo-500 outline-none rounded-lg"
@@ -78,18 +78,18 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
 
     <div
       v-if="mobileOpen"
-      class="md:hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-40 print:hidden"
+      class="lg:hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-40 print:hidden"
       @click="mobileOpen = false"
     ></div>
 
     <aside
-      class="fixed md:static inset-y-0 left-0 z-50 w-72 shrink-0 border-r border-white/8 bg-[#0d0f16] flex flex-col print:hidden transition-transform duration-200 md:translate-x-0"
+      class="fixed lg:static inset-y-0 left-0 z-50 w-72 shrink-0 border-r border-white/8 bg-[#0d0f16] flex flex-col print:hidden transition-transform duration-200 lg:translate-x-0"
       :class="mobileOpen ? 'translate-x-0' : '-translate-x-full'"
     >
       <div class="flex items-center justify-between px-6 py-5">
         <span class="text-lg font-semibold tracking-tight">Schichtplaner</span>
         <button
-          class="md:hidden text-slate-500 hover:text-slate-300 transition-colors"
+          class="lg:hidden text-slate-500 hover:text-slate-300 transition-colors"
           aria-label="Menü schließen"
           @click="mobileOpen = false"
         >
@@ -129,7 +129,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
         </button>
       </div>
     </aside>
-    <main class="flex-1 overflow-y-auto pt-14 md:pt-0">
+    <main class="flex-1 overflow-y-auto pt-14 lg:pt-0">
       <slot />
     </main>
 

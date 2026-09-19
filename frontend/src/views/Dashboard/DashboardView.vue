@@ -285,7 +285,7 @@ function openSchedule(scheduleId: string) {
 
     <p v-if="error" class="mb-4 text-sm text-rose-400">{{ error }}</p>
     <div v-if="loading" class="space-y-6" aria-label="Lädt…">
-      <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
         <div
           v-for="i in 6"
           :key="i"
@@ -299,7 +299,7 @@ function openSchedule(scheduleId: string) {
     </div>
 
     <template v-else-if="dashboard">
-      <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4 mb-6">
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-6">
         <div class="glass rounded-xl p-4">
           <div class="text-[10px] uppercase tracking-wider font-bold text-slate-500 mb-1">
             Besetzung
@@ -472,30 +472,13 @@ function openSchedule(scheduleId: string) {
         <div v-if="!dashboard.utilization.byEmployee.length" class="text-sm text-slate-500">
           Keine Daten im Zeitraum.
         </div>
-        <div v-else class="overflow-x-auto">
-          <table class="w-full text-sm">
-            <thead>
-              <tr
-                class="text-[10px] uppercase tracking-wider font-bold text-slate-500 border-b border-white/10"
-              >
-                <th class="text-left font-bold py-1.5 pr-3">Mitarbeiter</th>
-                <th class="text-right font-bold py-1.5 px-3">Soll</th>
-                <th class="text-right font-bold py-1.5 px-3">Ist</th>
-                <th class="text-right font-bold py-1.5 px-3">Auslastung</th>
-                <th class="text-right font-bold py-1.5 pl-3">Überstunden</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr
-                v-for="u in dashboard.utilization.byEmployee"
-                :key="u.employeeId"
-                class="border-b border-white/5 last:border-0"
-              >
-                <td class="py-1.5 pr-3">{{ u.employeeName }}</td>
-                <td class="text-right font-mono py-1.5 px-3">{{ u.contractCapacityHours }}h</td>
-                <td class="text-right font-mono py-1.5 px-3">{{ u.plannedHours }}h</td>
-                <td
-                  class="text-right font-mono py-1.5 px-3"
+        <template v-else>
+          <div class="md:hidden divide-y divide-white/5">
+            <div v-for="u in dashboard.utilization.byEmployee" :key="u.employeeId" class="py-2.5">
+              <div class="flex items-center justify-between gap-3">
+                <span class="text-sm truncate">{{ u.employeeName }}</span>
+                <span
+                  class="font-mono text-sm shrink-0"
                   :class="
                     statusColor(
                       u.utilizationPercent >= 95 && u.utilizationPercent <= 110
@@ -507,17 +490,64 @@ function openSchedule(scheduleId: string) {
                   "
                 >
                   {{ u.utilizationPercent }}%
-                </td>
-                <td
-                  class="text-right font-mono py-1.5 pl-3"
-                  :class="u.overtimeHours > 0 ? 'text-amber-400' : 'text-slate-500'"
+                </span>
+              </div>
+              <div class="flex items-center gap-3 text-xs text-slate-500 font-mono mt-0.5">
+                <span>Soll {{ u.contractCapacityHours }}h</span>
+                <span>Ist {{ u.plannedHours }}h</span>
+                <span v-if="u.overtimeHours > 0" class="text-amber-400"
+                  >+{{ u.overtimeHours }}h Überstd.</span
                 >
-                  {{ u.overtimeHours > 0 ? `+${u.overtimeHours}h` : '—' }}
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+              </div>
+            </div>
+          </div>
+          <div class="hidden md:block overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead>
+                <tr
+                  class="text-[10px] uppercase tracking-wider font-bold text-slate-500 border-b border-white/10"
+                >
+                  <th class="text-left font-bold py-1.5 pr-3">Mitarbeiter</th>
+                  <th class="text-right font-bold py-1.5 px-3">Soll</th>
+                  <th class="text-right font-bold py-1.5 px-3">Ist</th>
+                  <th class="text-right font-bold py-1.5 px-3">Auslastung</th>
+                  <th class="text-right font-bold py-1.5 pl-3">Überstunden</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr
+                  v-for="u in dashboard.utilization.byEmployee"
+                  :key="u.employeeId"
+                  class="border-b border-white/5 last:border-0"
+                >
+                  <td class="py-1.5 pr-3">{{ u.employeeName }}</td>
+                  <td class="text-right font-mono py-1.5 px-3">{{ u.contractCapacityHours }}h</td>
+                  <td class="text-right font-mono py-1.5 px-3">{{ u.plannedHours }}h</td>
+                  <td
+                    class="text-right font-mono py-1.5 px-3"
+                    :class="
+                      statusColor(
+                        u.utilizationPercent >= 95 && u.utilizationPercent <= 110
+                          ? 'Green'
+                          : u.utilizationPercent >= 85
+                            ? 'Yellow'
+                            : 'Red',
+                      )
+                    "
+                  >
+                    {{ u.utilizationPercent }}%
+                  </td>
+                  <td
+                    class="text-right font-mono py-1.5 pl-3"
+                    :class="u.overtimeHours > 0 ? 'text-amber-400' : 'text-slate-500'"
+                  >
+                    {{ u.overtimeHours > 0 ? `+${u.overtimeHours}h` : '—' }}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </template>
       </div>
 
       <div class="glass rounded-xl p-4 mb-6">
