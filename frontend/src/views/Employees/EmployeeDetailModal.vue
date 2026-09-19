@@ -584,8 +584,8 @@ onMounted(() => {
 
       <section>
         <h3 class="text-[10px] uppercase tracking-wider font-bold text-slate-500 mb-3">Verträge</h3>
-        <div class="rounded-xl border border-white/8 overflow-hidden mb-3">
-          <table class="w-full text-sm">
+        <div class="rounded-xl border border-white/8 overflow-x-auto mb-3">
+          <table class="w-full min-w-[560px] text-sm">
             <thead>
               <tr
                 class="text-left text-[10px] uppercase tracking-wider font-bold text-slate-500 border-b border-white/8"
@@ -738,8 +738,8 @@ onMounted(() => {
         <h3 class="text-[10px] uppercase tracking-wider font-bold text-slate-500 mb-3">
           Abwesenheiten
         </h3>
-        <div class="rounded-xl border border-white/8 overflow-hidden mb-3">
-          <table class="w-full text-sm">
+        <div class="rounded-xl border border-white/8 overflow-x-auto mb-3">
+          <table class="w-full min-w-[440px] text-sm">
             <thead>
               <tr
                 class="text-left text-[10px] uppercase tracking-wider font-bold text-slate-500 border-b border-white/8"
@@ -811,8 +811,8 @@ onMounted(() => {
           Manuelle Anpassungen der Ist/Soll-Stundenbilanz, jeweils mit Begründung — erscheinen auf
           dem gedruckten Monatsbericht.
         </p>
-        <div class="rounded-xl border border-white/8 overflow-hidden mb-3">
-          <table class="w-full text-sm">
+        <div class="rounded-xl border border-white/8 overflow-x-auto mb-3">
+          <table class="w-full min-w-[440px] text-sm">
             <thead>
               <tr
                 class="text-left text-[10px] uppercase tracking-wider font-bold text-slate-500 border-b border-white/8"

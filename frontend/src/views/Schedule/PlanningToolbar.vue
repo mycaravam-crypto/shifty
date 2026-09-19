@@ -31,9 +31,9 @@ const emit = defineEmits<{
 </script>
 
 <template>
-  <div class="flex items-center justify-between mb-6 print:hidden">
+  <div class="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 mb-6 print:hidden">
     <h1 class="text-2xl font-semibold">Dienstplan</h1>
-    <div class="flex items-center gap-3">
+    <div class="flex flex-wrap items-center gap-x-3 gap-y-2">
       <button
         class="flex items-center justify-center p-3 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-white/5 transition-colors print:hidden"
         @click="emit('prev')"
