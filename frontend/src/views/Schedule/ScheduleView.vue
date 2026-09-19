@@ -100,7 +100,9 @@ const {
 // that original layout ('employee': rows = employees, drag shift types) and its axes-swapped
 // counterpart ('shift': rows = shift types, drag employees). Both read/write the exact same
 // board state; only which grid/palette pair is rendered and how a drop is interpreted differs.
-const viewMode = ref<'employee' | 'shift'>('employee')
+// 'shift' is now the default (requested directly), since it's the better fit for the common
+// few-shift-types/many-employees case — 'employee' is still one click away via the toggle.
+const viewMode = ref<'employee' | 'shift'>('shift')
 
 // The route's `:date` drives which month's Schedule is active (board.anchorDate) — the same
 // single-date resolution the old full-month grid used, just fed a week-anchor date instead of

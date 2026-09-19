@@ -1985,7 +1985,10 @@ What's built:
   wrong way round; the axes needed swapping) — frontend-only, week-scoped `ScheduleView.vue`
   only (the month-overview grid and `Schedule`'s own server-side shape are both untouched). A
   toggle in `PlanningToolbar.vue` ("Nach Mitarbeiter" / "Nach Schicht") switches between the
-  original employee-rows grid (unchanged, still the default) and a new axes-swapped layout:
+  original employee-rows grid (unchanged) and a new axes-swapped layout — **"Nach Schicht" is
+  now the default** (`viewMode` initializes to `'shift'`, changed right after this landed, same
+  direct request), the better fit for the common few-shift-types/many-employees case; the
+  original employee-rows grid is still one click away via the toggle, unchanged otherwise:
   `ShiftPlanningGrid.vue`/`ShiftTypeScheduleRow.vue` render one row per active ShiftType instead
   of per Employee, and a new `EmployeeSidebar.vue` (a scrollable, search/team-filtered panel —
   reusing the same `visibleEmployees` the employee-rows grid already filters, so it stays usable
