@@ -98,4 +98,49 @@ public class EmployeeCrudTests(IntegrationTestFixture fixture)
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
+
+    // The bug this session's clarity pass fixed: ShiftAssignment.EmployeeId is a Restrict FK
+    // (ApplicationDbContext), so deleting an employee who still has a shift used to fail with
+    // an opaque foreign-key-violation 500 and no usable message. Now it should 409 up front with
+    // a specific, actionable reason, and the employee should still be there afterward.
+    [Fact]
+    public async Task Delete_WithAssignedShift_ReturnsConflictWithActionableMessage()
+    {
+        using var admin = fixture.CreateAdminClient();
+        var suffix = Guid.NewGuid().ToString("N")[..8];
+
+        var employeeResponse = await admin.PostAsJsonAsync("/api/employees",
+            new { PersonnelNumber = $"DEL-{suffix}", FirstName = "Delete", LastName = "Blocked" }, TestJson.Options);
+        employeeResponse.EnsureSuccessStatusCode();
+        var employee = await employeeResponse.Content.ReadFromJsonAsync<EmployeeDto>(TestJson.Options);
+
+        var shiftTypeResponse = await admin.PostAsJsonAsync("/api/shift-types",
+            new { Name = $"DelTest-{suffix}", StartTime = "08:00:00", EndTime = "16:00:00", BreakMinutes = 30, Color = "#4f46e5" },
+            TestJson.Options);
+        shiftTypeResponse.EnsureSuccessStatusCode();
+        var shiftTypeId = (await shiftTypeResponse.Content.ReadFromJsonAsync<ShiftTypeIdDto>(TestJson.Options))!.Id;
+
+        var scheduleResponse = await admin.PostAsJsonAsync("/api/schedules",
+            new { Name = $"DelTest {suffix}", StartDate = "2026-09-01", EndDate = "2026-09-30" }, TestJson.Options);
+        scheduleResponse.EnsureSuccessStatusCode();
+        var scheduleId = (await scheduleResponse.Content.ReadFromJsonAsync<ScheduleIdDto>(TestJson.Options))!.Id;
+
+        var assignmentResponse = await admin.PostAsJsonAsync($"/api/schedules/{scheduleId}/assignments",
+            new { EmployeeId = employee!.Id, ShiftTypeId = shiftTypeId, Date = "2026-09-02", StartTime = "08:00:00", EndTime = "16:00:00", BreakMinutes = 30 },
+            TestJson.Options);
+        assignmentResponse.EnsureSuccessStatusCode();
+
+        var deleteResponse = await admin.DeleteAsync($"/api/employees/{employee.Id}");
+        Assert.Equal(HttpStatusCode.Conflict, deleteResponse.StatusCode);
+        var message = await deleteResponse.Content.ReadFromJsonAsync<string>(TestJson.Options);
+        Assert.Contains("Schicht", message);
+        Assert.Contains("Dienstplan", message);
+
+        // The employee must still exist — a blocked delete must not partially apply.
+        var stillThere = await admin.GetAsync($"/api/employees/{employee.Id}");
+        Assert.Equal(HttpStatusCode.OK, stillThere.StatusCode);
+    }
+
+    private record ShiftTypeIdDto(Guid Id);
+    private record ScheduleIdDto(Guid Id);
 }

@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { Plus } from '@lucide/vue'
-import axios from 'axios'
 import api from '@/services/api'
 import { useToastStore } from '@/stores/toast'
+import { extractErrorMessage } from '@/utils/errors'
 import ShiftTypeDetailModal from './ShiftTypeDetailModal.vue'
 
 const toast = useToastStore()
@@ -86,8 +86,8 @@ async function load() {
     ])
     teams.value = teamsRes.data
     shiftTypes.value = shiftTypesRes.data
-  } catch {
-    error.value = 'Stammdaten konnten nicht geladen werden.'
+  } catch (e) {
+    error.value = extractErrorMessage(e, 'Stammdaten konnten nicht geladen werden.')
   } finally {
     loading.value = false
   }
@@ -105,11 +105,7 @@ async function onCreateTeam() {
     toast.success('Team angelegt.')
     await load()
   } catch (e) {
-    toast.error(
-      axios.isAxiosError(e) && e.response?.data
-        ? e.response.data
-        : 'Team konnte nicht angelegt werden.',
-    )
+    toast.error(extractErrorMessage(e, 'Team konnte nicht angelegt werden.'))
   } finally {
     savingTeam.value = false
   }
@@ -142,11 +138,7 @@ async function onCreateShiftType() {
     toast.success('Schichttyp angelegt.')
     await load()
   } catch (e) {
-    toast.error(
-      axios.isAxiosError(e) && e.response?.data
-        ? e.response.data
-        : 'Schichttyp konnte nicht angelegt werden.',
-    )
+    toast.error(extractErrorMessage(e, 'Schichttyp konnte nicht angelegt werden.'))
   } finally {
     savingShiftType.value = false
   }

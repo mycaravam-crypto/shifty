@@ -3,6 +3,7 @@ import { computed, ref } from 'vue'
 import { Trash2 } from '@lucide/vue'
 import api from '@/services/api'
 import { useToastStore } from '@/stores/toast'
+import { extractErrorMessage } from '@/utils/errors'
 import ModalShell from '@/components/ModalShell.vue'
 
 const toast = useToastStore()
@@ -59,8 +60,8 @@ async function load() {
       params: { from: props.monthStart, to: props.monthEnd },
     })
     proposals.value = res.data
-  } catch {
-    error.value = 'Vorschau konnte nicht geladen werden.'
+  } catch (e) {
+    error.value = extractErrorMessage(e, 'Vorschau konnte nicht geladen werden.')
   } finally {
     loading.value = false
   }
@@ -85,8 +86,8 @@ async function onConfirm() {
     toast.success(`${keptProposals.value.length} Schicht(en) automatisch zugewiesen.`)
     emit('committed')
     emit('close')
-  } catch {
-    toast.error('Automatisches Füllen konnte nicht übernommen werden.')
+  } catch (e) {
+    toast.error(extractErrorMessage(e, 'Automatisches Füllen konnte nicht übernommen werden.'))
   } finally {
     committing.value = false
   }

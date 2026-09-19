@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import axios from 'axios'
 import api from '@/services/api'
 import { useToastStore } from '@/stores/toast'
+import { extractErrorMessage } from '@/utils/errors'
 import ModalShell from '@/components/ModalShell.vue'
 
 const toast = useToastStore()
@@ -58,8 +58,7 @@ async function onSave() {
     toast.success('Schichttyp gespeichert.')
     emit('updated')
   } catch (e) {
-    error.value =
-      axios.isAxiosError(e) && e.response?.data ? e.response.data : 'Speichern fehlgeschlagen.'
+    error.value = extractErrorMessage(e, 'Speichern fehlgeschlagen.')
     toast.error(error.value)
   } finally {
     saving.value = false

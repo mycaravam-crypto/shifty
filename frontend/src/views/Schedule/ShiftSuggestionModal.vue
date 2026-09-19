@@ -3,6 +3,7 @@ import { ref, watch } from 'vue'
 import { Check, X, ThumbsUp, ThumbsDown } from '@lucide/vue'
 import api from '@/services/api'
 import { useToastStore } from '@/stores/toast'
+import { extractErrorMessage } from '@/utils/errors'
 import ModalShell from '@/components/ModalShell.vue'
 
 const toast = useToastStore()
@@ -56,8 +57,8 @@ async function load() {
       params: { date: date.value, shiftTypeId: props.shiftType.id },
     })
     suggestions.value = res.data
-  } catch {
-    error.value = 'Vorschläge konnten nicht geladen werden.'
+  } catch (e) {
+    error.value = extractErrorMessage(e, 'Vorschläge konnten nicht geladen werden.')
   } finally {
     loading.value = false
   }
@@ -79,8 +80,8 @@ async function onAssign(s: Suggestion) {
     toast.success(`${s.firstName} ${s.lastName} zugewiesen.`)
     emit('assigned')
     await load()
-  } catch {
-    toast.error('Schicht konnte nicht zugewiesen werden.')
+  } catch (e) {
+    toast.error(extractErrorMessage(e, 'Schicht konnte nicht zugewiesen werden.'))
   } finally {
     assigningId.value = null
   }
