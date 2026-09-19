@@ -16,6 +16,15 @@ public class Contract
     // computed for shifts covered by this contract.
     public decimal? HourlyRate { get; set; }
 
+    // Monthly-hours contingent employees (e.g. "auf Abruf"/Aushilfe roles with a fixed monthly
+    // hours budget rather than a weekly average): set means this Contract's target hours are a
+    // fixed figure PER CALENDAR MONTH instead of WeeklyHours scaled by day-span/7. Nullable and
+    // additive by the same convention as HourlyRate/BreakStartTime elsewhere in this codebase —
+    // null (the default, every pre-existing row) reproduces the WeeklyHours-scaled behavior
+    // exactly; set, it takes priority and WeeklyHours is ignored for expected-hours purposes
+    // (WorkingTimeCalculator.ExpectedHours is the single place this precedence is applied).
+    public decimal? MonthlyHours { get; set; }
+
     // issue #70: "which contract applies on date X for employee Y" was independently duplicated
     // in five places (SchedulesController.HourlyRateOn, DashboardController.ActiveContract,
     // HoursBalanceCalculator, ShiftSuggestionEngine, ContractValidator) — one Domain-layer helper
@@ -42,7 +51,8 @@ public class Contract
     // already-tracked instance (e.g. an update) can re-check the invariant before saving.
     public static Contract Create(
         Guid id, Guid employeeId, DateOnly validFrom, DateOnly? validTo,
-        decimal weeklyHours, int workingDaysPerWeek, decimal dailyTargetHours, decimal? hourlyRate)
+        decimal weeklyHours, int workingDaysPerWeek, decimal dailyTargetHours, decimal? hourlyRate,
+        decimal? monthlyHours = null)
     {
         var contract = new Contract
         {
@@ -54,6 +64,7 @@ public class Contract
             WorkingDaysPerWeek = workingDaysPerWeek,
             DailyTargetHours = dailyTargetHours,
             HourlyRate = hourlyRate,
+            MonthlyHours = monthlyHours,
         };
         contract.Validate();
         return contract;

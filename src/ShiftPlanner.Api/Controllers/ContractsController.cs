@@ -9,7 +9,7 @@ namespace ShiftPlanner.Api.Controllers;
 
 public record ContractDto(
     Guid Id, Guid EmployeeId, DateOnly ValidFrom, DateOnly? ValidTo, decimal WeeklyHours,
-    int WorkingDaysPerWeek, decimal DailyTargetHours, decimal? HourlyRate);
+    int WorkingDaysPerWeek, decimal DailyTargetHours, decimal? HourlyRate, decimal? MonthlyHours);
 
 public record CreateContractRequest(
     DateOnly ValidFrom,
@@ -17,7 +17,11 @@ public record CreateContractRequest(
     [Range(0, 168)] decimal WeeklyHours,
     [Range(0, 7)] int WorkingDaysPerWeek,
     [Range(0, 24)] decimal DailyTargetHours,
-    [Range(0, 1000)] decimal? HourlyRate);
+    [Range(0, 1000)] decimal? HourlyRate,
+    // Monthly-hours contingent employees: set means this contract's target hours are a fixed
+    // figure per calendar month instead of WeeklyHours scaled by day-span — see
+    // Contract.MonthlyHours/WorkingTimeCalculator.ExpectedHours for the precedence rule.
+    [Range(0, 750)] decimal? MonthlyHours = null);
 
 public record UpdateContractRequest(
     DateOnly ValidFrom,
@@ -25,7 +29,8 @@ public record UpdateContractRequest(
     [Range(0, 168)] decimal WeeklyHours,
     [Range(0, 7)] int WorkingDaysPerWeek,
     [Range(0, 24)] decimal DailyTargetHours,
-    [Range(0, 1000)] decimal? HourlyRate);
+    [Range(0, 1000)] decimal? HourlyRate,
+    [Range(0, 750)] decimal? MonthlyHours = null);
 
 [ApiController]
 [Route("api")]
@@ -33,7 +38,7 @@ public record UpdateContractRequest(
 public class ContractsController(ApplicationDbContext db) : ControllerBase
 {
     private static readonly Func<Contract, ContractDto> ToDto =
-        c => new ContractDto(c.Id, c.EmployeeId, c.ValidFrom, c.ValidTo, c.WeeklyHours, c.WorkingDaysPerWeek, c.DailyTargetHours, c.HourlyRate);
+        c => new ContractDto(c.Id, c.EmployeeId, c.ValidFrom, c.ValidTo, c.WeeklyHours, c.WorkingDaysPerWeek, c.DailyTargetHours, c.HourlyRate, c.MonthlyHours);
 
     [HttpGet("employees/{employeeId:guid}/contracts")]
     public async Task<ActionResult<IEnumerable<ContractDto>>> GetForEmployee(Guid employeeId)
@@ -78,7 +83,8 @@ public class ContractsController(ApplicationDbContext db) : ControllerBase
         {
             contract = Contract.Create(
                 Guid.NewGuid(), employeeId, request.ValidFrom, request.ValidTo,
-                request.WeeklyHours, request.WorkingDaysPerWeek, request.DailyTargetHours, request.HourlyRate);
+                request.WeeklyHours, request.WorkingDaysPerWeek, request.DailyTargetHours, request.HourlyRate,
+                request.MonthlyHours);
         }
         catch (ArgumentException ex)
         {
@@ -114,6 +120,7 @@ public class ContractsController(ApplicationDbContext db) : ControllerBase
         contract.WorkingDaysPerWeek = request.WorkingDaysPerWeek;
         contract.DailyTargetHours = request.DailyTargetHours;
         contract.HourlyRate = request.HourlyRate;
+        contract.MonthlyHours = request.MonthlyHours;
 
         try
         {
