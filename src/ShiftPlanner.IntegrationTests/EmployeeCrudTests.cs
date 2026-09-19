@@ -132,7 +132,10 @@ public class EmployeeCrudTests(IntegrationTestFixture fixture)
 
         var deleteResponse = await admin.DeleteAsync($"/api/employees/{employee.Id}");
         Assert.Equal(HttpStatusCode.Conflict, deleteResponse.StatusCode);
-        var message = await deleteResponse.Content.ReadFromJsonAsync<string>(TestJson.Options);
+        // ControllerBase.Conflict(string) is written out via StringOutputFormatter as plain
+        // text/plain, not JSON — a bare string body, not a quoted JSON string — so this reads
+        // it as text rather than ReadFromJsonAsync<string>.
+        var message = await deleteResponse.Content.ReadAsStringAsync();
         Assert.Contains("Schicht", message);
         Assert.Contains("Dienstplan", message);
 
