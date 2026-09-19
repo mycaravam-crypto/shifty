@@ -4,8 +4,22 @@ import axios from 'axios'
 import { Trash2 } from '@lucide/vue'
 import api from '@/services/api'
 import { useToastStore } from '@/stores/toast'
+import { extractErrorMessage } from '@/utils/errors'
 import ModalShell from '@/components/ModalShell.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
+
+// issue #156's optimistic-concurrency 409 always carries this exact backend message — used to
+// tell it apart from every other reason PUT/DELETE .../assignments/{id} can 409 (e.g. the
+// Schedule having been Archived in the meantime), which need their own real message shown
+// instead of this one's "someone else changed it, reload" wording.
+function isConcurrencyConflict(err: unknown): boolean {
+  return (
+    axios.isAxiosError(err) &&
+    err.response?.status === 409 &&
+    typeof err.response.data === 'string' &&
+    err.response.data.includes('changed by someone else')
+  )
+}
 
 const toast = useToastStore()
 
@@ -87,13 +101,14 @@ async function onSave() {
   } catch (err) {
     // issue #156: someone else changed this assignment since the modal opened — reload the grid
     // instead of retrying the same now-stale write, same pattern the Publish button uses for its
-    // own 409 race.
-    if (axios.isAxiosError(err) && err.response?.status === 409) {
+    // own 409 race. Any other failure (e.g. the schedule got archived in the meantime) shows its
+    // own real backend message instead of this unrelated one.
+    if (isConcurrencyConflict(err)) {
       toast.error('Diese Schicht wurde inzwischen von jemand anderem geändert. Bitte neu laden.')
       emit('updated')
       emit('close')
     } else {
-      error.value = 'Speichern fehlgeschlagen.'
+      error.value = extractErrorMessage(err, 'Speichern fehlgeschlagen.')
       toast.error(error.value)
     }
   } finally {
@@ -111,12 +126,12 @@ async function onDeleteConfirmed() {
     toast.success('Schicht gelöscht.')
     emit('updated')
   } catch (err) {
-    if (axios.isAxiosError(err) && err.response?.status === 409) {
+    if (isConcurrencyConflict(err)) {
       toast.error('Diese Schicht wurde inzwischen von jemand anderem geändert. Bitte neu laden.')
       emit('updated')
       emit('close')
     } else {
-      toast.error('Schicht konnte nicht gelöscht werden.')
+      toast.error(extractErrorMessage(err, 'Schicht konnte nicht gelöscht werden.'))
     }
   }
 }

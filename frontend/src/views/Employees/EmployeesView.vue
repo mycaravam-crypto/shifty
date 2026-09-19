@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { Plus, Printer, Trash2 } from '@lucide/vue'
-import axios from 'axios'
 import api from '@/services/api'
 import { useToastStore } from '@/stores/toast'
+import { extractErrorMessage } from '@/utils/errors'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import EmployeeDetailModal from './EmployeeDetailModal.vue'
 import HoursReportModal from './HoursReportModal.vue'
@@ -56,8 +56,8 @@ async function load() {
     const [employeesRes, teamsRes] = await Promise.all([api.get('/employees'), api.get('/teams')])
     employees.value = employeesRes.data
     teams.value = teamsRes.data
-  } catch {
-    error.value = 'Mitarbeiter konnten nicht geladen werden.'
+  } catch (e) {
+    error.value = extractErrorMessage(e, 'Mitarbeiter konnten nicht geladen werden.')
   } finally {
     loading.value = false
   }
@@ -86,11 +86,7 @@ async function onCreate() {
     toast.success('Mitarbeiter angelegt.')
     await load()
   } catch (e) {
-    toast.error(
-      axios.isAxiosError(e) && e.response?.data
-        ? e.response.data
-        : 'Mitarbeiter konnte nicht angelegt werden.',
-    )
+    toast.error(extractErrorMessage(e, 'Mitarbeiter konnte nicht angelegt werden.'))
   } finally {
     saving.value = false
   }
@@ -103,8 +99,8 @@ async function onDeleteConfirmed() {
     toast.success('Mitarbeiter gelöscht.')
     employeeToDelete.value = null
     await load()
-  } catch {
-    toast.error('Mitarbeiter konnte nicht gelöscht werden.')
+  } catch (e) {
+    toast.error(extractErrorMessage(e, 'Mitarbeiter konnte nicht gelöscht werden.'))
   }
 }
 

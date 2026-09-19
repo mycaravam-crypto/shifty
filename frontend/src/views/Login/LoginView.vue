@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import axios from 'axios'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { extractErrorMessage } from '@/utils/errors'
 
 const email = ref('')
 const password = ref('')
@@ -18,8 +20,22 @@ async function onSubmit() {
   try {
     await auth.login(email.value, password.value)
     router.push((route.query.redirect as string) ?? { name: 'schedule' })
-  } catch {
-    error.value = 'E-Mail oder Passwort ist falsch.'
+  } catch (e) {
+    // AuthController.Login returns a bare 401 for wrong credentials (no body — nothing to
+    // extract, and a login endpoint shouldn't say which of email/password was wrong anyway).
+    // Everything else (the "auth" rate limiter's 503, a network failure, ...) needs its own
+    // real reason instead of the misleading "email or password is wrong".
+    if (axios.isAxiosError(e) && e.response?.status === 401) {
+      error.value = 'E-Mail oder Passwort ist falsch.'
+    } else if (axios.isAxiosError(e) && e.response?.status === 503) {
+      error.value =
+        'Zu viele Anmeldeversuche. Bitte warten Sie einen Moment und versuchen Sie es erneut.'
+    } else {
+      error.value = extractErrorMessage(
+        e,
+        'Anmeldung fehlgeschlagen. Bitte versuchen Sie es erneut.',
+      )
+    }
   } finally {
     loading.value = false
   }

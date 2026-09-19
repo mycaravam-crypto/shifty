@@ -78,6 +78,10 @@ proper — admin-entered deviation corrections with a required reason, and a pri
 per-employee monthly hour report built on top of the existing Ist/Soll/Übertrag math — see below.
 `Contract` then gained a monthly-hours-contingent mode (no issue filed, requested directly) for
 employees with a fixed monthly hours budget instead of a regular weekly schedule — see below.
+A cross-cutting error-message clarity pass followed (no issue filed, requested directly —
+"delete a user fails with no significant error message") — a global exception-handling
+middleware plus a specific pre-check on `EmployeesController.Delete`, and a shared frontend
+error-extraction helper wired into every write flow's error handling — see below.
 Only #61 (verify the compose stack against a real deployment — needs actual VPS access this
 environment doesn't have) remains open.
 What's built:
@@ -1770,6 +1774,83 @@ What's built:
   clean — the new "Stundenmodell" form control was not clicked through in an actual browser this
   session (time was spent on the backend curl round-trip above, which is where the proration
   arithmetic risk lived).
+- **Error-message clarity pass** (no issue filed, requested directly — "trying to delete a
+  user fails with no significant error message, we want maximal transparency"). The specific
+  bug behind that report: `ShiftAssignment.EmployeeId` is a Restrict FK
+  (`ApplicationDbContext`), so deleting an `Employee` who still has any `ShiftAssignment` threw
+  an unhandled `DbUpdateException` straight out of `EmployeesController.Delete` — and since no
+  exception-handling middleware existed anywhere in the pipeline, that came back to the browser
+  as Kestrel's default 500 with an **empty body**, which the frontend's `catch` then papered
+  over with its own generic hardcoded toast, so the manager saw "delete failed" with no reason
+  anywhere. Fixed two ways:
+  - `EmployeesController.Delete` now checks for referencing `ShiftAssignment`s up front and
+    409s with a specific, actionable German message naming the count and offering both fixes
+    ("remove the shifts first" or "deactivate the employee instead, via `Active`, to keep the
+    history") — the same shape of precondition check every other controller in this codebase
+    already does for its own constraints (uniqueness, existence, lifecycle state), just missing
+    here.
+  - `Api/Middleware/GlobalExceptionMiddleware.cs` (new), registered first in `Program.cs`'s
+    pipeline so it wraps everything downstream: a backstop for whatever slips past a
+    controller's own precondition checks, turning an unhandled `DbUpdateException` (foreign-key
+    or unique-constraint violation, matched by Postgres's `SqlState` via `Npgsql
+    .PostgresErrorCodes` — transitively available in the Api project via its `ProjectReference`
+    to Infrastructure, which already depends on the `Npgsql.EntityFrameworkCore.PostgreSQL`
+    package) or any other exception into a real `409`/`500` response with a readable message,
+    instead of an empty body — writes a plain JSON string, matching every controller's own
+    `BadRequest("...")`/`Conflict("...")` responses elsewhere in this codebase, so no frontend
+    parsing changes were needed for it specifically.
+  Frontend: a new `frontend/src/utils/errors.ts` (`extractErrorMessage`) centralizes what had
+  already been duplicated ad hoc in a handful of create/update flows
+  (`axios.isAxiosError(e) && e.response?.data ? e.response.data : fallback`) but was missing
+  from almost every delete flow, which always showed a generic hardcoded string even once the
+  backend had a specific reason to give — every `toast.error(...)` catch across
+  `EmployeesView`/`EmployeeDetailModal`/`StammdatenView`/`ShiftTypeDetailModal`/
+  `HoursReportModal`/`DashboardView`/`ScheduleView`/`ShiftAssignmentModal`/`ShiftSuggestionModal`/
+  `AutoFillModal`/`usePlanningActions`/`usePlanningBoard` now goes through it instead, and it
+  also covers cases with structurally no backend string (a network failure, a bare 401/403).
+  Auditing the existing 409-handling call sites (`ShiftAssignmentModal.vue`'s save/delete,
+  `ScheduleView.vue`'s keyboard-Delete path, `usePlanningActions.ts`'s drag-move/publish/copy)
+  surfaced a second, sharper bug of the same "wrong message shown" kind, not just a missing
+  one: each of those endpoints can 409 for more than one reason (issue #156's optimistic-
+  concurrency conflict vs. issue #68's schedule-lifecycle lock vs. issue #82's copy-target
+  checks vs. issue #68's publish-validation-errors), but the frontend collapsed all of them into
+  whichever single hardcoded message happened to be written for the first case anyone tested —
+  so e.g. trying to edit a shift on a schedule that got Archived in the meantime showed "someone
+  else changed this, please reload" instead of the true "Schedule is Archived; assignments can
+  no longer be edited." Fixed by checking the actual response content (a concurrency conflict's
+  message always contains "changed by someone else"; `/publish`'s validation-blocked case is
+  the only one of its three 409 sources whose body isn't a plain string) before picking which
+  message to show, rather than branching on status code alone. `LoginView.vue`'s login failure
+  handler had the same shape of bug for a different reason — it hardcoded "email or password is
+  wrong" for every failure, including the "auth" rate limiter's `503` (10 logins/minute, shared
+  across all callers) and any network failure, both of which need their own message instead of
+  a misleading credentials one. `ShiftPlanner.IntegrationTests`: a new
+  `EmployeeCrudTests.Delete_WithAssignedShift_ReturnsConflictWithActionableMessage` (create an
+  employee + shift type + schedule + assignment, delete the employee, assert `409` with a
+  message containing "Schicht"/"Dienstplan", assert the employee still exists afterward) — 18
+  integration tests total now. Verified end-to-end against a real local Postgres (this
+  session's Docker daemon reachable via the same proxy-CA-trust approach documented elsewhere
+  in this file, `mcr.microsoft.com/dotnet/sdk:10.0` for build, this machine's local
+  `postgresql-16` install + the API run via `dotnet publish`+`dotnet run` in the
+  `mcr.microsoft.com/dotnet/aspnet:10.0` runtime image for the database/API): `dotnet build`
+  clean, `dotnet test` clean (314/314 unit tests, unaffected — this is controller/middleware-
+  level behavior with no ASP.NET Core hosting in that project, same reasoning issue #71/#68
+  documented for their own controller-level fixes), and the exact reported scenario
+  curl-round-tripped — creating an employee, assigning them a shift, then deleting the employee
+  now returns `409` with "Mitarbeiter 'Anna Test' kann nicht gelöscht werden: es ist noch 1
+  Schicht im Dienstplan zugewiesen. ..." instead of an empty `500`, the employee is confirmed
+  still present afterward, and deleting the shift first lets the employee delete succeed
+  (`204`) — plus confirmed the pre-existing duplicate-personnel-number `409` and unknown-id
+  `404` behavior is unchanged. The new `ShiftPlanner.IntegrationTests` case itself was not run
+  against Testcontainers this session (Docker Hub's cloudfront-backed blob storage was blocked
+  by the sandbox's egress policy for both `postgres:16-alpine` and `testcontainers/ryuk:0.9.0`,
+  same documented limitation as elsewhere in this file) — it will run for real in CI, which has
+  full Docker Hub access; this session verified the identical scenario by hand against a real
+  Postgres+API instead. `npm run lint` (0 errors, including a `sonarjs/cognitive-complexity`
+  fix on `extractErrorMessage` itself, split into two small helpers to stay under the limit)
+  and `npm run build` (`vue-tsc -b` + `vite build`) both clean — the frontend message changes
+  were not clicked through in an actual browser this session (verified at the type-check/lint
+  level plus the backend behavior they now surface being confirmed for real via curl above).
 - **Docker/deploy**: `docker-compose.yml` (db/api/web) validated with `docker compose config`,
   never actually deployed. No `.env` exists anywhere yet (only `.env.example`).
 - **Versioning**: same scheme as vanspace3d. `frontend/package.json`'s `version` is shown

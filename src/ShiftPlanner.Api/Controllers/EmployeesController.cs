@@ -220,6 +220,22 @@ public class EmployeesController(ApplicationDbContext db) : ControllerBase
         if (employee is null)
             return NotFound();
 
+        // ShiftAssignment.EmployeeId is a Restrict FK (ApplicationDbContext) — deleting an
+        // employee who still has shifts assigned would otherwise fail at the database level
+        // with an opaque foreign-key-violation 500 (caught generically by
+        // GlobalExceptionMiddleware, but with no way to say *why* or what to do about it).
+        // Checked explicitly here instead so the manager gets a specific, actionable reason.
+        var assignmentCount = await db.ShiftAssignments.CountAsync(a => a.EmployeeId == id);
+        if (assignmentCount > 0)
+            return Conflict(
+                $"Mitarbeiter '{employee.FirstName} {employee.LastName}' kann nicht gelöscht werden: " +
+                (assignmentCount == 1
+                    ? "es ist noch 1 Schicht"
+                    : $"es sind noch {assignmentCount} Schichten") +
+                " im Dienstplan zugewiesen. Bitte entfernen Sie zuerst die betroffenen Schichten, " +
+                "oder deaktivieren Sie den Mitarbeiter stattdessen über das Feld „Aktiv“, um die " +
+                "Historie zu erhalten.");
+
         db.Employees.Remove(employee);
         await db.SaveChangesAsync();
         return NoContent();

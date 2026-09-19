@@ -8,6 +8,7 @@ import { nextTick, ref } from 'vue'
 import { X } from '@lucide/vue'
 import api from '@/services/api'
 import { useToastStore } from '@/stores/toast'
+import { extractErrorMessage } from '@/utils/errors'
 import HoursReportPrintSheet from './HoursReportPrintSheet.vue'
 import type { HoursReport, ShiftTypeLite } from './HoursReportPrintSheet.vue'
 
@@ -55,8 +56,8 @@ async function onPrint() {
     report.value = reportRes.data
     await nextTick()
     window.print()
-  } catch {
-    toast.error('Monatsbericht konnte nicht geladen werden.')
+  } catch (e) {
+    toast.error(extractErrorMessage(e, 'Monatsbericht konnte nicht geladen werden.'))
   } finally {
     loading.value = false
   }

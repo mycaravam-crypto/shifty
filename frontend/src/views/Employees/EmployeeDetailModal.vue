@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { Pencil, Trash2 } from '@lucide/vue'
-import axios from 'axios'
 import api from '@/services/api'
 import { useToastStore } from '@/stores/toast'
 import { useAuthStore } from '@/stores/auth'
 import ModalShell from '@/components/ModalShell.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import { formatDate } from '@/utils/date'
+import { extractErrorMessage } from '@/utils/errors'
 
 const toast = useToastStore()
 const auth = useAuthStore()
@@ -103,8 +103,7 @@ async function onSaveEmployee() {
     toast.success('Mitarbeiter gespeichert.')
     emit('updated')
   } catch (e) {
-    employeeError.value =
-      axios.isAxiosError(e) && e.response?.data ? e.response.data : 'Speichern fehlgeschlagen.'
+    employeeError.value = extractErrorMessage(e, 'Speichern fehlgeschlagen.')
   } finally {
     savingEmployee.value = false
   }
@@ -204,8 +203,8 @@ async function onSavePreferences() {
       api.put(`/employees/${props.employee.id}/weekday-preferences`, weekdayPayload),
     ])
     toast.success('Präferenzen gespeichert.')
-  } catch {
-    toast.error('Präferenzen konnten nicht gespeichert werden.')
+  } catch (e) {
+    toast.error(extractErrorMessage(e, 'Präferenzen konnten nicht gespeichert werden.'))
   } finally {
     savingPreferences.value = false
   }
@@ -308,8 +307,7 @@ async function onSubmitContract() {
     resetContractForm()
     await loadContracts()
   } catch (e) {
-    contractError.value =
-      axios.isAxiosError(e) && e.response?.data ? e.response.data : fallbackError
+    contractError.value = extractErrorMessage(e, fallbackError)
     toast.error(contractError.value)
   } finally {
     savingContract.value = false
@@ -326,8 +324,8 @@ async function onDeleteContractConfirmed() {
     if (editingContractId.value === contractToDelete.value.id) onCancelEditContract()
     contractToDelete.value = null
     await loadContracts()
-  } catch {
-    toast.error('Vertrag konnte nicht gelöscht werden.')
+  } catch (e) {
+    toast.error(extractErrorMessage(e, 'Vertrag konnte nicht gelöscht werden.'))
   }
 }
 
@@ -360,10 +358,7 @@ async function onCreateAbsence() {
     toast.success('Abwesenheit angelegt.')
     await loadAbsences()
   } catch (e) {
-    absenceError.value =
-      axios.isAxiosError(e) && e.response?.data
-        ? e.response.data
-        : 'Abwesenheit konnte nicht angelegt werden.'
+    absenceError.value = extractErrorMessage(e, 'Abwesenheit konnte nicht angelegt werden.')
     toast.error(absenceError.value)
   } finally {
     savingAbsence.value = false
@@ -379,8 +374,8 @@ async function onDeleteAbsenceConfirmed() {
     toast.success('Abwesenheit gelöscht.')
     absenceToDelete.value = null
     await loadAbsences()
-  } catch {
-    toast.error('Abwesenheit konnte nicht gelöscht werden.')
+  } catch (e) {
+    toast.error(extractErrorMessage(e, 'Abwesenheit konnte nicht gelöscht werden.'))
   }
 }
 
@@ -409,10 +404,7 @@ async function onCreateHoursAdjustment() {
     toast.success('Korrektur angelegt.')
     await loadHoursAdjustments()
   } catch (e) {
-    hoursAdjustmentError.value =
-      axios.isAxiosError(e) && e.response?.data
-        ? e.response.data
-        : 'Korrektur konnte nicht angelegt werden.'
+    hoursAdjustmentError.value = extractErrorMessage(e, 'Korrektur konnte nicht angelegt werden.')
     toast.error(hoursAdjustmentError.value)
   } finally {
     savingHoursAdjustment.value = false
@@ -428,8 +420,8 @@ async function onDeleteHoursAdjustmentConfirmed() {
     toast.success('Korrektur gelöscht.')
     hoursAdjustmentToDelete.value = null
     await loadHoursAdjustments()
-  } catch {
-    toast.error('Korrektur konnte nicht gelöscht werden.')
+  } catch (e) {
+    toast.error(extractErrorMessage(e, 'Korrektur konnte nicht gelöscht werden.'))
   }
 }
 
