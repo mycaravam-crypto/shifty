@@ -76,6 +76,8 @@ dedicated print-only layout replacing the old approach of just toggling `print:`
 same dark, glassy interactive grid — see below. Issue #165 then added Ist/Soll hour tracking
 proper — admin-entered deviation corrections with a required reason, and a printable/signable
 per-employee monthly hour report built on top of the existing Ist/Soll/Übertrag math — see below.
+`Contract` then gained a monthly-hours-contingent mode (no issue filed, requested directly) for
+employees with a fixed monthly hours budget instead of a regular weekly schedule — see below.
 A cross-cutting error-message clarity pass followed (no issue filed, requested directly —
 "delete a user fails with no significant error message") — a global exception-handling
 middleware plus a specific pre-check on `EmployeesController.Delete`, and a shared frontend
@@ -1721,6 +1723,56 @@ What's built:
   (0 errors) and `npm run build` (`vue-tsc -b` + `vite build`) both clean — the frontend
   Korrekturen section and print flow were not clicked through in an actual browser this session
   (time was spent on the backend curl round-trip above instead, which is where the balance
+  arithmetic risk lived).
+- **Monthly-hours contingent contracts** (no issue filed, requested directly — "a special type
+  of employee that has a monthly contingent of hours") — `Contract` gained a nullable
+  `MonthlyHours` (migration `ContractMonthlyHours`), additive and optional by the same
+  convention as `HourlyRate`/`BreakStartTime` elsewhere in this file: null (every pre-existing
+  row) reproduces the `WeeklyHours`-scaled behavior exactly; set, it takes priority and
+  `WeeklyHours` is ignored for expected-hours purposes. Rather than a new entity/enum, this
+  reuses the *single* funnel every expected-vs-actual comparison in the app already goes
+  through — `WorkingTimeCalculator.ExpectedHours` (extracted by issue #56/#70) — so
+  `ContractValidator`, `HoursBalanceCalculator`, `PlanningBoardAggregator`,
+  `DashboardAggregator`, `ShiftSuggestionEngine`, and the new `hours-report` endpoint (issue
+  #165) all pick up the new model automatically with no call-site changes of their own. The
+  semantics: a monthly-contingent day is grouped by `(contract, calendar month)` instead of by
+  contract alone, and each month's quota is prorated by its own day count/days-in-that-month —
+  a full-calendar-month period (this app's normal Schedule shape) reduces to *exactly*
+  `MonthlyHours`, not a `WeeklyHours × days/7` approximation; a partial period (a week view, a
+  mid-month contract start, a month boundary spanning two calendar months) prorates linearly
+  within whichever month each day falls in. `ContractsController`'s DTO/Create/Update requests
+  gained `MonthlyHours` (`[Range(0, 750)]`, optional trailing parameter on `Contract.Create` so
+  every pre-existing call site is unaffected). Frontend: `EmployeeDetailModal.vue`'s contract
+  form gained a "Stundenmodell" select (Wochenstunden / Stundenkontingent (monatlich)) that
+  swaps the `Std/Woche` input for a `Std/Monat` one — submitting always sends exactly one of
+  `weeklyHours`/`monthlyHours` as the live figure and the other as 0/null, so the contracts
+  table's "Stunden" column (now showing `N Std/Wo` or `N Std/Mon`) never displays a stale
+  number from the unused model; `usePlanningBoard.ts`'s `targetHoursFor` (the Wochenansicht's
+  own Xh/Yh client-side mirror of `ExpectedHours`, per issue #70's precedent) got the identical
+  contract-and-month grouping so the two stay in lockstep. `ShiftPlanner.Tests`: 10 new tests —
+  6 `WorkingTimeCalculatorTests.ExpectedHours` cases (exact full-month figure across two
+  different month lengths, linear partial-month proration, proration split correctly across a
+  month boundary, absence-day exclusion, `MonthlyHours` taking precedence over a simultaneously-
+  set `WeeklyHours`, a mid-month contract change blending a weekly segment with a
+  monthly-contingent one), 2 `ContractValidatorTests` cases (within-budget/over-budget against a
+  full-month Schedule), 2 `ContractTests` cases (`Create`'s new optional parameter defaulting to
+  null / persisting when given) — 324 tests total now, all passing. Verified against a real
+  local Postgres (this session's Docker daemon reachable via the same proxy-CA-trust-plus-
+  `--network host` approach documented elsewhere in this file, `mcr.microsoft.com/dotnet/sdk:10.0`
+  for build/test/`dotnet ef`, this machine's local `postgresql-16` install for the database, since
+  Docker Hub's `postgres` image pull was blocked again this session): `dotnet build`/`dotnet test`
+  clean (324/324), `dotnet ef migrations script` confirms the exact expected `ALTER TABLE
+  "Contracts" ADD "MonthlyHours" numeric;`, and the full flow was curl-round-tripped end-to-end
+  against a running API — created a 60h/month contract, a full-August Schedule with 40h of
+  assignments correctly produced no `ContractHoursExceeded` while adding shifts up to 64h
+  correctly did, with the exact message "64h geplant, Vertrag sieht 60h für diesen Zeitraum vor."
+  (not a `WeeklyHours`-scaled figure); `GET hours-report` for a 7-day slice of August returned
+  `sollHours` matching the hand-computed `60 × 7/31` proration exactly; switching the same
+  contract back to `weeklyHours` via `PUT` (with `monthlyHours: null`) correctly flipped the
+  same report back to the plain `WeeklyHours × days/7` figure, confirming the precedence rule
+  both ways. `npm run lint` (0 errors) and `npm run build` (`vue-tsc -b` + `vite build`) both
+  clean — the new "Stundenmodell" form control was not clicked through in an actual browser this
+  session (time was spent on the backend curl round-trip above, which is where the proration
   arithmetic risk lived).
 - **Error-message clarity pass** (no issue filed, requested directly — "trying to delete a
   user fails with no significant error message, we want maximal transparency"). The specific

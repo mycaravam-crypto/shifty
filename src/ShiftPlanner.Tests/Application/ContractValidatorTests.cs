@@ -114,6 +114,51 @@ public class ContractValidatorTests
         Assert.Empty(result.Errors);
     }
 
+    // Monthly-hours contingent employee (Contract.MonthlyHours set) — a full-calendar-month
+    // Schedule's expected hours are exactly MonthlyHours, not a WeeklyHours-scaled figure.
+    [Fact]
+    public void MonthlyContingentContract_PlannedWithinBudget_NoError()
+    {
+        var employee = Employee();
+        var shiftType = ShiftType();
+        var schedule = Schedule(new DateOnly(2026, 8, 1), new DateOnly(2026, 8, 31));
+        var contract = Contract(employee.Id, new DateOnly(2026, 1, 1), weeklyHours: 0m, monthlyHours: 60m);
+        var assignments = new[]
+        {
+            Assignment(employee.Id, shiftType.Id, new DateOnly(2026, 8, 3), new TimeOnly(8, 0), new TimeOnly(16, 0), breakMinutes: 0),
+            Assignment(employee.Id, shiftType.Id, new DateOnly(2026, 8, 10), new TimeOnly(8, 0), new TimeOnly(16, 0), breakMinutes: 0),
+            Assignment(employee.Id, shiftType.Id, new DateOnly(2026, 8, 17), new TimeOnly(8, 0), new TimeOnly(16, 0), breakMinutes: 0),
+            Assignment(employee.Id, shiftType.Id, new DateOnly(2026, 8, 24), new TimeOnly(8, 0), new TimeOnly(16, 0), breakMinutes: 0),
+            Assignment(employee.Id, shiftType.Id, new DateOnly(2026, 8, 31), new TimeOnly(8, 0), new TimeOnly(16, 0), breakMinutes: 0),
+        }; // 40h planned, 60h/month budgeted
+
+        var result = new ValidationResult();
+        ContractValidator.Validate(schedule, assignments, [contract], null, result);
+
+        Assert.Empty(result.Errors);
+    }
+
+    [Fact]
+    public void MonthlyContingentContract_PlannedExceedsBudget_ProducesError()
+    {
+        var employee = Employee();
+        var shiftType = ShiftType();
+        var schedule = Schedule(new DateOnly(2026, 8, 1), new DateOnly(2026, 8, 31));
+        var contract = Contract(employee.Id, new DateOnly(2026, 1, 1), weeklyHours: 0m, monthlyHours: 20m);
+        var assignments = new[]
+        {
+            Assignment(employee.Id, shiftType.Id, new DateOnly(2026, 8, 3), new TimeOnly(8, 0), new TimeOnly(16, 0), breakMinutes: 0),
+            Assignment(employee.Id, shiftType.Id, new DateOnly(2026, 8, 10), new TimeOnly(8, 0), new TimeOnly(16, 0), breakMinutes: 0),
+            Assignment(employee.Id, shiftType.Id, new DateOnly(2026, 8, 17), new TimeOnly(8, 0), new TimeOnly(16, 0), breakMinutes: 0),
+        }; // 24h planned > 20h/month budgeted
+
+        var result = new ValidationResult();
+        ContractValidator.Validate(schedule, assignments, [contract], null, result);
+
+        var error = Assert.Single(result.Errors);
+        Assert.Equal(ValidationIssueCode.ContractHoursExceeded, error.Type);
+    }
+
     [Fact]
     public void NoContractCoveringSchedule_Skipped()
     {

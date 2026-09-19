@@ -268,6 +268,128 @@ public class WorkingTimeCalculatorTests
         Assert.Equal(Math.Round(expected, 4), Math.Round(hours, 4));
     }
 
+    // Monthly-hours contingent employees (Contract.MonthlyHours set): a fixed budget per
+    // calendar month rather than a rolling weekly average — a full-calendar-month period (this
+    // app's normal Schedule shape) reduces to exactly MonthlyHours, not a WeeklyHours-scaled
+    // approximation.
+    [Fact]
+    public void ExpectedHours_MonthlyContingent_FullCalendarMonth_ReturnsExactFigure()
+    {
+        var employeeId = Guid.NewGuid();
+        var contract = new Contract
+        {
+            Id = Guid.NewGuid(), EmployeeId = employeeId, ValidFrom = new DateOnly(2026, 1, 1),
+            WeeklyHours = 0m, WorkingDaysPerWeek = 0, DailyTargetHours = 0m, MonthlyHours = 60m,
+        };
+
+        var hours = WorkingTimeCalculator.ExpectedHours(
+            [contract], [], employeeId, new DateOnly(2026, 8, 1), new DateOnly(2026, 8, 31));
+        Assert.Equal(60m, hours);
+
+        // A shorter calendar month (30 days) still reduces to exactly MonthlyHours, not a
+        // day-count-dependent figure.
+        var septemberHours = WorkingTimeCalculator.ExpectedHours(
+            [contract], [], employeeId, new DateOnly(2026, 9, 1), new DateOnly(2026, 9, 30));
+        Assert.Equal(60m, septemberHours);
+    }
+
+    [Fact]
+    public void ExpectedHours_MonthlyContingent_PartialMonth_ProratesLinearly()
+    {
+        var employeeId = Guid.NewGuid();
+        var contract = new Contract
+        {
+            Id = Guid.NewGuid(), EmployeeId = employeeId, ValidFrom = new DateOnly(2026, 1, 1),
+            WeeklyHours = 0m, WorkingDaysPerWeek = 0, DailyTargetHours = 0m, MonthlyHours = 62m,
+        };
+
+        // A 7-day slice of a 31-day August -> 62 * 7/31.
+        var hours = WorkingTimeCalculator.ExpectedHours(
+            [contract], [], employeeId, new DateOnly(2026, 8, 1), new DateOnly(2026, 8, 7));
+        Assert.Equal(Math.Round(62m * 7 / 31, 4), Math.Round(hours, 4));
+    }
+
+    [Fact]
+    public void ExpectedHours_MonthlyContingent_SpansTwoCalendarMonths_ProratesEachMonthSeparately()
+    {
+        var employeeId = Guid.NewGuid();
+        var contract = new Contract
+        {
+            Id = Guid.NewGuid(), EmployeeId = employeeId, ValidFrom = new DateOnly(2026, 1, 1),
+            WeeklyHours = 0m, WorkingDaysPerWeek = 0, DailyTargetHours = 0m, MonthlyHours = 155m,
+        };
+
+        // Aug 28-31 (4 of August's 31 days) + Sep 1-3 (3 of September's 30 days) — each month's
+        // quota is prorated by its OWN day count, not a flat 7-day slice of a single month.
+        var hours = WorkingTimeCalculator.ExpectedHours(
+            [contract], [], employeeId, new DateOnly(2026, 8, 28), new DateOnly(2026, 9, 3));
+        var expected = (155m * 4 / 31) + (155m * 3 / 30);
+        Assert.Equal(Math.Round(expected, 4), Math.Round(hours, 4));
+    }
+
+    [Fact]
+    public void ExpectedHours_MonthlyContingent_ExcludesAbsenceDays()
+    {
+        var employeeId = Guid.NewGuid();
+        var contract = new Contract
+        {
+            Id = Guid.NewGuid(), EmployeeId = employeeId, ValidFrom = new DateOnly(2026, 1, 1),
+            WeeklyHours = 0m, WorkingDaysPerWeek = 0, DailyTargetHours = 0m, MonthlyHours = 155m,
+        };
+        // Absent for the first 24 of August's 31 days -> 7 effective days -> 155 * 7/31.
+        var absences = new[]
+        {
+            new Absence { Id = Guid.NewGuid(), EmployeeId = employeeId, From = new DateOnly(2026, 8, 1), To = new DateOnly(2026, 8, 24), Type = AbsenceType.Vacation },
+        };
+
+        var hours = WorkingTimeCalculator.ExpectedHours(
+            [contract], absences, employeeId, new DateOnly(2026, 8, 1), new DateOnly(2026, 8, 31));
+        Assert.Equal(Math.Round(155m * 7 / 31, 4), Math.Round(hours, 4));
+    }
+
+    [Fact]
+    public void ExpectedHours_MonthlyContingentSet_TakesPrecedenceOverWeeklyHours()
+    {
+        var employeeId = Guid.NewGuid();
+        // Both set on the same Contract (e.g. carried over from an earlier weekly-hours setup) —
+        // MonthlyHours must win entirely, not blend with the WeeklyHours*days/7 formula.
+        var contract = new Contract
+        {
+            Id = Guid.NewGuid(), EmployeeId = employeeId, ValidFrom = new DateOnly(2026, 1, 1),
+            WeeklyHours = 40m, WorkingDaysPerWeek = 5, DailyTargetHours = 8m, MonthlyHours = 60m,
+        };
+
+        var hours = WorkingTimeCalculator.ExpectedHours(
+            [contract], [], employeeId, new DateOnly(2026, 8, 1), new DateOnly(2026, 8, 31));
+        Assert.Equal(60m, hours);
+        Assert.NotEqual(Math.Round(40m * 31 / 7, 4), Math.Round(hours, 4));
+    }
+
+    [Fact]
+    public void ExpectedHours_MonthlyContingentContractChangesMidMonth_BlendsWithWeeklySegment()
+    {
+        var employeeId = Guid.NewGuid();
+        // A weekly-hours contract through Aug 15, then a monthly-contingent one from Aug 16 —
+        // each segment's own model applies to its own days.
+        var earlier = new Contract
+        {
+            Id = Guid.NewGuid(), EmployeeId = employeeId, ValidFrom = new DateOnly(2026, 1, 1),
+            ValidTo = new DateOnly(2026, 8, 15), WeeklyHours = 20m, WorkingDaysPerWeek = 3, DailyTargetHours = 6.67m,
+        };
+        var later = new Contract
+        {
+            Id = Guid.NewGuid(), EmployeeId = employeeId, ValidFrom = new DateOnly(2026, 8, 16),
+            WeeklyHours = 0m, WorkingDaysPerWeek = 0, DailyTargetHours = 0m, MonthlyHours = 62m,
+        };
+
+        var hours = WorkingTimeCalculator.ExpectedHours(
+            [earlier, later], [], employeeId, new DateOnly(2026, 8, 1), new DateOnly(2026, 8, 31));
+
+        // 15 days at 20h/week + 16 of August's 31 days at a 62h/month contingent.
+        var expected = (20m * 15 / 7m) + (62m * 16 / 31m);
+        Assert.Equal(Math.Round(expected, 4), Math.Round(hours, 4));
+    }
+
     // issue #102: SchedulesController.CopyMonth's day-of-month clamping (extracted here so it's
     // unit-testable) — pins down the currently-shipped clamp-and-collide behavior explicitly.
     [Fact]

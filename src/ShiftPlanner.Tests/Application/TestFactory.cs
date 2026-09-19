@@ -36,7 +36,8 @@ internal static class TestFactory
         EndDate = end,
     };
 
-    public static Contract Contract(Guid employeeId, DateOnly validFrom, decimal weeklyHours, DateOnly? validTo = null) => new()
+    public static Contract Contract(
+        Guid employeeId, DateOnly validFrom, decimal weeklyHours, DateOnly? validTo = null, decimal? monthlyHours = null) => new()
     {
         Id = Guid.NewGuid(),
         EmployeeId = employeeId,
@@ -49,6 +50,7 @@ internal static class TestFactory
         // per test case.
         WorkingDaysPerWeek = 5,
         DailyTargetHours = weeklyHours / 5,
+        MonthlyHours = monthlyHours,
     };
 
     public static ShiftAssignment Assignment(

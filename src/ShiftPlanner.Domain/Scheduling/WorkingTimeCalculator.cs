@@ -65,6 +65,15 @@ public static class WorkingTimeCalculator
     // reflected exactly on the day it takes effect rather than for the whole period either way.
     // A day with no contract covering it (a gap between two Contract rows) contributes 0 —
     // there's no obligation to derive an expected-hours figure from.
+    //
+    // Monthly-hours contingent employees (Contract.MonthlyHours set): a fixed budget PER
+    // CALENDAR MONTH rather than a rolling weekly average, so those days are grouped by
+    // (contract, calendar month) instead of by contract alone — each month's quota is prorated
+    // independently by its own day count/days-in-that-month. A full-calendar-month Schedule
+    // (this app's normal shape) then reduces to exactly MonthlyHours; a partial period (a week
+    // view, a mid-month contract start) is prorated linearly within that one month. This is the
+    // one place MonthlyHours-vs-WeeklyHours precedence is decided — every caller of this method
+    // picks it up automatically with no change of their own.
     public static decimal ExpectedHours(
         IReadOnlyList<Contract> contracts, IReadOnlyList<Absence> absences, Guid employeeId, DateOnly from, DateOnly to)
     {
@@ -87,7 +96,11 @@ public static class WorkingTimeCalculator
         // arithmetic the pre-#70 flat formula used (no decimal-rounding drift from repeatedly
         // summing an unrounded 1/7th share), while still correctly blending multiple segments
         // when a contract changes mid-span: each segment gets its own single multiply/divide.
-        var daysByContract = new Dictionary<Guid, int>();
+        // Monthly-contingent days are kept in a separate map, further split by calendar month
+        // (a contract can easily span more than one month), for the same no-rounding-drift
+        // reason.
+        var weeklyDaysByContract = new Dictionary<Guid, int>();
+        var monthlyDaysByContractMonth = new Dictionary<(Guid ContractId, int Year, int Month), int>();
         for (var day = from; day <= to; day = day.AddDays(1))
         {
             if (absenceDays.Contains(day))
@@ -97,14 +110,27 @@ public static class WorkingTimeCalculator
             if (contract is null)
                 continue;
 
-            daysByContract[contract.Id] = daysByContract.GetValueOrDefault(contract.Id) + 1;
+            if (contract.MonthlyHours is not null)
+            {
+                var key = (contract.Id, day.Year, day.Month);
+                monthlyDaysByContractMonth[key] = monthlyDaysByContractMonth.GetValueOrDefault(key) + 1;
+            }
+            else
+            {
+                weeklyDaysByContract[contract.Id] = weeklyDaysByContract.GetValueOrDefault(contract.Id) + 1;
+            }
         }
 
         decimal total = 0m;
-        foreach (var (contractId, days) in daysByContract)
+        foreach (var (contractId, days) in weeklyDaysByContract)
         {
             var contract = employeeContracts.First(c => c.Id == contractId);
             total += contract.WeeklyHours * days / 7m;
+        }
+        foreach (var ((contractId, year, month), days) in monthlyDaysByContractMonth)
+        {
+            var contract = employeeContracts.First(c => c.Id == contractId);
+            total += contract.MonthlyHours!.Value * days / DateTime.DaysInMonth(year, month);
         }
         return total;
     }

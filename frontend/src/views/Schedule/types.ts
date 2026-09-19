@@ -61,6 +61,10 @@ export interface Contract {
   validFrom: string
   validTo: string | null
   weeklyHours: number
+  // Monthly-hours contingent employees: set means this contract's target hours are a fixed
+  // figure per calendar month instead of weeklyHours scaled by day-span — see
+  // WorkingTimeCalculator.ExpectedHours (backend) for the precedence rule this mirrors.
+  monthlyHours: number | null
 }
 export interface Absence {
   employeeId: string
