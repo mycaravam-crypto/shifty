@@ -19,12 +19,15 @@ public record AccessTokenResponse(string AccessToken);
 // Admin/Manager login only — readme.md §23 explicitly excludes Employee self-service in v1.
 [ApiController]
 [Route("api/v1/auth")]
-[EnableRateLimiting("auth")]
 public class AuthController(UserManager<ApplicationUser> userManager, ApplicationDbContext db, IOptions<JwtOptions> jwtOptions) : ControllerBase
 {
     private const string RefreshCookieName = "refreshToken";
 
+    // Only login is rate-limited: it's the password-guessing target. Refresh needs a valid,
+    // single-use signed token, and every page load calls it — under the shared 10/minute
+    // window, the 11th user opening the app within a minute got logged out.
     [HttpPost("login")]
+    [EnableRateLimiting("auth")]
     public async Task<ActionResult<AccessTokenResponse>> Login(LoginRequest request)
     {
         var user = await userManager.FindByEmailAsync(request.Email);

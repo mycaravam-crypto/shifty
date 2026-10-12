@@ -125,6 +125,8 @@ builder.Services.AddSingleton<IAuthorizationHandler, ApiWriteRequirementHandler>
 
 builder.Services.AddRateLimiter(options =>
 {
+    // 429, not the middleware's default 503: a throttled login isn't the server being down.
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
     options.AddFixedWindowLimiter("auth", limiterOptions =>
     {
         limiterOptions.Window = TimeSpan.FromMinutes(1);

@@ -27,6 +27,20 @@ public class AuthenticationTests(IntegrationTestFixture fixture)
     }
 
     [Fact]
+    public async Task Refresh_IsNotRateLimited()
+    {
+        // Every page load calls /refresh; under the login limiter's shared 10/minute window the
+        // 11th user opening the app within a minute got throttled and logged out.
+        using var client = fixture.CreateClient();
+
+        for (var i = 0; i < 12; i++)
+        {
+            var response = await client.PostAsync("/api/v1/auth/refresh", null);
+            Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        }
+    }
+
+    [Fact]
     public async Task Login_WithWrongPassword_ReturnsUnauthorized()
     {
         using var client = fixture.CreateClient();

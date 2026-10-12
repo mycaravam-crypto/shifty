@@ -1890,7 +1890,7 @@ What's built:
   the only one of its three 409 sources whose body isn't a plain string) before picking which
   message to show, rather than branching on status code alone. `LoginView.vue`'s login failure
   handler had the same shape of bug for a different reason — it hardcoded "email or password is
-  wrong" for every failure, including the "auth" rate limiter's `503` (10 logins/minute, shared
+  wrong" for every failure, including the "auth" rate limiter's `503` (`429` since the auth rate-limit fix) (10 logins/minute, shared
   across all callers) and any network failure, both of which need their own message instead of
   a misleading credentials one. `ShiftPlanner.IntegrationTests`: a new
   `EmployeeCrudTests.Delete_WithAssignedShift_ReturnsConflictWithActionableMessage` (create an
