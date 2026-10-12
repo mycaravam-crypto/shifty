@@ -209,6 +209,21 @@ app.UseAuthorization();
 app.MapControllers();
 app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
 
+// Migrations stay an explicit --migrate step; but an unmigrated DB otherwise only shows up as
+// 500s on first write (e.g. login hitting a missing RefreshTokens table), so say so at startup.
+try
+{
+    using var scope = app.Services.CreateScope();
+    var pending = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>().Database.GetPendingMigrations().ToList();
+    if (pending.Count > 0)
+        app.Logger.LogWarning("{Count} pending database migration(s), latest {Latest}: run the api with --migrate",
+            pending.Count, pending[^1]);
+}
+catch (Exception e)
+{
+    app.Logger.LogWarning("Could not check for pending migrations: {Message}", e.Message);
+}
+
 app.Run();
 
 // Top-level statements generate an internal `Program` class by default — made public+partial
