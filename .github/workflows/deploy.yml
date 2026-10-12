@@ -8,6 +8,13 @@ on:
 permissions:
   contents: write
 
+# One deploy at a time: back-to-back merges otherwise build images on the VPS in parallel,
+# starving it until SSH drops (exit 255 on #167-169, #179, #180). A running deploy is never
+# cancelled; a newer queued one replaces an older queued one, so the latest main still deploys.
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
 jobs:
   deploy:
     runs-on: ubuntu-latest

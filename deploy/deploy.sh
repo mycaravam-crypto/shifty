@@ -21,6 +21,10 @@
 
 set -euo pipefail
 
+# Keepalives so a long, quiet image build on a busy host doesn't drop the connection.
+export RSYNC_RSH="ssh -o ServerAliveInterval=30 -o ServerAliveCountMax=10"
+ssh() { command ssh -o ServerAliveInterval=30 -o ServerAliveCountMax=10 "$@"; }
+
 HOST="${SHIFTPLANNER_DEPLOY_HOST:?Set SHIFTPLANNER_DEPLOY_HOST, e.g. user@your-server.example}"
 REMOTE_PATH="${SHIFTPLANNER_DEPLOY_PATH:?Set SHIFTPLANNER_DEPLOY_PATH, e.g. /srv/shiftplanner}"
 
