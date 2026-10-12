@@ -23,11 +23,11 @@ async function onSubmit() {
   } catch (e) {
     // AuthController.Login returns a bare 401 for wrong credentials (no body — nothing to
     // extract, and a login endpoint shouldn't say which of email/password was wrong anyway).
-    // Everything else (the "auth" rate limiter's 503, a network failure, ...) needs its own
+    // Everything else (the "auth" rate limiter's 429, a network failure, ...) needs its own
     // real reason instead of the misleading "email or password is wrong".
     if (axios.isAxiosError(e) && e.response?.status === 401) {
       error.value = 'E-Mail oder Passwort ist falsch.'
-    } else if (axios.isAxiosError(e) && e.response?.status === 503) {
+    } else if (axios.isAxiosError(e) && e.response?.status === 429) {
       error.value =
         'Zu viele Anmeldeversuche. Bitte warten Sie einen Moment und versuchen Sie es erneut.'
     } else {
