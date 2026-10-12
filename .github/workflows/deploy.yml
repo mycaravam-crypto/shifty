@@ -20,6 +20,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # deploy.sh pulls the latest main before bumping the version
 
       - uses: webfactory/ssh-agent@v0.9.0
         with:
