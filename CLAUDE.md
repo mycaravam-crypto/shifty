@@ -2101,9 +2101,10 @@ Live at `shifty.vi0lins.de`, same VPS as
 [vanspace3d](https://github.com/mycaravam-crypto/vanspace3d), behind that host's existing
 shared Caddy instance (not a containerized one). Deploy pipeline is
 [.github/workflows/deploy.yml](.github/workflows/deploy.yml) →
-[deploy/deploy.sh](deploy/deploy.sh), triggered on push to `main` — it bumps
+[deploy/deploy.sh](deploy/deploy.sh), triggered on push to `main` (one at a time, `concurrency: deploy`) — it bumps
 `frontend/package.json`'s patch version, rsyncs the repo to the server, then
-`docker compose build && up -d` + runs pending migrations there ([issue #4](https://github.com/mycaravam-crypto/shifty/issues/4),
+`docker compose build && up -d` + runs pending migrations there, and only then commits and pushes
+the `Release vX [skip ci]` bump (a failed deploy reverts it) ([issue #4](https://github.com/mycaravam-crypto/shifty/issues/4),
 closed).
 
 First-time setup on a fresh target server (already done for `shifty.vi0lins.de`, needed again
