@@ -5,6 +5,16 @@ Layer **domain** · project `ShiftPlanner.Domain` · Entities: 3
 
 Project navigation: [ShiftPlanner.Domain](../projects/ShiftPlanner-Domain-f2a83529199c.md)
 
+## Overview 🤖
+
+Contains common domain models and utilities used across the ShiftPlanner application.
+
+**Responsibilities.** Provides data models and utilities for handling API keys, audit logs, employee IDs, refresh tokens, and schedule IDs.
+
+**Usage.** Used by authentication, controller, and persistence modules to manage domain data.
+
+_AI draft from the facts on this page; review it, then write the module's documentation yourself._
+
 ## Key components
 
 | Component | Kind | Used by | Summary |
@@ -44,7 +54,7 @@ _class_ · [AuditLog.cs](../../src/ShiftPlanner.Domain/Common/AuditLog.cs#L3)
 
 _record_ · [EmployeeId.cs](../../src/ShiftPlanner.Domain/Common/EmployeeId.cs#L14)
 
-_Linked tests:_ `EmployeeIdTests.New_ProducesDistinctNonEmptyIds` (via `EmployeeId.New()`), `EmployeeIdTests.ToString_MatchesUnderlyingGuidsToString` (via `EmployeeId.ToString()`) — test code that uses it, not coverage
+_Linked tests:_ `EmployeeIdTests.DistinctFromScheduleId_NotInterchangeableAtCompileTime`, `EmployeeIdTests.Equality_DifferentUnderlyingGuid_AreNotEqual`, `EmployeeIdTests.Equality_SameUnderlyingGuid_AreEqual`, `EmployeeIdTests.GetHashCode_SameUnderlyingGuid_ProducesSameHash`, `EmployeeIdTests.ImplicitConversion_PreservesEqualityAcrossTypes`, `EmployeeIdTests.ImplicitConversion_ToGuid_RoundTrips`, `EmployeeIdTests.ToString_MatchesUnderlyingGuidsToString`, `EmployeeIdTests.UsableAsDictionaryKey_ViaValueEquality`, +1 more — test code that uses it, not coverage
 
 | Member | Summary | Derived from code | Complexity |
 |---|---|---|---|
@@ -57,7 +67,7 @@ _Linked tests:_ `EmployeeIdTests.New_ProducesDistinctNonEmptyIds` (via `Employee
 
 _class_ · [RefreshToken.cs](../../src/ShiftPlanner.Domain/Common/RefreshToken.cs#L10)
 
-_Reached from:_ [`POST /api/v1/auth/login`](../api.md#flows), [`POST /api/v1/auth/logout`](../api.md#flows), [`POST /api/v1/auth/refresh`](../api.md#flows) · _Linked tests:_ `RefreshTokenTests.Hash_DiffersForDifferentInput` (via `RefreshToken.Hash(string)`), `RefreshTokenTests.Hash_IsDeterministic` (via `RefreshToken.Hash(string)`), `RefreshTokenTests.Hash_IsSha256HexEncoded` (via `RefreshToken.Hash(string)`), `RefreshTokenTests.Hash_NeverReturnsTheRawToken` (via `RefreshToken.Hash(string)`), `RefreshTokenTests.IsActive_FalseWhenExpired` (via `RefreshToken.Hash(string)`), `RefreshTokenTests.IsActive_FalseWhenRevoked` (via `RefreshToken.Hash(string)`), `RefreshTokenTests.IsActive_FalseWhenRevokedAndExpired` (via `RefreshToken.Hash(string)`), `RefreshTokenTests.IsActive_TrueRightUpToExpiry` (via `RefreshToken.Hash(string)`), +1 more — test code that uses it, not coverage
+_Reached from:_ [`POST /api/v1/auth/login`](../api.md#flows), [`POST /api/v1/auth/logout`](../api.md#flows), [`POST /api/v1/auth/refresh`](../api.md#flows) · _Linked tests:_ `RefreshTokenTests.IsActive_FalseWhenExpired`, `RefreshTokenTests.IsActive_FalseWhenRevoked`, `RefreshTokenTests.IsActive_FalseWhenRevokedAndExpired`, `RefreshTokenTests.IsActive_TrueRightUpToExpiry`, `RefreshTokenTests.IsActive_TrueWhenNotRevokedAndNotExpired`, `RefreshTokenTests.Hash_DiffersForDifferentInput` (via `RefreshToken.Hash(string)`), `RefreshTokenTests.Hash_IsDeterministic` (via `RefreshToken.Hash(string)`), `RefreshTokenTests.Hash_IsSha256HexEncoded` (via `RefreshToken.Hash(string)`), +1 more — test code that uses it, not coverage
 
 | Member | Summary | Derived from code | Complexity |
 |---|---|---|---|
@@ -67,7 +77,7 @@ _Reached from:_ [`POST /api/v1/auth/login`](../api.md#flows), [`POST /api/v1/aut
 
 _record_ · [ScheduleId.cs](../../src/ShiftPlanner.Domain/Common/ScheduleId.cs#L6)
 
-_Linked tests:_ `ScheduleIdTests.New_ProducesDistinctNonEmptyIds` (via `ScheduleId.New()`), `ScheduleIdTests.ToString_MatchesUnderlyingGuidsToString` (via `ScheduleId.ToString()`) — test code that uses it, not coverage
+_Linked tests:_ `EmployeeIdTests.DistinctFromScheduleId_NotInterchangeableAtCompileTime`, `ScheduleIdTests.Equality_DifferentUnderlyingGuid_AreNotEqual`, `ScheduleIdTests.Equality_SameUnderlyingGuid_AreEqual`, `ScheduleIdTests.GetHashCode_SameUnderlyingGuid_ProducesSameHash`, `ScheduleIdTests.ImplicitConversion_PreservesEqualityAcrossTypes`, `ScheduleIdTests.ImplicitConversion_ToGuid_RoundTrips`, `ScheduleIdTests.ToString_MatchesUnderlyingGuidsToString`, `ScheduleIdTests.UsableAsDictionaryKey_ViaValueEquality`, +1 more — test code that uses it, not coverage
 
 | Member | Summary | Derived from code | Complexity |
 |---|---|---|---|
@@ -77,4 +87,4 @@ _Linked tests:_ `ScheduleIdTests.New_ProducesDistinctNonEmptyIds` (via `Schedule
 | [`ToString()`](../../src/ShiftPlanner.Domain/Common/ScheduleId.cs#L16) |  |  | 1 |
 
 ---
-_Generated from 37 symbols in [src/ShiftPlanner.Domain/Common/ApiKey.cs](../../src/ShiftPlanner.Domain/Common/ApiKey.cs), [src/ShiftPlanner.Domain/Common/AuditLog.cs](../../src/ShiftPlanner.Domain/Common/AuditLog.cs), [src/ShiftPlanner.Domain/Common/EmployeeId.cs](../../src/ShiftPlanner.Domain/Common/EmployeeId.cs), [src/ShiftPlanner.Domain/Common/RefreshToken.cs](../../src/ShiftPlanner.Domain/Common/RefreshToken.cs), [src/ShiftPlanner.Domain/Common/ScheduleId.cs](../../src/ShiftPlanner.Domain/Common/ScheduleId.cs) (commit `534b8b5`, profile `default`). Sections marked _fact_ are read from the code, _inferred_ come from heuristics, 🤖 marks AI drafts._
+_Generated from 37 symbols in [src/ShiftPlanner.Domain/Common/ApiKey.cs](../../src/ShiftPlanner.Domain/Common/ApiKey.cs), [src/ShiftPlanner.Domain/Common/AuditLog.cs](../../src/ShiftPlanner.Domain/Common/AuditLog.cs), [src/ShiftPlanner.Domain/Common/EmployeeId.cs](../../src/ShiftPlanner.Domain/Common/EmployeeId.cs), [src/ShiftPlanner.Domain/Common/RefreshToken.cs](../../src/ShiftPlanner.Domain/Common/RefreshToken.cs), [src/ShiftPlanner.Domain/Common/ScheduleId.cs](../../src/ShiftPlanner.Domain/Common/ScheduleId.cs) (commit `11abf0b`, profile `default`). Sections marked _fact_ are read from the code, _inferred_ come from heuristics, 🤖 marks AI drafts._

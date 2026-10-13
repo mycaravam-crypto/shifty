@@ -5,6 +5,16 @@ Layer **ui** · project `frontend` · UI components: 5
 
 Project navigation: [frontend](../projects/frontend-da6498268e99.md)
 
+## Overview 🤖
+
+Contains reusable Vue.js components for the frontend application.
+
+**Responsibilities.** Provides UI components for various functionalities such as displaying help, confirming actions, and managing modals.
+
+**Usage.** Used across different views and pages in the frontend application to enhance user interaction and provide consistent UI elements.
+
+_AI draft from the facts on this page; review it, then write the module's documentation yourself._
+
 ## Key components
 
 | Component | Kind | Used by | Summary |
@@ -12,7 +22,7 @@ Project navigation: [frontend](../projects/frontend-da6498268e99.md)
 | [ModalShell](#modalshell) | component | 8 | A tap that opens this modal (e.g. an assignment chip on a touch device) is followed by the browser's synthetic "click" compatibility event at the same coordinates — which, once the backdrop exists, lands squarely on it and would immediately close what the tap just opened. Ignore backdrop clicks in the brief window right after mount so only a real outside tap closes the modal. |
 | [ConfirmDialog](#confirmdialog) | component | 4 |  |
 | [AppShell](#appshell) | component | 1 | Global "Hilfe" entry point (stakeholder-facing German explanations, data/helpTopics.ts) — reachable from every page, not just the Dienstplan's own separate keyboard-shortcuts panel. Opens pre-selected to the topic matching the page it was opened from. |
-| [HelpModal](#helpmodal) | component | 1 |  |
+| [HelpModal](#helpmodal) | component | 1 | 🤖 _Displays help topics in a modal, allowing users to select and view different topics._ |
 | [ToastContainer](#toastcontainer) | component | 1 |  |
 
 ## Flows through this module
@@ -80,6 +90,8 @@ _Reached from:_ [`/dienstplan/woche/:date`](../frontend.md#flows), [`/employees`
 
 _component_ · [HelpModal.vue](../../frontend/src/components/HelpModal.vue#L1) ⚠
 
+🤖 _Displays help topics in a modal, allowing users to select and view different topics._
+
 Props: initialTopicId: string
 
 Emits: close
@@ -87,6 +99,9 @@ Emits: close
 - **dependencies** _(fact)_: ModalShell, helpTopics.ts
 - **events** _(fact)_: close
 - **state** _(fact)_: activeTopicId
+- **responsibilities** _(🤖 draft)_: Manages the active help topic and renders the help modal with the selected topic's content.
+- **behaviour** _(🤖 draft)_: Initializes with an optional initial topic ID; renders a modal with a dropdown for selecting topics and displays the selected topic's content.
+- **usage** _(🤖 draft)_: Used in the app shell to provide help functionality.
 
 _Evidence:_ [frontend/src/components/HelpModal.vue:1-61](../../frontend/src/components/HelpModal.vue#L1), [frontend/src/components/ModalShell.vue:1-53](../../frontend/src/components/ModalShell.vue#L1), [frontend/src/data/helpTopics.ts:1](../../frontend/src/data/helpTopics.ts#L1)
 
@@ -107,4 +122,4 @@ _Reached from:_ [`/`](../frontend.md#flows), [`/dienstplan/woche/:date`](../fron
 _component_ · [ToastContainer.vue](../../frontend/src/components/ToastContainer.vue#L1)
 
 ---
-_Generated from 5 symbols in [frontend/src/components/AppShell.vue](../../frontend/src/components/AppShell.vue), [frontend/src/components/ConfirmDialog.vue](../../frontend/src/components/ConfirmDialog.vue), [frontend/src/components/HelpModal.vue](../../frontend/src/components/HelpModal.vue), [frontend/src/components/ModalShell.vue](../../frontend/src/components/ModalShell.vue), [frontend/src/components/ToastContainer.vue](../../frontend/src/components/ToastContainer.vue) (commit `534b8b5`, profile `default`). Sections marked _fact_ are read from the code, _inferred_ come from heuristics, 🤖 marks AI drafts._
+_Generated from 5 symbols in [frontend/src/components/AppShell.vue](../../frontend/src/components/AppShell.vue), [frontend/src/components/ConfirmDialog.vue](../../frontend/src/components/ConfirmDialog.vue), [frontend/src/components/HelpModal.vue](../../frontend/src/components/HelpModal.vue), [frontend/src/components/ModalShell.vue](../../frontend/src/components/ModalShell.vue), [frontend/src/components/ToastContainer.vue](../../frontend/src/components/ToastContainer.vue) (commit `11abf0b`, profile `default`). Sections marked _fact_ are read from the code, _inferred_ come from heuristics, 🤖 marks AI drafts._

@@ -5,12 +5,22 @@ Layer **ui** · project `frontend` · UI components: 14, Views: 14
 
 Project navigation: [frontend](../projects/frontend-da6498268e99.md)
 
+## Overview 🤖
+
+Contains Vue.js components and utility functions for the Schedule view in the frontend.
+
+**Responsibilities.** Manages the display and interaction of the schedule view, including employee schedules, shift assignments, and validation summaries.
+
+**Usage.** Used by the frontend router and composables to render and interact with the schedule view.
+
+_AI draft from the facts on this page; review it, then write the module's documentation yourself._
+
 ## Key components
 
 | Component | Kind | Used by | Summary |
 |---|---|---|---|
 | [AutoFillModal](#autofillmodal) | view | 1 | Dropped rows are tracked by index rather than spliced out of `proposals` — keeps the "N vorgeschlagen, M verworfen" summary stable while the manager reviews. |
-| [EmployeeScheduleRow](#employeeschedulerow) | view | 1 |  |
+| [EmployeeScheduleRow](#employeeschedulerow) | view | 1 | 🤖 _Displays an employee's schedule row in the planning grid._ |
 | [EmployeeSidebar](#employeesidebar) | view | 1 | The "Nach Schicht" view's palette (requested directly — with only a handful of shift types but 20+ employees, dragging shifts onto employee rows is the wrong way round). Employees are listed here instead of as grid rows, each draggable onto a (shiftType, date) cell — the same per-employee Xh/Yh/Übertrag/Lohnkosten readouts EmployeeScheduleRow.vue shows per row move here, since there's no employee row left to show them on in this view. Eligibility hints (requested directly, follow-up): dragging blind meant only finding out an employee couldn't take a shift via a toast after the drop. Each chip now shows a dot per visible ShiftType (dim/ringed when the employee isn't eligible for it — same rule EligibilityValidator itself uses, an empty eligible list means unrestricted) and an "Abwesend" badge when they're absent on any day of the displayed period — both purely informational, dropping on a cell the hints flag still works the same as before (the backend validator is still the source of truth), this just surfaces what it would say up front. |
 | [MonthOverviewView](#monthoverviewview) | view | 1 | issue #74: the Dienstplan's default landing view — a compact month-wide coverage/absence/ conflict glance, replacing what used to be the single full-month drag-and-drop grid trying to be both an editor and an overview at once. Detailed editing (drag-and-drop, the assignment modal, the grouped validation panel, keyboard shortcuts) now lives in the week-scoped ScheduleView.vue, reached by clicking a week/day header here. `Schedule` itself stays month-scoped server-side — this reuses the exact same usePlanningBoard/usePlanningActions composables the week view uses, just rendered as a dense per-day-per-employee grid instead of full shift chips. |
 | [PlanningGrid](#planninggrid) | view | 1 | Auto-scrolls the horizontally-scrolling table while dragging near its edge — otherwise a month with 28+ day columns has no way to reach off-screen days mid-drag. Driven by useScheduleDnD's onAutoScroll callback (via ScheduleView's template ref to this component), so the DOM node this needs stays local to the component that owns it. |
@@ -180,12 +190,17 @@ _interface_ · [types.ts](../../frontend/src/views/Schedule/types.ts#L4)
 
 _component_ · [EmployeeScheduleRow.vue](../../frontend/src/views/Schedule/EmployeeScheduleRow.vue#L1) ⚠
 
+🤖 _Displays an employee's schedule row in the planning grid._
+
 Props: employee: Employee, days: Date[], isWeekend: (d: Date) => boolean, dragOverKey: string | null, highlightKey: string | null, shiftTypeById: (id: string) => ShiftType | undefined, assignmentsFor: (employeeId: string, dateIso: string) => Assignment[], targetHoursFor: (employeeId: string) => number | null, netHoursFor: (employeeId: string) => number, carriedOverFor: (employeeId: string) => number, laborCostFor: (employeeId: string) => number | null, drag: DragState | null, isEditable: boolean, chipPointerDown: (e: PointerEvent, payload: DragPayload) => void, isFocusableCell: (employeeId: string, dateIso: string) => boolean, cellAriaLabel: (employeeId: string, dateIso: string) => string, onCellFocus: (employeeId: string, dateIso: string) => void
 
 Emits: export-pdf, view-readonly
 
 - **dependencies** _(fact)_: useScheduleDnD.ts, format.ts
 - **events** _(fact)_: export-pdf, view-readonly
+- **responsibilities** _(🤖 draft)_: Renders an employee's schedule row, including their name, hours, assignments, and costs.
+- **behaviour** _(🤖 draft)_: Takes in employee data and renders a table row with the employee's name, schedule details, and interactive elements for assignments.
+- **usage** _(🤖 draft)_: Used in the planning grid to display each employee's schedule row.
 
 _Reached from:_ [`/dienstplan/woche/:date`](../frontend.md#flows)
 
@@ -325,12 +340,17 @@ _Evidence:_ [frontend/src/views/Schedule/ShiftAssignmentModal.vue:1-229](../../f
 
 _component_ · [ShiftPalette.vue](../../frontend/src/views/Schedule/ShiftPalette.vue#L1) ⚠
 
+🤖 _Displays a palette of shift types with options to copy shifts, open auto-fill, and suggest shifts._
+
 Props: activeShiftTypes: ShiftType[], hasAssignments: boolean, copyingMonth: boolean, totalLaborCost: number | null, isEditable: boolean, chipPointerDown: (e: PointerEvent, payload: DragPayload) => void, showMonthActions: boolean
 
 Emits: copy-month, open-auto-fill, suggest
 
 - **dependencies** _(fact)_: useScheduleDnD.ts, format.ts
 - **events** _(fact)_: copy-month, open-auto-fill, suggest
+- **responsibilities** _(🤖 draft)_: Manages the display and interaction of shift types for scheduling.
+- **behaviour** _(🤖 draft)_: Renders a palette of shift types with buttons for copying shifts, opening auto-fill, and suggesting shifts. Handles user interactions for these actions.
+- **usage** _(🤖 draft)_: Used in the ScheduleView.vue component to display and interact with shift types.
 
 _Reached from:_ [`/dienstplan/woche/:date`](../frontend.md#flows)
 
@@ -428,4 +448,4 @@ _Reached from:_ [`/dienstplan/woche/:date`](../frontend.md#flows)
 _Evidence:_ [frontend/src/views/Schedule/ValidationSummary.vue:1-123](../../frontend/src/views/Schedule/ValidationSummary.vue#L1)
 
 ---
-_Generated from 33 symbols in [frontend/src/views/Schedule/AutoFillModal.vue](../../frontend/src/views/Schedule/AutoFillModal.vue), [frontend/src/views/Schedule/EmployeeScheduleRow.vue](../../frontend/src/views/Schedule/EmployeeScheduleRow.vue), [frontend/src/views/Schedule/EmployeeSidebar.vue](../../frontend/src/views/Schedule/EmployeeSidebar.vue), [frontend/src/views/Schedule/format.ts](../../frontend/src/views/Schedule/format.ts), [frontend/src/views/Schedule/MonthOverviewView.vue](../../frontend/src/views/Schedule/MonthOverviewView.vue), [frontend/src/views/Schedule/PlanningGrid.vue](../../frontend/src/views/Schedule/PlanningGrid.vue), [frontend/src/views/Schedule/PlanningToolbar.vue](../../frontend/src/views/Schedule/PlanningToolbar.vue), [frontend/src/views/Schedule/SchedulePrintSheet.vue](../../frontend/src/views/Schedule/SchedulePrintSheet.vue), [frontend/src/views/Schedule/ScheduleView.vue](../../frontend/src/views/Schedule/ScheduleView.vue), [frontend/src/views/Schedule/ShiftAssignmentModal.vue](../../frontend/src/views/Schedule/ShiftAssignmentModal.vue), [frontend/src/views/Schedule/ShiftPalette.vue](../../frontend/src/views/Schedule/ShiftPalette.vue), [frontend/src/views/Schedule/ShiftPlanningGrid.vue](../../frontend/src/views/Schedule/ShiftPlanningGrid.vue), [frontend/src/views/Schedule/ShiftSuggestionModal.vue](../../frontend/src/views/Schedule/ShiftSuggestionModal.vue), [frontend/src/views/Schedule/ShiftTypeScheduleRow.vue](../../frontend/src/views/Schedule/ShiftTypeScheduleRow.vue), [frontend/src/views/Schedule/types.ts](../../frontend/src/views/Schedule/types.ts), [frontend/src/views/Schedule/ValidationSummary.vue](../../frontend/src/views/Schedule/ValidationSummary.vue) (commit `534b8b5`, profile `default`). Sections marked _fact_ are read from the code, _inferred_ come from heuristics, 🤖 marks AI drafts._
+_Generated from 33 symbols in [frontend/src/views/Schedule/AutoFillModal.vue](../../frontend/src/views/Schedule/AutoFillModal.vue), [frontend/src/views/Schedule/EmployeeScheduleRow.vue](../../frontend/src/views/Schedule/EmployeeScheduleRow.vue), [frontend/src/views/Schedule/EmployeeSidebar.vue](../../frontend/src/views/Schedule/EmployeeSidebar.vue), [frontend/src/views/Schedule/format.ts](../../frontend/src/views/Schedule/format.ts), [frontend/src/views/Schedule/MonthOverviewView.vue](../../frontend/src/views/Schedule/MonthOverviewView.vue), [frontend/src/views/Schedule/PlanningGrid.vue](../../frontend/src/views/Schedule/PlanningGrid.vue), [frontend/src/views/Schedule/PlanningToolbar.vue](../../frontend/src/views/Schedule/PlanningToolbar.vue), [frontend/src/views/Schedule/SchedulePrintSheet.vue](../../frontend/src/views/Schedule/SchedulePrintSheet.vue), [frontend/src/views/Schedule/ScheduleView.vue](../../frontend/src/views/Schedule/ScheduleView.vue), [frontend/src/views/Schedule/ShiftAssignmentModal.vue](../../frontend/src/views/Schedule/ShiftAssignmentModal.vue), [frontend/src/views/Schedule/ShiftPalette.vue](../../frontend/src/views/Schedule/ShiftPalette.vue), [frontend/src/views/Schedule/ShiftPlanningGrid.vue](../../frontend/src/views/Schedule/ShiftPlanningGrid.vue), [frontend/src/views/Schedule/ShiftSuggestionModal.vue](../../frontend/src/views/Schedule/ShiftSuggestionModal.vue), [frontend/src/views/Schedule/ShiftTypeScheduleRow.vue](../../frontend/src/views/Schedule/ShiftTypeScheduleRow.vue), [frontend/src/views/Schedule/types.ts](../../frontend/src/views/Schedule/types.ts), [frontend/src/views/Schedule/ValidationSummary.vue](../../frontend/src/views/Schedule/ValidationSummary.vue) (commit `11abf0b`, profile `default`). Sections marked _fact_ are read from the code, _inferred_ come from heuristics, 🤖 marks AI drafts._

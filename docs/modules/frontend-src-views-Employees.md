@@ -5,6 +5,16 @@ Layer **ui** · project `frontend` · UI components: 4, Views: 4
 
 Project navigation: [frontend](../projects/frontend-da6498268e99.md)
 
+## Overview 🤖
+
+Contains Vue.js components for managing employee data, including details, hours reports, and related utilities.
+
+**Responsibilities.** Manages the display and interaction logic for employee-related data, including fetching and displaying employee details, generating and printing hours reports.
+
+**Usage.** Used by the frontend router to navigate and display employee management views.
+
+_AI draft from the facts on this page; review it, then write the module's documentation yourself._
+
 ## Key components
 
 | Component | Kind | Used by | Summary |
@@ -167,4 +177,4 @@ _Reached from:_ [`/employees`](../frontend.md#flows)
 _Evidence:_ [frontend/src/views/Employees/HoursReportPrintSheet.vue:1-336](../../frontend/src/views/Employees/HoursReportPrintSheet.vue#L1)
 
 ---
-_Generated from 9 symbols in [frontend/src/views/Employees/EmployeeDetailModal.vue](../../frontend/src/views/Employees/EmployeeDetailModal.vue), [frontend/src/views/Employees/EmployeesView.vue](../../frontend/src/views/Employees/EmployeesView.vue), [frontend/src/views/Employees/HoursReportModal.vue](../../frontend/src/views/Employees/HoursReportModal.vue), [frontend/src/views/Employees/HoursReportPrintSheet.vue](../../frontend/src/views/Employees/HoursReportPrintSheet.vue) (commit `534b8b5`, profile `default`). Sections marked _fact_ are read from the code, _inferred_ come from heuristics, 🤖 marks AI drafts._
+_Generated from 9 symbols in [frontend/src/views/Employees/EmployeeDetailModal.vue](../../frontend/src/views/Employees/EmployeeDetailModal.vue), [frontend/src/views/Employees/EmployeesView.vue](../../frontend/src/views/Employees/EmployeesView.vue), [frontend/src/views/Employees/HoursReportModal.vue](../../frontend/src/views/Employees/HoursReportModal.vue), [frontend/src/views/Employees/HoursReportPrintSheet.vue](../../frontend/src/views/Employees/HoursReportPrintSheet.vue) (commit `11abf0b`, profile `default`). Sections marked _fact_ are read from the code, _inferred_ come from heuristics, 🤖 marks AI drafts._

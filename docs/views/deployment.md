@@ -44,9 +44,9 @@ Environments with configuration files in the repository: default ([src/ShiftPlan
 |---|---|---|---|---|
 | [`ConnectionStrings:Default`](../../src/ShiftPlanner.Api/appsettings.json#L10) | default, Development |  | ShiftPlanner.Api | detected: defined and read |
 | [`Cors:FrontendOrigin`](../../src/ShiftPlanner.Api/appsettings.json#L18) | default, Development | localhost (Development) | ShiftPlanner.Api | detected: defined and read |
-| [`SeedUser:Email`](../../src/ShiftPlanner.Api/Program.cs#L174) |  |  | ShiftPlanner.Api | unknown: read, but no repository file defines it (environment variable, secret store or a default) |
-| [`SeedUser:Password`](../../src/ShiftPlanner.Api/Program.cs#L176) |  |  | ShiftPlanner.Api | unknown: read, but no repository file defines it (environment variable, secret store or a default) |
-| [`SeedUser:Role`](../../src/ShiftPlanner.Api/Program.cs#L178) |  |  | ShiftPlanner.Api | unknown: read, but no repository file defines it (environment variable, secret store or a default) |
+| [`SeedUser:Email`](../../src/ShiftPlanner.Api/Program.cs#L176) |  |  | ShiftPlanner.Api | unknown: read, but no repository file defines it (environment variable, secret store or a default) |
+| [`SeedUser:Password`](../../src/ShiftPlanner.Api/Program.cs#L178) |  |  | ShiftPlanner.Api | unknown: read, but no repository file defines it (environment variable, secret store or a default) |
+| [`SeedUser:Role`](../../src/ShiftPlanner.Api/Program.cs#L180) |  |  | ShiftPlanner.Api | unknown: read, but no repository file defines it (environment variable, secret store or a default) |
 | [`AllowedHosts`](../../src/ShiftPlanner.Api/appsettings.json#L8) | default | | | read by the framework |
 | `Jwt:*` (3 keys) | default, Development | | | defined, not read by scanned code |
 | `Logging:*` (2 keys) | default | | | read by the framework |

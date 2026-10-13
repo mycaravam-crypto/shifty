@@ -33,4 +33,4 @@ _component_ · [App.vue](../../frontend/src/App.vue#L1)
 _module_ · [main.ts](../../frontend/src/main.ts#L1)
 
 ---
-_Generated from 2 symbols in [frontend/src/App.vue](../../frontend/src/App.vue), [frontend/src/main.ts](../../frontend/src/main.ts) (commit `534b8b5`, profile `default`). Sections marked _fact_ are read from the code, _inferred_ come from heuristics, 🤖 marks AI drafts._
+_Generated from 2 symbols in [frontend/src/App.vue](../../frontend/src/App.vue), [frontend/src/main.ts](../../frontend/src/main.ts) (commit `11abf0b`, profile `default`). Sections marked _fact_ are read from the code, _inferred_ come from heuristics, 🤖 marks AI drafts._

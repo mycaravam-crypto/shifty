@@ -43,4 +43,4 @@ _component_ · [SettingsView.vue](../../frontend/src/views/Settings/SettingsView
 _Reached from:_ [`/settings`](../frontend.md#flows)
 
 ---
-_Generated from 1 symbols in [frontend/src/views/Settings/SettingsView.vue](../../frontend/src/views/Settings/SettingsView.vue) (commit `534b8b5`, profile `default`). Sections marked _fact_ are read from the code, _inferred_ come from heuristics, 🤖 marks AI drafts._
+_Generated from 1 symbols in [frontend/src/views/Settings/SettingsView.vue](../../frontend/src/views/Settings/SettingsView.vue) (commit `11abf0b`, profile `default`). Sections marked _fact_ are read from the code, _inferred_ come from heuristics, 🤖 marks AI drafts._

@@ -168,6 +168,11 @@ main tbody tr:last-child td { border-bottom: 0; }
 <h1 id="srcshiftplannerdomaincontracts">src/ShiftPlanner.Domain/Contracts</h1>
 <p>Layer <strong>domain</strong> · project <code>ShiftPlanner.Domain</code> · Entities: 1</p>
 <p>Project navigation: <a href="../projects/ShiftPlanner-Domain-f2a83529199c.html">ShiftPlanner.Domain</a></p>
+<h2 id="overview-">Overview 🤖</h2>
+<p>Contains contracts and related utilities for managing shift planning.</p>
+<p><strong>Responsibilities.</strong> Manages contract data and provides utility methods for contract operations.</p>
+<p><strong>Usage.</strong> Used by various parts of the application to manage and validate contracts.</p>
+<p><em>AI draft from the facts on this page; review it, then write the module's documentation yourself.</em></p>
 <h2 id="flows-through-this-module">Flows through this module</h2>
 <ul>
 <li><code>PUT /api/contracts/{id:guid}</code>: ContractsController → ApplicationDbContext, Contract → PostgreSQL</li>
@@ -191,7 +196,7 @@ main tbody tr:last-child td { border-bottom: 0; }
 <h2 id="components">Components</h2>
 <h3 id="contract">Contract</h3>
 <p><em>class</em> · <a href="../../src/ShiftPlanner.Domain/Contracts/Contract.cs#L5">Contract.cs</a></p>
-<p><em>Reached from:</em> <a href="../api.html#flows"><code>PUT /api/contracts/{id:guid}</code></a>, <a href="../api.html#flows"><code>GET /api/dashboard</code></a>, <a href="../api.html#flows"><code>POST /api/employees/{employeeId:guid}/contracts</code></a>, <a href="../api.html#flows"><code>GET /api/employees/{id:guid}/hours-balance</code></a>, <a href="../api.html#flows"><code>GET /api/employees/{id:guid}/hours-report</code></a>, <a href="../api.html#flows"><code>GET /api/planning-board</code></a>, <a href="../api.html#flows"><code>GET /api/schedules/{id:guid}</code></a>, <a href="../api.html#flows"><code>POST /api/schedules/{id:guid}/auto-fill</code></a>, +4 more · <em>Linked tests:</em> <code>ContractTests.ActiveOn_IgnoresOtherEmployeesContracts</code> (via <code>Contract.ActiveOn(IEnumerable&lt;Contract&gt;, Guid, DateOnly)</code>), <code>ContractTests.ActiveOn_NoContractCoveringDate_ReturnsNull</code> (via <code>Contract.ActiveOn(IEnumerable&lt;Contract&gt;, Guid, DateOnly)</code>), <code>ContractTests.ActiveOn_OpenEndedContract_CoversEveryFutureDate</code> (via <code>Contract.ActiveOn(IEnumerable&lt;Contract&gt;, Guid, DateOnly)</code>), <code>ContractTests.ActiveOn_PicksContractCoveringDate</code> (via <code>Contract.ActiveOn(IEnumerable&lt;Contract&gt;, Guid, DateOnly)</code>), <code>ContractTests.ActiveOn_TwoCandidates_PicksMostRecentlyStarting</code> (via <code>Contract.ActiveOn(IEnumerable&lt;Contract&gt;, Guid, DateOnly)</code>), <code>ContractTests.Create_MonthlyHoursOmitted_DefaultsToNull</code> (via <code>Contract.Create(Guid, Guid, DateOnly, DateOnly?, decimal, int, decimal, decimal?, decimal?)</code>), <code>ContractTests.Create_MonthlyHoursProvided_IsPersistedOnTheContract</code> (via <code>Contract.Create(Guid, Guid, DateOnly, DateOnly?, decimal, int, decimal, decimal?, decimal?)</code>), <code>ContractTests.Create_SucceedsWhenValidToEqualsValidFrom</code> (via <code>Contract.Create(Guid, Guid, DateOnly, DateOnly?, decimal, int, decimal, decimal?, decimal?)</code>), +7 more — test code that uses it, not coverage</p>
+<p><em>Reached from:</em> <a href="../api.html#flows"><code>PUT /api/contracts/{id:guid}</code></a>, <a href="../api.html#flows"><code>GET /api/dashboard</code></a>, <a href="../api.html#flows"><code>POST /api/employees/{employeeId:guid}/contracts</code></a>, <a href="../api.html#flows"><code>GET /api/employees/{id:guid}/hours-balance</code></a>, <a href="../api.html#flows"><code>GET /api/employees/{id:guid}/hours-report</code></a>, <a href="../api.html#flows"><code>GET /api/planning-board</code></a>, <a href="../api.html#flows"><code>GET /api/schedules/{id:guid}</code></a>, <a href="../api.html#flows"><code>POST /api/schedules/{id:guid}/auto-fill</code></a>, +4 more · <em>Linked tests:</em> <code>PlanningBoardAggregatorTests.MakeContract</code>, <code>TestFactory.Contract</code>, <code>ContractTests.MakeContract</code>, <code>HoursBalanceCalculatorTests.MakeContract</code>, <code>WorkingTimeCalculatorTests.ExpectedHours_AbsenceForDifferentEmployee_Ignored</code>, <code>WorkingTimeCalculatorTests.ExpectedHours_ContractChangesMidSpan_BlendsBothSegments</code>, <code>WorkingTimeCalculatorTests.ExpectedHours_ExcludesAbsenceDaysOverlappingRange</code>, <code>WorkingTimeCalculatorTests.ExpectedHours_GapBetweenContracts_ContributesZeroForUncoveredDays</code>, +22 more — test code that uses it, not coverage</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -204,14 +209,14 @@ main tbody tr:last-child td { border-bottom: 0; }
 <tbody>
 <tr>
 <td><a href="../../src/ShiftPlanner.Domain/Contracts/Contract.cs#L35"><code>ActiveOn(System.Collections.Generic.IEnumerable&lt;ShiftPlanner.Domain.Contracts.Contract&gt;, System.Guid, System.DateOnly)</code></a> ⚠</td>
-<td></td>
-<td></td>
+<td>🤖 <em>Finds the most recent active contract for an employee on a specific date.</em></td>
+<td>behaviour 🤖: Filters contracts by employee ID and date range, then returns the most recent one.; exception 🤖: Returns null if no contract matches the criteria.</td>
 <td>4</td>
 </tr>
 <tr>
 <td><a href="../../src/ShiftPlanner.Domain/Contracts/Contract.cs#L43"><code>Overlaps(System.DateOnly, System.DateOnly?, System.DateOnly, System.DateOnly?)</code></a> ⚠</td>
-<td></td>
-<td></td>
+<td>🤖 <em>Determines if two date ranges overlap.</em></td>
+<td>behaviour 🤖: Compares two date ranges to check if they overlap. Returns true if they do, false otherwise.; usage 🤖: Used to validate contract dates in the create and update contract endpoints.</td>
 <td>4</td>
 </tr>
 <tr>
@@ -229,11 +234,11 @@ main tbody tr:last-child td { border-bottom: 0; }
 </tbody>
 </table></div>
 <hr />
-<p><em>Generated from 14 symbols in <a href="../../src/ShiftPlanner.Domain/Contracts/Contract.cs">src/ShiftPlanner.Domain/Contracts/Contract.cs</a> (commit <code>534b8b5</code>, profile <code>default</code>). Sections marked <em>fact</em> are read from the code, <em>inferred</em> come from heuristics, 🤖 marks AI drafts.</em></p>
+<p><em>Generated from 14 symbols in <a href="../../src/ShiftPlanner.Domain/Contracts/Contract.cs">src/ShiftPlanner.Domain/Contracts/Contract.cs</a> (commit <code>11abf0b</code>, profile <code>default</code>). Sections marked <em>fact</em> are read from the code, <em>inferred</em> come from heuristics, 🤖 marks AI drafts.</em></p>
 
-<footer class="generator">Generated by docwizz 0.7.32-dev.1</footer>
+<footer class="generator">Generated by docwizz 0.7.44-dev.1</footer>
 </main>
-<aside class="toc" aria-label="On this page"><div class="toc-inner"><div class="toc-title">On this page</div><ul><li><a href="#flows-through-this-module">Flows through this module</a></li><li><a href="#documentation-gaps">Documentation gaps</a></li><li><a href="#dependencies">Dependencies</a></li><li><a href="#components">Components</a></li></ul></div></aside>
+<aside class="toc" aria-label="On this page"><div class="toc-inner"><div class="toc-title">On this page</div><ul><li><a href="#overview-">Overview 🤖</a></li><li><a href="#flows-through-this-module">Flows through this module</a></li><li><a href="#documentation-gaps">Documentation gaps</a></li><li><a href="#dependencies">Dependencies</a></li><li><a href="#components">Components</a></li></ul></div></aside>
 </div>
 <script src="../search.js"></script>
 <script>(() => {

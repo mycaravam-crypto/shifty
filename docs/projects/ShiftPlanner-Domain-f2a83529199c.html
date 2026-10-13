@@ -345,7 +345,7 @@ Source files represented in the code model: 24.</p>
 </tr>
 </tbody>
 </table></div>
-<h2 id="test-traceability-12-components">Test traceability (12 components)</h2>
+<h2 id="test-traceability-19-components">Test traceability (19 components)</h2>
 <p>Structural links to test code, not measured code coverage.</p>
 <div class="table-wrap"><table>
 <thead>
@@ -357,19 +357,19 @@ Source files represented in the code model: 24.</p>
 <tbody>
 <tr>
 <td><a href="../modules/src-ShiftPlanner.Domain-Employees.html#absence">Absence</a></td>
-<td>AbsenceTests.Create_SucceedsWhenToEqualsFrom, AbsenceTests.Create_SucceedsWhenToIsAfterFrom, AbsenceTests.Create_ThrowsWhenToPrecedesFrom, AbsenceTests.Validate_DoesNotThrowForAValidRange, AbsenceTests.Validate_ThrowsAfterMutatingToBeforeFrom</td>
+<td>PlanningBoardAggregatorTests.BuildStats_ExcludesAbsenceDaysFromTargetHours, TestFactory.Absence, HoursBalanceCalculatorTests.CumulativeBalance_ExcludesAbsenceDaysFromExpectedHours, WorkingTimeCalculatorTests.ExpectedHours_AbsenceForDifferentEmployee_Ignored, WorkingTimeCalculatorTests.ExpectedHours_ExcludesAbsenceDaysOverlappingRange, WorkingTimeCalculatorTests.ExpectedHours_MonthlyContingent_ExcludesAbsenceDays, AbsenceTests.Create_SucceedsWhenToEqualsFrom, AbsenceTests.Create_SucceedsWhenToIsAfterFrom, AbsenceTests.Create_ThrowsWhenToPrecedesFrom, AbsenceTests.Validate_DoesNotThrowForAValidRange, AbsenceTests.Validate_ThrowsAfterMutatingToBeforeFrom</td>
 </tr>
 <tr>
 <td><a href="../modules/src-ShiftPlanner.Domain-Contracts.html#contract">Contract</a></td>
-<td>ContractTests.ActiveOn_IgnoresOtherEmployeesContracts, ContractTests.ActiveOn_NoContractCoveringDate_ReturnsNull, ContractTests.ActiveOn_OpenEndedContract_CoversEveryFutureDate, ContractTests.ActiveOn_PicksContractCoveringDate, ContractTests.ActiveOn_TwoCandidates_PicksMostRecentlyStarting, ContractTests.Create_MonthlyHoursOmitted_DefaultsToNull, ContractTests.Create_MonthlyHoursProvided_IsPersistedOnTheContract, ContractTests.Create_SucceedsWhenValidToEqualsValidFrom, ContractTests.Create_SucceedsWhenValidToIsNull, ContractTests.Create_SucceedsWhenValidToIsOnOrAfterValidFrom, ContractTests.Create_ThrowsWhenValidToPrecedesValidFrom, ContractTests.Overlaps_DetectsRangeOverlap, ContractTests.Overlaps_IsSymmetric, ContractTests.Validate_DoesNotThrowForAValidRange, ContractTests.Validate_ThrowsAfterMutatingValidToBeforeValidFrom</td>
+<td>PlanningBoardAggregatorTests.MakeContract, TestFactory.Contract, ContractTests.MakeContract, HoursBalanceCalculatorTests.MakeContract, WorkingTimeCalculatorTests.ExpectedHours_AbsenceForDifferentEmployee_Ignored, WorkingTimeCalculatorTests.ExpectedHours_ContractChangesMidSpan_BlendsBothSegments, WorkingTimeCalculatorTests.ExpectedHours_ExcludesAbsenceDaysOverlappingRange, WorkingTimeCalculatorTests.ExpectedHours_GapBetweenContracts_ContributesZeroForUncoveredDays, WorkingTimeCalculatorTests.ExpectedHours_MonthlyContingentContractChangesMidMonth_BlendsWithWeeklySegment, WorkingTimeCalculatorTests.ExpectedHours_MonthlyContingentSet_TakesPrecedenceOverWeeklyHours, WorkingTimeCalculatorTests.ExpectedHours_MonthlyContingent_ExcludesAbsenceDays, WorkingTimeCalculatorTests.ExpectedHours_MonthlyContingent_FullCalendarMonth_ReturnsExactFigure, WorkingTimeCalculatorTests.ExpectedHours_MonthlyContingent_PartialMonth_ProratesLinearly, WorkingTimeCalculatorTests.ExpectedHours_MonthlyContingent_SpansTwoCalendarMonths_ProratesEachMonthSeparately, WorkingTimeCalculatorTests.ExpectedHours_ScalesWeeklyHoursBySpan, ContractTests.ActiveOn_IgnoresOtherEmployeesContracts, ContractTests.ActiveOn_NoContractCoveringDate_ReturnsNull, ContractTests.ActiveOn_OpenEndedContract_CoversEveryFutureDate, ContractTests.ActiveOn_PicksContractCoveringDate, ContractTests.ActiveOn_TwoCandidates_PicksMostRecentlyStarting, ContractTests.Create_MonthlyHoursOmitted_DefaultsToNull, ContractTests.Create_MonthlyHoursProvided_IsPersistedOnTheContract, ContractTests.Create_SucceedsWhenValidToEqualsValidFrom, ContractTests.Create_SucceedsWhenValidToIsNull, ContractTests.Create_SucceedsWhenValidToIsOnOrAfterValidFrom, ContractTests.Create_ThrowsWhenValidToPrecedesValidFrom, ContractTests.Overlaps_DetectsRangeOverlap, ContractTests.Overlaps_IsSymmetric, ContractTests.Validate_DoesNotThrowForAValidRange, ContractTests.Validate_ThrowsAfterMutatingValidToBeforeValidFrom</td>
 </tr>
 <tr>
 <td><a href="../modules/src-ShiftPlanner.Domain-Employees.html#employee">Employee</a></td>
-<td>EligibilityValidatorTests.AssignedEligibleShiftType_NoError, EligibilityValidatorTests.AssignedIneligibleShiftType_ProducesError, ScheduleValidatorTests.KitchenSink_MessySchedule_TripsAllEightRuleTypesWithoutMaskingOrBleed, ShiftSuggestionEngineAutoFillTests.NoEligibleCandidate_SlotIsSkipped, ShiftSuggestionEngineRulesTests.EvaluateEligibility_RestrictedToOtherShiftType_IsIneligible, ShiftSuggestionEngineTests.NotInEligibleShiftTypes_IsIneligible, ShiftSuggestionEngineTests.Results_OrderedByEligibleThenScoreDescending, EmployeeCollectionEncapsulationTests.AddEligibleShiftType_AddsToTheExposedCollection, EmployeeCollectionEncapsulationTests.RemoveEligibleShiftType_RemovesFromTheExposedCollection, EmployeeCollectionEncapsulationTests.ReplaceEligibleShiftTypes_ClearsAndReplacesWholesale</td>
+<td>TestFactory.Employee, EmployeeCollectionEncapsulationTests.AddEligibleShiftType_AddsToTheExposedCollection, EmployeeCollectionEncapsulationTests.RemoveEligibleShiftType_RemovesFromTheExposedCollection, EmployeeCollectionEncapsulationTests.ReplaceEligibleShiftTypes_ClearsAndReplacesWholesale, EligibilityValidatorTests.AssignedEligibleShiftType_NoError, EligibilityValidatorTests.AssignedIneligibleShiftType_ProducesError, ScheduleValidatorTests.KitchenSink_MessySchedule_TripsAllEightRuleTypesWithoutMaskingOrBleed, ShiftSuggestionEngineAutoFillTests.NoEligibleCandidate_SlotIsSkipped, ShiftSuggestionEngineRulesTests.EvaluateEligibility_RestrictedToOtherShiftType_IsIneligible, ShiftSuggestionEngineTests.NotInEligibleShiftTypes_IsIneligible, ShiftSuggestionEngineTests.Results_OrderedByEligibleThenScoreDescending</td>
 </tr>
 <tr>
 <td><a href="../modules/src-ShiftPlanner.Domain-Common.html#employeeid">EmployeeId</a></td>
-<td>EmployeeIdTests.New_ProducesDistinctNonEmptyIds, EmployeeIdTests.ToString_MatchesUnderlyingGuidsToString</td>
+<td>EmployeeIdTests.DistinctFromScheduleId_NotInterchangeableAtCompileTime, EmployeeIdTests.Equality_DifferentUnderlyingGuid_AreNotEqual, EmployeeIdTests.Equality_SameUnderlyingGuid_AreEqual, EmployeeIdTests.GetHashCode_SameUnderlyingGuid_ProducesSameHash, EmployeeIdTests.ImplicitConversion_PreservesEqualityAcrossTypes, EmployeeIdTests.ImplicitConversion_ToGuid_RoundTrips, EmployeeIdTests.ToString_MatchesUnderlyingGuidsToString, EmployeeIdTests.UsableAsDictionaryKey_ViaValueEquality, EmployeeIdTests.New_ProducesDistinctNonEmptyIds</td>
 </tr>
 <tr>
 <td><a href="../modules/src-ShiftPlanner.Domain-Scheduling.html#germanpublicholidays">GermanPublicHolidays</a></td>
@@ -377,7 +377,7 @@ Source files represented in the code model: 24.</p>
 </tr>
 <tr>
 <td><a href="../modules/src-ShiftPlanner.Domain-Employees.html#hoursadjustment">HoursAdjustment</a></td>
-<td>HoursAdjustmentTests.Create_SucceedsWithANegativeDelta, HoursAdjustmentTests.Create_SucceedsWithAPositiveDeltaAndReason, HoursAdjustmentTests.Create_ThrowsWhenHoursDeltaIsZero, HoursAdjustmentTests.Create_ThrowsWhenReasonIsBlank, HoursAdjustmentTests.Validate_ThrowsAfterMutatingReasonToBlank</td>
+<td>HoursBalanceCalculatorTests.CumulativeBalance_AddsPositiveAdjustmentBeforeCutoff, HoursBalanceCalculatorTests.CumulativeBalance_CombinesScheduleDeviationAndAdjustment, HoursBalanceCalculatorTests.CumulativeBalance_IgnoresAdjustmentForAnotherEmployee, HoursBalanceCalculatorTests.CumulativeBalance_IgnoresAdjustmentOnOrAfterCutoff, HoursBalanceCalculatorTests.CumulativeBalance_SubtractsNegativeAdjustmentBeforeCutoff, HoursAdjustmentTests.Create_SucceedsWithANegativeDelta, HoursAdjustmentTests.Create_SucceedsWithAPositiveDeltaAndReason, HoursAdjustmentTests.Create_ThrowsWhenHoursDeltaIsZero, HoursAdjustmentTests.Create_ThrowsWhenReasonIsBlank, HoursAdjustmentTests.Validate_ThrowsAfterMutatingReasonToBlank</td>
 </tr>
 <tr>
 <td><a href="../modules/src-ShiftPlanner.Domain-Scheduling.html#hoursbalancecalculator">HoursBalanceCalculator</a></td>
@@ -385,19 +385,47 @@ Source files represented in the code model: 24.</p>
 </tr>
 <tr>
 <td><a href="../modules/src-ShiftPlanner.Domain-Common.html#refreshtoken">RefreshToken</a></td>
-<td>RefreshTokenTests.Hash_DiffersForDifferentInput, RefreshTokenTests.Hash_IsDeterministic, RefreshTokenTests.Hash_IsSha256HexEncoded, RefreshTokenTests.Hash_NeverReturnsTheRawToken, RefreshTokenTests.IsActive_FalseWhenExpired, RefreshTokenTests.IsActive_FalseWhenRevoked, RefreshTokenTests.IsActive_FalseWhenRevokedAndExpired, RefreshTokenTests.IsActive_TrueRightUpToExpiry, RefreshTokenTests.IsActive_TrueWhenNotRevokedAndNotExpired</td>
+<td>RefreshTokenTests.IsActive_FalseWhenExpired, RefreshTokenTests.IsActive_FalseWhenRevoked, RefreshTokenTests.IsActive_FalseWhenRevokedAndExpired, RefreshTokenTests.IsActive_TrueRightUpToExpiry, RefreshTokenTests.IsActive_TrueWhenNotRevokedAndNotExpired, RefreshTokenTests.Hash_DiffersForDifferentInput, RefreshTokenTests.Hash_IsDeterministic, RefreshTokenTests.Hash_IsSha256HexEncoded, RefreshTokenTests.Hash_NeverReturnsTheRawToken</td>
 </tr>
 <tr>
 <td><a href="../modules/src-ShiftPlanner.Domain-Scheduling.html#schedule">Schedule</a></td>
-<td>DashboardAggregatorTests.BuildPlanningStatus_CountsDraftPublishedAndConflicts, ScheduleTests.Archive_FromPublished_Succeeds, ScheduleTests.Archive_WhenAlreadyArchived_Throws, ScheduleTests.Publish_FromDraft_SucceedsAndSetsBothFieldsTogether, ScheduleTests.Publish_FromDraft_ThenArchive_DirectlySkippingPublished_Throws, ScheduleTests.Publish_WhenAlreadyPublished_Throws, ScheduleTests.Publish_WhenArchived_Throws</td>
+<td>PlanningBoardAggregatorTests.MakeSchedule, TestFactory.Schedule, HoursBalanceCalculatorTests.MakeSchedule, ScheduleTests.NewDraftSchedule, DashboardAggregatorTests.BuildPlanningStatus_CountsDraftPublishedAndConflicts, ScheduleTests.Archive_FromPublished_Succeeds, ScheduleTests.Archive_WhenAlreadyArchived_Throws, ScheduleTests.Publish_FromDraft_SucceedsAndSetsBothFieldsTogether, ScheduleTests.Publish_FromDraft_ThenArchive_DirectlySkippingPublished_Throws, ScheduleTests.Publish_WhenAlreadyPublished_Throws, ScheduleTests.Publish_WhenArchived_Throws</td>
 </tr>
 <tr>
 <td><a href="../modules/src-ShiftPlanner.Domain-Common.html#scheduleid">ScheduleId</a></td>
-<td>ScheduleIdTests.New_ProducesDistinctNonEmptyIds, ScheduleIdTests.ToString_MatchesUnderlyingGuidsToString</td>
+<td>EmployeeIdTests.DistinctFromScheduleId_NotInterchangeableAtCompileTime, ScheduleIdTests.Equality_DifferentUnderlyingGuid_AreNotEqual, ScheduleIdTests.Equality_SameUnderlyingGuid_AreEqual, ScheduleIdTests.GetHashCode_SameUnderlyingGuid_ProducesSameHash, ScheduleIdTests.ImplicitConversion_PreservesEqualityAcrossTypes, ScheduleIdTests.ImplicitConversion_ToGuid_RoundTrips, ScheduleIdTests.ToString_MatchesUnderlyingGuidsToString, ScheduleIdTests.UsableAsDictionaryKey_ViaValueEquality, ScheduleIdTests.New_ProducesDistinctNonEmptyIds</td>
+</tr>
+<tr>
+<td><a href="../modules/src-ShiftPlanner.Domain-Scheduling.html#shiftassignment">ShiftAssignment</a></td>
+<td>PlanningBoardAggregatorTests.MakeAssignment, TestFactory.Assignment, HoursBalanceCalculatorTests.MakeAssignment</td>
+</tr>
+<tr>
+<td><a href="../modules/src-ShiftPlanner.Domain-Scheduling.html#shifttiming">ShiftTiming</a></td>
+<td>DashboardAggregatorTests.BuildCostBreakdown_MatchesWageCalculatorBreakdownPerAssignment, WageCalculatorTests.Breakdown_Holiday_SplitOutSeparately_HolidayWinsOverSunday, WageCalculatorTests.Breakdown_NightOverlap_SplitOutSeparately, WageCalculatorTests.Breakdown_NullRate_ReturnsNull, WageCalculatorTests.Breakdown_PlainWeekday_OnlyRegular, WageCalculatorTests.Breakdown_Sunday_SplitOutSeparately, WageCalculatorTests.Breakdown_TotalAlwaysMatchesLaborCost, WageCalculatorTests.LaborCostWithSurcharges_BreakEntirelyInsideNightWindow_ReducesNightSurcharge, WageCalculatorTests.LaborCostWithSurcharges_BreakEntirelyOutsideNightWindow_NoReduction, WageCalculatorTests.LaborCostWithSurcharges_BreakStartTimeUnset_MatchesOldApproximation, WageCalculatorTests.LaborCostWithSurcharges_BreakStraddlesNightWindowBoundary_PartialReduction, WageCalculatorTests.LaborCostWithSurcharges_EndsNextDay_BreakOnFollowingDayReducesNightOverlap, WageCalculatorTests.LaborCostWithSurcharges_EndsNextDay_FullyWithinNightWindow, WageCalculatorTests.LaborCostWithSurcharges_EndsNextDay_PartialNightOverlapOnBothSides, WageCalculatorTests.LaborCostWithSurcharges_HolidayOnSunday_DoesNotStack_HolidayWins, WageCalculatorTests.LaborCostWithSurcharges_Holiday_AddsOneHundredTwentyFivePercent, WageCalculatorTests.LaborCostWithSurcharges_NightOverlap_AddsPartialSurcharge, WageCalculatorTests.LaborCostWithSurcharges_NightStacksAdditivelyWithSunday, WageCalculatorTests.LaborCostWithSurcharges_NightWindowSpanningMidnight_CountsBothSides, WageCalculatorTests.LaborCostWithSurcharges_NullRate_ReturnsNull, WageCalculatorTests.LaborCostWithSurcharges_PlainWeekday_NoSurcharge, WageCalculatorTests.LaborCostWithSurcharges_Sunday_AddsFiftyPercent, WageCalculatorTests.LaborCost_BreakSpanningPastMidnight_ClampsToEndOfDay</td>
+</tr>
+<tr>
+<td><a href="../modules/src-ShiftPlanner.Domain-Scheduling.html#shifttype">ShiftType</a></td>
+<td>TestFactory.ShiftType, EmployeeCollectionEncapsulationTests.AddEligibleShiftType_AddsToTheExposedCollection, EmployeeCollectionEncapsulationTests.RemoveEligibleShiftType_RemovesFromTheExposedCollection, EmployeeCollectionEncapsulationTests.ReplaceEligibleShiftTypes_ClearsAndReplacesWholesale</td>
+</tr>
+<tr>
+<td><a href="../modules/src-ShiftPlanner.Domain-Employees.html#shifttypepreference">ShiftTypePreference</a></td>
+<td>ShiftSuggestionEngineAutoFillTests.OneOpenSlot_FillsWithTopEligibleCandidate, ShiftSuggestionEngineRulesTests.EvaluateShiftTypePreference_Avoided_ScoresNegative, ShiftSuggestionEngineRulesTests.EvaluateShiftTypePreference_Preferred_ScoresPositive, ShiftSuggestionEngineTests.PreferredShiftType_ScoresHigherThanAvoided, ShiftSuggestionEngineTests.Results_OrderedByEligibleThenScoreDescending</td>
+</tr>
+<tr>
+<td><a href="../modules/src-ShiftPlanner.Domain-Scheduling.html#staffingrequirement">StaffingRequirement</a></td>
+<td>TestFactory.StaffingRequirement</td>
+</tr>
+<tr>
+<td><a href="../modules/src-ShiftPlanner.Domain-Employees.html#team">Team</a></td>
+<td>DashboardAggregatorTests.BuildPainPoints_CollectsValidatorIssuesAndRespectsTeamFilter</td>
 </tr>
 <tr>
 <td><a href="../modules/src-ShiftPlanner.Domain-Scheduling.html#wagecalculator">WageCalculator</a></td>
 <td>DashboardAggregatorTests.BuildCostBreakdown_MatchesWageCalculatorBreakdownPerAssignment, WageCalculatorTests.Breakdown_Holiday_SplitOutSeparately_HolidayWinsOverSunday, WageCalculatorTests.Breakdown_NightOverlap_SplitOutSeparately, WageCalculatorTests.Breakdown_NullRate_ReturnsNull, WageCalculatorTests.Breakdown_PlainWeekday_OnlyRegular, WageCalculatorTests.Breakdown_Sunday_SplitOutSeparately, WageCalculatorTests.Breakdown_TotalAlwaysMatchesLaborCost, WageCalculatorTests.LaborCostWithSurcharges_BreakEntirelyInsideNightWindow_ReducesNightSurcharge, WageCalculatorTests.LaborCostWithSurcharges_BreakEntirelyOutsideNightWindow_NoReduction, WageCalculatorTests.LaborCostWithSurcharges_BreakStartTimeUnset_MatchesOldApproximation, WageCalculatorTests.LaborCostWithSurcharges_BreakStraddlesNightWindowBoundary_PartialReduction, WageCalculatorTests.LaborCostWithSurcharges_EndsNextDay_BreakOnFollowingDayReducesNightOverlap, WageCalculatorTests.LaborCostWithSurcharges_EndsNextDay_FullyWithinNightWindow, WageCalculatorTests.LaborCostWithSurcharges_EndsNextDay_PartialNightOverlapOnBothSides, WageCalculatorTests.LaborCostWithSurcharges_HolidayOnSunday_DoesNotStack_HolidayWins, WageCalculatorTests.LaborCostWithSurcharges_Holiday_AddsOneHundredTwentyFivePercent, WageCalculatorTests.LaborCostWithSurcharges_NightOverlap_AddsPartialSurcharge, WageCalculatorTests.LaborCostWithSurcharges_NightStacksAdditivelyWithSunday, WageCalculatorTests.LaborCostWithSurcharges_NightWindowSpanningMidnight_CountsBothSides, WageCalculatorTests.LaborCostWithSurcharges_NullRate_ReturnsNull, WageCalculatorTests.LaborCostWithSurcharges_PlainWeekday_NoSurcharge, WageCalculatorTests.LaborCostWithSurcharges_Sunday_AddsFiftyPercent, WageCalculatorTests.LaborCost_BreakSpanningPastMidnight_ClampsToEndOfDay, WageCalculatorTests.SimpleLaborCost_MultipliesHoursByRate, WageCalculatorTests.SimpleLaborCost_NullRate_ReturnsNull</td>
+</tr>
+<tr>
+<td><a href="../modules/src-ShiftPlanner.Domain-Employees.html#weekdaypreference">WeekdayPreference</a></td>
+<td>ShiftSuggestionEngineRulesTests.EvaluateWeekdayPreference_Avoided_ScoresNegative, ShiftSuggestionEngineRulesTests.EvaluateWeekdayPreference_Preferred_ScoresPositive, ShiftSuggestionEngineTests.PreferredWeekday_AddsPositiveScore</td>
 </tr>
 <tr>
 <td><a href="../modules/src-ShiftPlanner.Domain-Scheduling.html#workingtimecalculator">WorkingTimeCalculator</a></td>
@@ -409,9 +437,9 @@ Source files represented in the code model: 24.</p>
 <p>No resolved project references in the selected scope.</p>
 <p><a href="../architecture.html">System-wide architecture</a> · <a href="../quality.html">Quality</a></p>
 
-<footer class="generator">Generated by docwizz 0.7.32-dev.1</footer>
+<footer class="generator">Generated by docwizz 0.7.44-dev.1</footer>
 </main>
-<aside class="toc" aria-label="On this page"><div class="toc-inner"><div class="toc-title">On this page</div><ul><li><a href="#solution-membership">Solution membership</a></li><li><a href="#modules-4">Modules (4)</a></li><li><a href="#components-30">Components (30)</a></li><li><a href="#test-traceability-12-components">Test traceability (12 components)</a></li><li><a href="#project-references">Project references</a></li></ul></div></aside>
+<aside class="toc" aria-label="On this page"><div class="toc-inner"><div class="toc-title">On this page</div><ul><li><a href="#solution-membership">Solution membership</a></li><li><a href="#modules-4">Modules (4)</a></li><li><a href="#components-30">Components (30)</a></li><li><a href="#test-traceability-19-components">Test traceability (19 components)</a></li><li><a href="#project-references">Project references</a></li></ul></div></aside>
 </div>
 <script src="../search.js"></script>
 <script>(() => {

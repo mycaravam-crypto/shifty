@@ -168,6 +168,11 @@ main tbody tr:last-child td { border-bottom: 0; }
 <h1 id="srcshiftplannerdomainscheduling">src/ShiftPlanner.Domain/Scheduling</h1>
 <p>Layer <strong>domain</strong> · project <code>ShiftPlanner.Domain</code> · Entities: 4</p>
 <p>Project navigation: <a href="../projects/ShiftPlanner-Domain-f2a83529199c.html">ShiftPlanner.Domain</a></p>
+<h2 id="overview-">Overview 🤖</h2>
+<p>Contains domain models and services for scheduling shifts, including public holidays, hours balance calculations, and wage calculations.</p>
+<p><strong>Responsibilities.</strong> Manages scheduling logic, including calculating hours balance, wage calculations, and handling public holidays.</p>
+<p><strong>Usage.</strong> Used by various parts of the application to manage and calculate scheduling-related data.</p>
+<p><em>AI draft from the facts on this page; review it, then write the module's documentation yourself.</em></p>
 <h2 id="key-components">Key components</h2>
 <div class="table-wrap"><table>
 <thead>
@@ -307,8 +312,8 @@ main tbody tr:last-child td { border-bottom: 0; }
 <tbody>
 <tr>
 <td><a href="../../src/ShiftPlanner.Domain/Scheduling/HoursBalanceCalculator.cs#L12"><code>CumulativeBalance(System.Guid, System.DateOnly, System.Collections.Generic.IReadOnlyList&lt;ShiftPlanner.Domain.Scheduling.Schedule&gt;, System.Collections.Generic.IReadOnlyList&lt;ShiftPlanner.Domain.Scheduling.ShiftAssignment&gt;, System.Collections.Generic.IReadOnlyList&lt;ShiftPlanner.Domain.Contracts.Contract&gt;, System.Collections.Generic.IReadOnlyList&lt;ShiftPlanner.Domain.Employees.Absence&gt;?, System.Collections.Generic.IReadOnlyList&lt;ShiftPlanner.Domain.Employees.HoursAdjustment&gt;?)</code></a> ⚠</td>
-<td></td>
-<td></td>
+<td>🤖 <em>Calculates the cumulative hours balance for an employee up to a specified date.</em></td>
+<td>responsibilities 🤖: Computes the balance by considering schedules, assignments, contracts, absences, and adjustments.; behaviour 🤖: Iterates through schedules, calculates expected and actual hours, and accumulates the balance.; exception 🤖: No specific error handling is mentioned in the source.; usage 🤖: Called by multiple API controllers and planning board aggregators to compute hours balances.</td>
 <td>10</td>
 </tr>
 </tbody>
@@ -321,7 +326,7 @@ main tbody tr:last-child td { border-bottom: 0; }
 <p><em>record</em> · <a href="../../src/ShiftPlanner.Domain/Scheduling/GermanPublicHolidays.cs#L3">GermanPublicHolidays.cs</a></p>
 <h3 id="schedule">Schedule</h3>
 <p><em>class</em> · <a href="../../src/ShiftPlanner.Domain/Scheduling/Schedule.cs#L6">Schedule.cs</a></p>
-<p><em>Linked tests:</em> <code>DashboardAggregatorTests.BuildPlanningStatus_CountsDraftPublishedAndConflicts</code> (via <code>Schedule.Publish(string, DateTimeOffset)</code>), <code>ScheduleTests.Archive_FromPublished_Succeeds</code> (via <code>Schedule.Publish(string, DateTimeOffset)</code>), <code>ScheduleTests.Archive_WhenAlreadyArchived_Throws</code> (via <code>Schedule.Publish(string, DateTimeOffset)</code>), <code>ScheduleTests.Publish_FromDraft_SucceedsAndSetsBothFieldsTogether</code> (via <code>Schedule.Publish(string, DateTimeOffset)</code>), <code>ScheduleTests.Publish_FromDraft_ThenArchive_DirectlySkippingPublished_Throws</code> (via <code>Schedule.Archive()</code>), <code>ScheduleTests.Publish_WhenAlreadyPublished_Throws</code> (via <code>Schedule.Publish(string, DateTimeOffset)</code>), <code>ScheduleTests.Publish_WhenArchived_Throws</code> (via <code>Schedule.Publish(string, DateTimeOffset)</code>) — test code that uses it, not coverage</p>
+<p><em>Linked tests:</em> <code>PlanningBoardAggregatorTests.MakeSchedule</code>, <code>TestFactory.Schedule</code>, <code>HoursBalanceCalculatorTests.MakeSchedule</code>, <code>ScheduleTests.NewDraftSchedule</code>, <code>DashboardAggregatorTests.BuildPlanningStatus_CountsDraftPublishedAndConflicts</code> (via <code>Schedule.Publish(string, DateTimeOffset)</code>), <code>ScheduleTests.Archive_FromPublished_Succeeds</code> (via <code>Schedule.Publish(string, DateTimeOffset)</code>), <code>ScheduleTests.Archive_WhenAlreadyArchived_Throws</code> (via <code>Schedule.Publish(string, DateTimeOffset)</code>), <code>ScheduleTests.Publish_FromDraft_SucceedsAndSetsBothFieldsTogether</code> (via <code>Schedule.Publish(string, DateTimeOffset)</code>), +3 more — test code that uses it, not coverage</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -350,13 +355,16 @@ main tbody tr:last-child td { border-bottom: 0; }
 <p><em>enum</em> · <a href="../../src/ShiftPlanner.Domain/Scheduling/Schedule.cs#L3">Schedule.cs</a></p>
 <h3 id="shiftassignment">ShiftAssignment</h3>
 <p><em>class</em> · <a href="../../src/ShiftPlanner.Domain/Scheduling/ShiftAssignment.cs#L4">ShiftAssignment.cs</a></p>
-<p><em>Reached from:</em> <a href="../api.html#flows"><code>GET /api/dashboard</code></a>, <a href="../api.html#flows"><code>POST /api/schedules/{id:guid}/publish</code></a>, <a href="../api.html#flows"><code>GET /api/schedules/{id:guid}/validate</code></a></p>
+<p><em>Reached from:</em> <a href="../api.html#flows"><code>GET /api/dashboard</code></a>, <a href="../api.html#flows"><code>POST /api/schedules/{id:guid}/publish</code></a>, <a href="../api.html#flows"><code>GET /api/schedules/{id:guid}/validate</code></a> · <em>Linked tests:</em> <code>PlanningBoardAggregatorTests.MakeAssignment</code>, <code>TestFactory.Assignment</code>, <code>HoursBalanceCalculatorTests.MakeAssignment</code> — test code that uses it, not coverage</p>
 <h3 id="shifttiming">ShiftTiming</h3>
 <p><em>record</em> · <a href="../../src/ShiftPlanner.Domain/Scheduling/WageCalculator.cs#L9">WageCalculator.cs</a></p>
+<p><em>Linked tests:</em> <code>DashboardAggregatorTests.BuildCostBreakdown_MatchesWageCalculatorBreakdownPerAssignment</code>, <code>WageCalculatorTests.Breakdown_Holiday_SplitOutSeparately_HolidayWinsOverSunday</code>, <code>WageCalculatorTests.Breakdown_NightOverlap_SplitOutSeparately</code>, <code>WageCalculatorTests.Breakdown_NullRate_ReturnsNull</code>, <code>WageCalculatorTests.Breakdown_PlainWeekday_OnlyRegular</code>, <code>WageCalculatorTests.Breakdown_Sunday_SplitOutSeparately</code>, <code>WageCalculatorTests.Breakdown_TotalAlwaysMatchesLaborCost</code>, <code>WageCalculatorTests.LaborCostWithSurcharges_BreakEntirelyInsideNightWindow_ReducesNightSurcharge</code>, +15 more — test code that uses it, not coverage</p>
 <h3 id="shifttype">ShiftType</h3>
 <p><em>class</em> · <a href="../../src/ShiftPlanner.Domain/Scheduling/ShiftType.cs#L4">ShiftType.cs</a></p>
+<p><em>Linked tests:</em> <code>TestFactory.ShiftType</code>, <code>EmployeeCollectionEncapsulationTests.AddEligibleShiftType_AddsToTheExposedCollection</code>, <code>EmployeeCollectionEncapsulationTests.RemoveEligibleShiftType_RemovesFromTheExposedCollection</code>, <code>EmployeeCollectionEncapsulationTests.ReplaceEligibleShiftTypes_ClearsAndReplacesWholesale</code> — test code that uses it, not coverage</p>
 <h3 id="staffingrequirement">StaffingRequirement</h3>
 <p><em>class</em> · <a href="../../src/ShiftPlanner.Domain/Scheduling/StaffingRequirement.cs#L9">StaffingRequirement.cs</a></p>
+<p><em>Linked tests:</em> <code>TestFactory.StaffingRequirement</code> — test code that uses it, not coverage</p>
 <h3 id="wagecalculator">WageCalculator</h3>
 <p><em>class</em> · <a href="../../src/ShiftPlanner.Domain/Scheduling/WageCalculator.cs#L13">WageCalculator.cs</a></p>
 <p><em>Reached from:</em> <a href="../api.html#flows"><code>GET /api/dashboard</code></a>, <a href="../api.html#flows"><code>GET /api/planning-board</code></a>, <a href="../api.html#flows"><code>GET /api/schedules/{id:guid}</code></a>, <a href="../api.html#flows"><code>POST /api/schedules/{id:guid}/assignments</code></a>, <a href="../api.html#flows"><code>POST /api/schedules/{id:guid}/auto-fill</code></a> · <em>Linked tests:</em> <code>DashboardAggregatorTests.BuildCostBreakdown_MatchesWageCalculatorBreakdownPerAssignment</code> (via <code>WageCalculator.Breakdown(ShiftTiming, DayOfWeek, bool, decimal, decimal?)</code>), <code>WageCalculatorTests.Breakdown_Holiday_SplitOutSeparately_HolidayWinsOverSunday</code> (via <code>WageCalculator.Breakdown(ShiftTiming, DayOfWeek, bool, decimal, decimal?)</code>), <code>WageCalculatorTests.Breakdown_NightOverlap_SplitOutSeparately</code> (via <code>WageCalculator.Breakdown(ShiftTiming, DayOfWeek, bool, decimal, decimal?)</code>), <code>WageCalculatorTests.Breakdown_NullRate_ReturnsNull</code> (via <code>WageCalculator.Breakdown(ShiftTiming, DayOfWeek, bool, decimal, decimal?)</code>), <code>WageCalculatorTests.Breakdown_PlainWeekday_OnlyRegular</code> (via <code>WageCalculator.Breakdown(ShiftTiming, DayOfWeek, bool, decimal, decimal?)</code>), <code>WageCalculatorTests.Breakdown_Sunday_SplitOutSeparately</code> (via <code>WageCalculator.Breakdown(ShiftTiming, DayOfWeek, bool, decimal, decimal?)</code>), <code>WageCalculatorTests.Breakdown_TotalAlwaysMatchesLaborCost</code> (via <code>WageCalculator.LaborCostWithSurcharges(ShiftTiming, DayOfWeek, bool, decimal, decimal?)</code>), <code>WageCalculatorTests.LaborCostWithSurcharges_BreakEntirelyInsideNightWindow_ReducesNightSurcharge</code> (via <code>WageCalculator.LaborCostWithSurcharges(ShiftTiming, DayOfWeek, bool, decimal, decimal?)</code>), +17 more — test code that uses it, not coverage</p>
@@ -384,8 +392,8 @@ main tbody tr:last-child td { border-bottom: 0; }
 </tr>
 <tr>
 <td><a href="../../src/ShiftPlanner.Domain/Scheduling/WageCalculator.cs#L51"><code>Breakdown(ShiftPlanner.Domain.Scheduling.ShiftTiming, System.DayOfWeek, bool, decimal, decimal?)</code></a> ⚠</td>
-<td></td>
-<td></td>
+<td>🤖 <em>Calculates the labor cost breakdown for a shift based on timing, day of the week, holiday status, net hours, and hourly rate.</em></td>
+<td>behaviour 🤖: Determines the regular, night, holiday, and Sunday labor costs based on the provided parameters and returns a <code>LaborCostBreakdown</code> object.; exception 🤖: Returns null if the hourly rate is null.; usage 🤖: Used in the <code>DashboardAggregator</code> and <code>LaborCostWithSurcharges</code> methods to calculate the cost breakdown for shifts.</td>
 <td>5</td>
 </tr>
 </tbody>
@@ -411,8 +419,8 @@ main tbody tr:last-child td { border-bottom: 0; }
 </tr>
 <tr>
 <td><a href="../../src/ShiftPlanner.Domain/Scheduling/WorkingTimeCalculator.cs#L25"><code>NetHours(System.TimeOnly, System.TimeOnly, int, bool)</code></a> ⚠</td>
-<td></td>
-<td></td>
+<td>🤖 <em>Calculates the net working hours between two times, considering breaks and whether the end time is on the next day.</em></td>
+<td>behaviour 🤖: Converts start and end times to minutes, adjusts for breaks and whether the end time is on the next day, calculates the net minutes, and returns the net hours as a decimal.; usage 🤖: Used in various methods to calculate net working hours for shifts, including in reports, planning, and validation.</td>
 <td>2</td>
 </tr>
 <tr>
@@ -429,14 +437,14 @@ main tbody tr:last-child td { border-bottom: 0; }
 </tr>
 <tr>
 <td><a href="../../src/ShiftPlanner.Domain/Scheduling/WorkingTimeCalculator.cs#L46"><code>OverlapDays(System.DateOnly, System.DateOnly, System.DateOnly, System.DateOnly)</code></a> ⚠</td>
-<td></td>
-<td></td>
+<td>🤖 <em>Calculates the number of overlapping days between two date ranges.</em></td>
+<td>behaviour 🤖: Determines the overlapping days by finding the maximum start date and minimum end date between the two ranges and then calculating the difference.; exception 🤖: Returns 0 if there is no overlap between the two ranges.</td>
 <td>4</td>
 </tr>
 <tr>
 <td><a href="../../src/ShiftPlanner.Domain/Scheduling/WorkingTimeCalculator.cs#L77"><code>ExpectedHours(System.Collections.Generic.IReadOnlyList&lt;ShiftPlanner.Domain.Contracts.Contract&gt;, System.Collections.Generic.IReadOnlyList&lt;ShiftPlanner.Domain.Employees.Absence&gt;, System.Guid, System.DateOnly, System.DateOnly)</code></a> ⚠</td>
-<td></td>
-<td></td>
+<td>🤖 <em>Calculates the expected working hours for an employee based on their contracts and absences.</em></td>
+<td>responsibilities 🤖: Computes the total expected working hours for a given employee within a specified date range, considering their active contracts and absences.; behaviour 🤖: Iterates through each day in the specified range, checks for absences, and calculates the expected hours based on the employee's active contracts.; exception 🤖: Returns 0 if the employee has no active contracts within the specified range.; usage 🤖: Used by various parts of the application to determine the expected working hours for employees, such as in reports and planning tools.</td>
 <td>10</td>
 </tr>
 <tr>
@@ -448,11 +456,11 @@ main tbody tr:last-child td { border-bottom: 0; }
 </tbody>
 </table></div>
 <hr />
-<p><em>Generated from 70 symbols in <a href="../../src/ShiftPlanner.Domain/Scheduling/Bundesland.cs">src/ShiftPlanner.Domain/Scheduling/Bundesland.cs</a>, <a href="../../src/ShiftPlanner.Domain/Scheduling/CoverageStatus.cs">src/ShiftPlanner.Domain/Scheduling/CoverageStatus.cs</a>, <a href="../../src/ShiftPlanner.Domain/Scheduling/GermanPublicHolidays.cs">src/ShiftPlanner.Domain/Scheduling/GermanPublicHolidays.cs</a>, <a href="../../src/ShiftPlanner.Domain/Scheduling/HoursBalanceCalculator.cs">src/ShiftPlanner.Domain/Scheduling/HoursBalanceCalculator.cs</a>, <a href="../../src/ShiftPlanner.Domain/Scheduling/PainSeverity.cs">src/ShiftPlanner.Domain/Scheduling/PainSeverity.cs</a>, <a href="../../src/ShiftPlanner.Domain/Scheduling/Schedule.cs">src/ShiftPlanner.Domain/Scheduling/Schedule.cs</a>, <a href="../../src/ShiftPlanner.Domain/Scheduling/ShiftAssignment.cs">src/ShiftPlanner.Domain/Scheduling/ShiftAssignment.cs</a>, <a href="../../src/ShiftPlanner.Domain/Scheduling/ShiftType.cs">src/ShiftPlanner.Domain/Scheduling/ShiftType.cs</a>, <a href="../../src/ShiftPlanner.Domain/Scheduling/StaffingRequirement.cs">src/ShiftPlanner.Domain/Scheduling/StaffingRequirement.cs</a>, <a href="../../src/ShiftPlanner.Domain/Scheduling/WageCalculator.cs">src/ShiftPlanner.Domain/Scheduling/WageCalculator.cs</a>, <a href="../../src/ShiftPlanner.Domain/Scheduling/WorkingTimeCalculator.cs">src/ShiftPlanner.Domain/Scheduling/WorkingTimeCalculator.cs</a> (commit <code>534b8b5</code>, profile <code>default</code>). Sections marked <em>fact</em> are read from the code, <em>inferred</em> come from heuristics, 🤖 marks AI drafts.</em></p>
+<p><em>Generated from 70 symbols in <a href="../../src/ShiftPlanner.Domain/Scheduling/Bundesland.cs">src/ShiftPlanner.Domain/Scheduling/Bundesland.cs</a>, <a href="../../src/ShiftPlanner.Domain/Scheduling/CoverageStatus.cs">src/ShiftPlanner.Domain/Scheduling/CoverageStatus.cs</a>, <a href="../../src/ShiftPlanner.Domain/Scheduling/GermanPublicHolidays.cs">src/ShiftPlanner.Domain/Scheduling/GermanPublicHolidays.cs</a>, <a href="../../src/ShiftPlanner.Domain/Scheduling/HoursBalanceCalculator.cs">src/ShiftPlanner.Domain/Scheduling/HoursBalanceCalculator.cs</a>, <a href="../../src/ShiftPlanner.Domain/Scheduling/PainSeverity.cs">src/ShiftPlanner.Domain/Scheduling/PainSeverity.cs</a>, <a href="../../src/ShiftPlanner.Domain/Scheduling/Schedule.cs">src/ShiftPlanner.Domain/Scheduling/Schedule.cs</a>, <a href="../../src/ShiftPlanner.Domain/Scheduling/ShiftAssignment.cs">src/ShiftPlanner.Domain/Scheduling/ShiftAssignment.cs</a>, <a href="../../src/ShiftPlanner.Domain/Scheduling/ShiftType.cs">src/ShiftPlanner.Domain/Scheduling/ShiftType.cs</a>, <a href="../../src/ShiftPlanner.Domain/Scheduling/StaffingRequirement.cs">src/ShiftPlanner.Domain/Scheduling/StaffingRequirement.cs</a>, <a href="../../src/ShiftPlanner.Domain/Scheduling/WageCalculator.cs">src/ShiftPlanner.Domain/Scheduling/WageCalculator.cs</a>, <a href="../../src/ShiftPlanner.Domain/Scheduling/WorkingTimeCalculator.cs">src/ShiftPlanner.Domain/Scheduling/WorkingTimeCalculator.cs</a> (commit <code>11abf0b</code>, profile <code>default</code>). Sections marked <em>fact</em> are read from the code, <em>inferred</em> come from heuristics, 🤖 marks AI drafts.</em></p>
 
-<footer class="generator">Generated by docwizz 0.7.32-dev.1</footer>
+<footer class="generator">Generated by docwizz 0.7.44-dev.1</footer>
 </main>
-<aside class="toc" aria-label="On this page"><div class="toc-inner"><div class="toc-title">On this page</div><ul><li><a href="#key-components">Key components</a></li><li><a href="#flows-through-this-module">Flows through this module</a></li><li><a href="#documentation-gaps">Documentation gaps</a></li><li><a href="#dependencies">Dependencies</a></li><li><a href="#components">Components</a></li></ul></div></aside>
+<aside class="toc" aria-label="On this page"><div class="toc-inner"><div class="toc-title">On this page</div><ul><li><a href="#overview-">Overview 🤖</a></li><li><a href="#key-components">Key components</a></li><li><a href="#flows-through-this-module">Flows through this module</a></li><li><a href="#documentation-gaps">Documentation gaps</a></li><li><a href="#dependencies">Dependencies</a></li><li><a href="#components">Components</a></li></ul></div></aside>
 </div>
 <script src="../search.js"></script>
 <script>(() => {

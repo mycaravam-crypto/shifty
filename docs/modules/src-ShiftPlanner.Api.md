@@ -9,7 +9,7 @@ Project navigation: [ShiftPlanner.Api](../projects/ShiftPlanner-Api-b964678aa746
 
 | Endpoint | Summary | Authorization |
 |---|---|---|
-| `GET /health` | — | — |
+| `GET /health` | 🤖 _Returns a health check response indicating the service is up._ | — |
 
 Contracts and callers: [API](../api.md).
 
@@ -41,7 +41,7 @@ All keys: [deployment](../views/deployment.md#configuration).
 
 ### Program
 
-_class_ · [Program.cs](../../src/ShiftPlanner.Api/Program.cs#L231)
+_class_ · [Program.cs](../../src/ShiftPlanner.Api/Program.cs#L233)
 
 ---
-_Generated from 2 symbols in [src/ShiftPlanner.Api/Program.cs](../../src/ShiftPlanner.Api/Program.cs) (commit `534b8b5`, profile `default`). Sections marked _fact_ are read from the code, _inferred_ come from heuristics, 🤖 marks AI drafts._
+_Generated from 2 symbols in [src/ShiftPlanner.Api/Program.cs](../../src/ShiftPlanner.Api/Program.cs) (commit `11abf0b`, profile `default`). Sections marked _fact_ are read from the code, _inferred_ come from heuristics, 🤖 marks AI drafts._

@@ -5,6 +5,16 @@ Layer **state** · project `frontend`
 
 Project navigation: [frontend](../projects/frontend-da6498268e99.md)
 
+## Overview 🤖
+
+Contains Vue composables for managing various aspects of the schedule view, including keyboard navigation, planning actions, planning board data, drag-and-drop interactions, and filters.
+
+**Responsibilities.** Manages keyboard navigation, planning actions, planning board data, drag-and-drop interactions, and filters for the schedule view.
+
+**Usage.** Used by the schedule view components to manage their respective functionalities.
+
+_AI draft from the facts on this page; review it, then write the module's documentation yourself._
+
 ## Key components
 
 | Component | Kind | Used by | Summary |
@@ -115,7 +125,7 @@ _module_ · [useGridKeyboardNav.ts](../../frontend/src/views/Schedule/composable
 
 | Member | Summary | Derived from code | Complexity |
 |---|---|---|---|
-| [`useGridKeyboardNav`](../../frontend/src/views/Schedule/composables/useGridKeyboardNav.ts#L18) ⚠ |  |  | 24 |
+| [`useGridKeyboardNav`](../../frontend/src/views/Schedule/composables/useGridKeyboardNav.ts#L18) ⚠ | 🤖 _Manages keyboard navigation for a grid, handling focus and key events._ | responsibilities 🤖: Provides functions to handle keyboard navigation within a grid, including focus management and key event handling.; behaviour 🤖: Initializes a reactive reference for the focused cell. Provides functions to check if a cell is focusable, get the ARIA label for a cell, set the focused cell, get the currently focused grid cell, and handle keydown events for grid cells.; usage 🤖: Used in the ScheduleView.vue component to manage keyboard navigation within the grid. | 24 |
 
 ### usePlanningActions.ts
 
@@ -123,7 +133,7 @@ _module_ · [usePlanningActions.ts](../../frontend/src/views/Schedule/composable
 
 | Member | Summary | Derived from code | Complexity |
 |---|---|---|---|
-| [`usePlanningActions`](../../frontend/src/views/Schedule/composables/usePlanningActions.ts#L26) ⚠ |  |  | 35 |
+| [`usePlanningActions`](../../frontend/src/views/Schedule/composables/usePlanningActions.ts#L26) ⚠ | 🤖 _Manages actions related to planning, such as creating, publishing, archiving, and copying schedules._ |  | 35 |
 
 ### usePlanningBoard.ts
 
@@ -131,7 +141,7 @@ _module_ · [usePlanningBoard.ts](../../frontend/src/views/Schedule/composables/
 
 | Member | Summary | Derived from code | Complexity |
 |---|---|---|---|
-| [`usePlanningBoard`](../../frontend/src/views/Schedule/composables/usePlanningBoard.ts#L38) ⚠ |  |  | 64 |
+| [`usePlanningBoard`](../../frontend/src/views/Schedule/composables/usePlanningBoard.ts#L38) ⚠ | 🤖 _Loads and manages data for the planning board, including employees, teams, shift types, schedules, and holidays._ | side effects 🤖: Makes HTTP calls to fetch data from the ShiftPlanner API.; usage 🤖: Used in the MonthOverviewView.vue and ScheduleView.vue components to load and display planning board data. | 64 |
 
 ### useScheduleDnD.ts
 
@@ -142,7 +152,7 @@ _module_ · [useScheduleDnD.ts](../../frontend/src/views/Schedule/composables/us
 | [`paletteDragPayload`](../../frontend/src/views/Schedule/composables/useScheduleDnD.ts#L33) |  |  | 1 |
 | [`assignmentDragPayload`](../../frontend/src/views/Schedule/composables/useScheduleDnD.ts#L42) |  |  | 3 |
 | [`employeeDragPayload`](../../frontend/src/views/Schedule/composables/useScheduleDnD.ts#L57) |  |  | 1 |
-| [`useScheduleDnD`](../../frontend/src/views/Schedule/composables/useScheduleDnD.ts#L69) ⚠ |  |  | 16 |
+| [`useScheduleDnD`](../../frontend/src/views/Schedule/composables/useScheduleDnD.ts#L69) ⚠ | 🤖 _Manages drag-and-drop interactions for scheduling, handling pointer events and invoking callbacks._ | behaviour 🤖: Initializes drag state, listens for pointer events, and invokes callbacks based on drag actions.; exception 🤖: None explicitly handled in the source.; usage 🤖: Used in the ScheduleView.vue to handle drag-and-drop for scheduling. | 16 |
 
 ### useScheduleFilters.ts
 
@@ -150,7 +160,7 @@ _module_ · [useScheduleFilters.ts](../../frontend/src/views/Schedule/composable
 
 | Member | Summary | Derived from code | Complexity |
 |---|---|---|---|
-| [`useScheduleFilters`](../../frontend/src/views/Schedule/composables/useScheduleFilters.ts#L10) ⚠ |  |  | 9 |
+| [`useScheduleFilters`](../../frontend/src/views/Schedule/composables/useScheduleFilters.ts#L10) ⚠ | 🤖 _Manages filters for the schedule view, including search and team filters._ | responsibilities 🤖: Manages state for search and team filters; applies filters from the URL; handles default team settings; consumes deep links.; behaviour 🤖: Initializes filters from the URL; updates the URL when filters change; applies default team settings if no team is specified in the URL; consumes deep links to navigate to a specific schedule.; side effects 🤖: Updates the URL query parameters.; usage 🤖: Used in the ScheduleView and MonthOverviewView components to manage and apply filters. | 9 |
 
 ---
-_Generated from 16 symbols in [frontend/src/views/Schedule/composables/useGridKeyboardNav.ts](../../frontend/src/views/Schedule/composables/useGridKeyboardNav.ts), [frontend/src/views/Schedule/composables/usePlanningActions.ts](../../frontend/src/views/Schedule/composables/usePlanningActions.ts), [frontend/src/views/Schedule/composables/usePlanningBoard.ts](../../frontend/src/views/Schedule/composables/usePlanningBoard.ts), [frontend/src/views/Schedule/composables/useScheduleDnD.ts](../../frontend/src/views/Schedule/composables/useScheduleDnD.ts), [frontend/src/views/Schedule/composables/useScheduleFilters.ts](../../frontend/src/views/Schedule/composables/useScheduleFilters.ts) (commit `534b8b5`, profile `default`). Sections marked _fact_ are read from the code, _inferred_ come from heuristics, 🤖 marks AI drafts._
+_Generated from 16 symbols in [frontend/src/views/Schedule/composables/useGridKeyboardNav.ts](../../frontend/src/views/Schedule/composables/useGridKeyboardNav.ts), [frontend/src/views/Schedule/composables/usePlanningActions.ts](../../frontend/src/views/Schedule/composables/usePlanningActions.ts), [frontend/src/views/Schedule/composables/usePlanningBoard.ts](../../frontend/src/views/Schedule/composables/usePlanningBoard.ts), [frontend/src/views/Schedule/composables/useScheduleDnD.ts](../../frontend/src/views/Schedule/composables/useScheduleDnD.ts), [frontend/src/views/Schedule/composables/useScheduleFilters.ts](../../frontend/src/views/Schedule/composables/useScheduleFilters.ts) (commit `11abf0b`, profile `default`). Sections marked _fact_ are read from the code, _inferred_ come from heuristics, 🤖 marks AI drafts._

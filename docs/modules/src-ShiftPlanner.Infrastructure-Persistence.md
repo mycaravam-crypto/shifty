@@ -5,6 +5,16 @@ Layer **infrastructure** · project `ShiftPlanner.Infrastructure`
 
 Project navigation: [ShiftPlanner.Infrastructure](../projects/ShiftPlanner-Infrastructure-51f58a3062c0.md)
 
+## Overview 🤖
+
+Manages database persistence and auditing for shift planning.
+
+**Responsibilities.** Handles database operations and logs changes for auditing.
+
+**Usage.** Used by API controllers and middleware for data persistence and auditing.
+
+_AI draft from the facts on this page; review it, then write the module's documentation yourself._
+
 ## Key components
 
 | Component | Kind | Used by | Summary |
@@ -93,6 +103,8 @@ _Reached from:_ [`GET /api/absences/{id:guid}`](../api.md#flows), [`PUT /api/abs
 
 _class_ · [ApplicationUser.cs](../../src/ShiftPlanner.Infrastructure/Persistence/ApplicationUser.cs#L6)
 
+_Linked tests:_ `IntegrationTestFixture.CreateStaffUserAsync` — test code that uses it, not coverage
+
 ### AuditSaveChangesInterceptor
 
 _class_ · [AuditSaveChangesInterceptor.cs](../../src/ShiftPlanner.Infrastructure/Persistence/AuditSaveChangesInterceptor.cs#L27)
@@ -105,4 +117,4 @@ Builds AuditLog rows from the DbContext's change tracker on every save (readme.m
 | [`SavingChangesAsync(DbContextEventData, InterceptionResult<int>, System.Threading.CancellationToken)`](../../src/ShiftPlanner.Infrastructure/Persistence/AuditSaveChangesInterceptor.cs#L45) |  |  | 1 |
 
 ---
-_Generated from 23 symbols in [src/ShiftPlanner.Infrastructure/Persistence/ApplicationDbContext.cs](../../src/ShiftPlanner.Infrastructure/Persistence/ApplicationDbContext.cs), [src/ShiftPlanner.Infrastructure/Persistence/ApplicationUser.cs](../../src/ShiftPlanner.Infrastructure/Persistence/ApplicationUser.cs), [src/ShiftPlanner.Infrastructure/Persistence/AuditSaveChangesInterceptor.cs](../../src/ShiftPlanner.Infrastructure/Persistence/AuditSaveChangesInterceptor.cs) (commit `534b8b5`, profile `default`). Sections marked _fact_ are read from the code, _inferred_ come from heuristics, 🤖 marks AI drafts._
+_Generated from 23 symbols in [src/ShiftPlanner.Infrastructure/Persistence/ApplicationDbContext.cs](../../src/ShiftPlanner.Infrastructure/Persistence/ApplicationDbContext.cs), [src/ShiftPlanner.Infrastructure/Persistence/ApplicationUser.cs](../../src/ShiftPlanner.Infrastructure/Persistence/ApplicationUser.cs), [src/ShiftPlanner.Infrastructure/Persistence/AuditSaveChangesInterceptor.cs](../../src/ShiftPlanner.Infrastructure/Persistence/AuditSaveChangesInterceptor.cs) (commit `11abf0b`, profile `default`). Sections marked _fact_ are read from the code, _inferred_ come from heuristics, 🤖 marks AI drafts._

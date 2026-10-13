@@ -5,6 +5,16 @@ Layer **api** · project `ShiftPlanner.Api` · Options: 1
 
 Project navigation: [ShiftPlanner.Api](../projects/ShiftPlanner-Api-b964678aa746.md)
 
+## Overview 🤖
+
+Manages JWT token creation, validation, and refresh for authentication.
+
+**Responsibilities.** Generates and validates JWT tokens for user authentication.
+
+**Usage.** Used by controllers to authenticate and authorize requests.
+
+_AI draft from the facts on this page; review it, then write the module's documentation yourself._
+
 ## Key components
 
 | Component | Kind | Used by | Summary |
@@ -68,4 +78,4 @@ _Reached from:_ [`POST /api/v1/auth/login`](../api.md#flows), [`POST /api/v1/aut
 _record_ · [JwtTokenFactory.cs](../../src/ShiftPlanner.Api/Authentication/JwtTokenFactory.cs#L129)
 
 ---
-_Generated from 15 symbols in [src/ShiftPlanner.Api/Authentication/JwtOptions.cs](../../src/ShiftPlanner.Api/Authentication/JwtOptions.cs), [src/ShiftPlanner.Api/Authentication/JwtTokenFactory.cs](../../src/ShiftPlanner.Api/Authentication/JwtTokenFactory.cs) (commit `534b8b5`, profile `default`). Sections marked _fact_ are read from the code, _inferred_ come from heuristics, 🤖 marks AI drafts._
+_Generated from 15 symbols in [src/ShiftPlanner.Api/Authentication/JwtOptions.cs](../../src/ShiftPlanner.Api/Authentication/JwtOptions.cs), [src/ShiftPlanner.Api/Authentication/JwtTokenFactory.cs](../../src/ShiftPlanner.Api/Authentication/JwtTokenFactory.cs) (commit `11abf0b`, profile `default`). Sections marked _fact_ are read from the code, _inferred_ come from heuristics, 🤖 marks AI drafts._

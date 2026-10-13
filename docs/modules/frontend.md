@@ -16,4 +16,4 @@ _module_ · [eslint.config.js](../../frontend/eslint.config.js#L1)
 _module_ · [vite.config.ts](../../frontend/vite.config.ts#L1)
 
 ---
-_Generated from 2 symbols in [frontend/eslint.config.js](../../frontend/eslint.config.js), [frontend/vite.config.ts](../../frontend/vite.config.ts) (commit `534b8b5`, profile `default`). Sections marked _fact_ are read from the code, _inferred_ come from heuristics, 🤖 marks AI drafts._
+_Generated from 2 symbols in [frontend/eslint.config.js](../../frontend/eslint.config.js), [frontend/vite.config.ts](../../frontend/vite.config.ts) (commit `11abf0b`, profile `default`). Sections marked _fact_ are read from the code, _inferred_ come from heuristics, 🤖 marks AI drafts._

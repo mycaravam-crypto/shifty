@@ -5,6 +5,14 @@ Layer **api** · project `ShiftPlanner.Api`
 
 Project navigation: [ShiftPlanner.Api](../projects/ShiftPlanner-Api-b964678aa746.md)
 
+## Overview 🤖
+
+Contains classes and methods for handling authorization requirements related to writing shifts.
+
+**Responsibilities.** Manages the authorization logic for write operations on shifts.
+
+_AI draft from the facts on this page; review it, then write the module's documentation yourself._
+
 ## Key components
 
 | Component | Kind | Used by | Summary |
@@ -27,4 +35,4 @@ _class_ · [ApiWriteRequirement.cs](../../src/ShiftPlanner.Api/Authorization/Api
 | [`HandleRequirementAsync(AuthorizationHandlerContext, ShiftPlanner.Api.Authorization.ApiWriteRequirement)`](../../src/ShiftPlanner.Api/Authorization/ApiWriteRequirement.cs#L16) |  |  | 5 |
 
 ---
-_Generated from 4 symbols in [src/ShiftPlanner.Api/Authorization/ApiWriteRequirement.cs](../../src/ShiftPlanner.Api/Authorization/ApiWriteRequirement.cs) (commit `534b8b5`, profile `default`). Sections marked _fact_ are read from the code, _inferred_ come from heuristics, 🤖 marks AI drafts._
+_Generated from 4 symbols in [src/ShiftPlanner.Api/Authorization/ApiWriteRequirement.cs](../../src/ShiftPlanner.Api/Authorization/ApiWriteRequirement.cs) (commit `11abf0b`, profile `default`). Sections marked _fact_ are read from the code, _inferred_ come from heuristics, 🤖 marks AI drafts._

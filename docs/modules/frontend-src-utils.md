@@ -5,6 +5,16 @@ project `frontend`
 
 Project navigation: [frontend](../projects/frontend-da6498268e99.md)
 
+## Overview 🤖
+
+Contains utility functions for common tasks in the frontend.
+
+**Responsibilities.** Provides functions for formatting dates and extracting error messages.
+
+**Usage.** Various views and composables in the frontend use these utility functions.
+
+_AI draft from the facts on this page; review it, then write the module's documentation yourself._
+
 ## Flows through this module
 
 - `/` → MonthOverviewView → AutoFillModal, parseIso, startOfWeek, toIso, usePlanningActions, usePlanningBoard, +1 more → addDays, addMonths, extractErrorMessage, firstOfMonth, GET /api/employees, GET /api/employees/{employeeId:guid}/absences, +21 more
@@ -40,7 +50,7 @@ _module_ · [errors.ts](../../frontend/src/utils/errors.ts#L1)
 
 | Member | Summary | Derived from code | Complexity |
 |---|---|---|---|
-| [`extractErrorMessage`](../../frontend/src/utils/errors.ts#L31) ⚠ |  |  | 7 |
+| [`extractErrorMessage`](../../frontend/src/utils/errors.ts#L31) ⚠ | 🤖 _Extracts an error message from an exception, providing a fallback if none can be found._ | behaviour 🤖: Checks if the error is an Axios error; if not, returns the fallback. If it is, it checks for a response. If no response, returns a generic message. If a response is present, it tries to extract a message from the response data, then from the problem details, and finally from the status code. If all else fails, returns the fallback.; exception 🤖: Returns a generic message if no connection to the server is possible. Returns a fallback if no message can be extracted from the error.; usage 🤖: Used by various views and composables to handle errors gracefully, providing a user-friendly message. | 7 |
 
 ---
-_Generated from 4 symbols in [frontend/src/utils/date.ts](../../frontend/src/utils/date.ts), [frontend/src/utils/errors.ts](../../frontend/src/utils/errors.ts) (commit `534b8b5`, profile `default`). Sections marked _fact_ are read from the code, _inferred_ come from heuristics, 🤖 marks AI drafts._
+_Generated from 4 symbols in [frontend/src/utils/date.ts](../../frontend/src/utils/date.ts), [frontend/src/utils/errors.ts](../../frontend/src/utils/errors.ts) (commit `11abf0b`, profile `default`). Sections marked _fact_ are read from the code, _inferred_ come from heuristics, 🤖 marks AI drafts._

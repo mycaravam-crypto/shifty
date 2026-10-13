@@ -5,6 +5,16 @@ Layer **domain** · project `ShiftPlanner.Domain` · Entities: 4
 
 Project navigation: [ShiftPlanner.Domain](../projects/ShiftPlanner-Domain-f2a83529199c.md)
 
+## Overview 🤖
+
+Contains domain models and services for scheduling shifts, including public holidays, hours balance calculations, and wage calculations.
+
+**Responsibilities.** Manages scheduling logic, including calculating hours balance, wage calculations, and handling public holidays.
+
+**Usage.** Used by various parts of the application to manage and calculate scheduling-related data.
+
+_AI draft from the facts on this page; review it, then write the module's documentation yourself._
+
 ## Key components
 
 | Component | Kind | Used by | Summary |
@@ -89,7 +99,7 @@ _Reached from:_ [`GET /api/employees/{id:guid}/hours-balance`](../api.md#flows),
 
 | Member | Summary | Derived from code | Complexity |
 |---|---|---|---|
-| [`CumulativeBalance(System.Guid, System.DateOnly, System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Scheduling.Schedule>, System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Scheduling.ShiftAssignment>, System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Contracts.Contract>, System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Employees.Absence>?, System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Employees.HoursAdjustment>?)`](../../src/ShiftPlanner.Domain/Scheduling/HoursBalanceCalculator.cs#L12) ⚠ |  |  | 10 |
+| [`CumulativeBalance(System.Guid, System.DateOnly, System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Scheduling.Schedule>, System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Scheduling.ShiftAssignment>, System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Contracts.Contract>, System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Employees.Absence>?, System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Employees.HoursAdjustment>?)`](../../src/ShiftPlanner.Domain/Scheduling/HoursBalanceCalculator.cs#L12) ⚠ | 🤖 _Calculates the cumulative hours balance for an employee up to a specified date._ | responsibilities 🤖: Computes the balance by considering schedules, assignments, contracts, absences, and adjustments.; behaviour 🤖: Iterates through schedules, calculates expected and actual hours, and accumulates the balance.; exception 🤖: No specific error handling is mentioned in the source.; usage 🤖: Called by multiple API controllers and planning board aggregators to compute hours balances. | 10 |
 
 ### LaborCostBreakdown
 
@@ -107,7 +117,7 @@ _record_ · [GermanPublicHolidays.cs](../../src/ShiftPlanner.Domain/Scheduling/G
 
 _class_ · [Schedule.cs](../../src/ShiftPlanner.Domain/Scheduling/Schedule.cs#L6)
 
-_Linked tests:_ `DashboardAggregatorTests.BuildPlanningStatus_CountsDraftPublishedAndConflicts` (via `Schedule.Publish(string, DateTimeOffset)`), `ScheduleTests.Archive_FromPublished_Succeeds` (via `Schedule.Publish(string, DateTimeOffset)`), `ScheduleTests.Archive_WhenAlreadyArchived_Throws` (via `Schedule.Publish(string, DateTimeOffset)`), `ScheduleTests.Publish_FromDraft_SucceedsAndSetsBothFieldsTogether` (via `Schedule.Publish(string, DateTimeOffset)`), `ScheduleTests.Publish_FromDraft_ThenArchive_DirectlySkippingPublished_Throws` (via `Schedule.Archive()`), `ScheduleTests.Publish_WhenAlreadyPublished_Throws` (via `Schedule.Publish(string, DateTimeOffset)`), `ScheduleTests.Publish_WhenArchived_Throws` (via `Schedule.Publish(string, DateTimeOffset)`) — test code that uses it, not coverage
+_Linked tests:_ `PlanningBoardAggregatorTests.MakeSchedule`, `TestFactory.Schedule`, `HoursBalanceCalculatorTests.MakeSchedule`, `ScheduleTests.NewDraftSchedule`, `DashboardAggregatorTests.BuildPlanningStatus_CountsDraftPublishedAndConflicts` (via `Schedule.Publish(string, DateTimeOffset)`), `ScheduleTests.Archive_FromPublished_Succeeds` (via `Schedule.Publish(string, DateTimeOffset)`), `ScheduleTests.Archive_WhenAlreadyArchived_Throws` (via `Schedule.Publish(string, DateTimeOffset)`), `ScheduleTests.Publish_FromDraft_SucceedsAndSetsBothFieldsTogether` (via `Schedule.Publish(string, DateTimeOffset)`), +3 more — test code that uses it, not coverage
 
 | Member | Summary | Derived from code | Complexity |
 |---|---|---|---|
@@ -122,19 +132,25 @@ _enum_ · [Schedule.cs](../../src/ShiftPlanner.Domain/Scheduling/Schedule.cs#L3)
 
 _class_ · [ShiftAssignment.cs](../../src/ShiftPlanner.Domain/Scheduling/ShiftAssignment.cs#L4)
 
-_Reached from:_ [`GET /api/dashboard`](../api.md#flows), [`POST /api/schedules/{id:guid}/publish`](../api.md#flows), [`GET /api/schedules/{id:guid}/validate`](../api.md#flows)
+_Reached from:_ [`GET /api/dashboard`](../api.md#flows), [`POST /api/schedules/{id:guid}/publish`](../api.md#flows), [`GET /api/schedules/{id:guid}/validate`](../api.md#flows) · _Linked tests:_ `PlanningBoardAggregatorTests.MakeAssignment`, `TestFactory.Assignment`, `HoursBalanceCalculatorTests.MakeAssignment` — test code that uses it, not coverage
 
 ### ShiftTiming
 
 _record_ · [WageCalculator.cs](../../src/ShiftPlanner.Domain/Scheduling/WageCalculator.cs#L9)
 
+_Linked tests:_ `DashboardAggregatorTests.BuildCostBreakdown_MatchesWageCalculatorBreakdownPerAssignment`, `WageCalculatorTests.Breakdown_Holiday_SplitOutSeparately_HolidayWinsOverSunday`, `WageCalculatorTests.Breakdown_NightOverlap_SplitOutSeparately`, `WageCalculatorTests.Breakdown_NullRate_ReturnsNull`, `WageCalculatorTests.Breakdown_PlainWeekday_OnlyRegular`, `WageCalculatorTests.Breakdown_Sunday_SplitOutSeparately`, `WageCalculatorTests.Breakdown_TotalAlwaysMatchesLaborCost`, `WageCalculatorTests.LaborCostWithSurcharges_BreakEntirelyInsideNightWindow_ReducesNightSurcharge`, +15 more — test code that uses it, not coverage
+
 ### ShiftType
 
 _class_ · [ShiftType.cs](../../src/ShiftPlanner.Domain/Scheduling/ShiftType.cs#L4)
 
+_Linked tests:_ `TestFactory.ShiftType`, `EmployeeCollectionEncapsulationTests.AddEligibleShiftType_AddsToTheExposedCollection`, `EmployeeCollectionEncapsulationTests.RemoveEligibleShiftType_RemovesFromTheExposedCollection`, `EmployeeCollectionEncapsulationTests.ReplaceEligibleShiftTypes_ClearsAndReplacesWholesale` — test code that uses it, not coverage
+
 ### StaffingRequirement
 
 _class_ · [StaffingRequirement.cs](../../src/ShiftPlanner.Domain/Scheduling/StaffingRequirement.cs#L9)
+
+_Linked tests:_ `TestFactory.StaffingRequirement` — test code that uses it, not coverage
 
 ### WageCalculator
 
@@ -146,7 +162,7 @@ _Reached from:_ [`GET /api/dashboard`](../api.md#flows), [`GET /api/planning-boa
 |---|---|---|---|
 | [`SimpleLaborCost(decimal, decimal?)`](../../src/ShiftPlanner.Domain/Scheduling/WageCalculator.cs#L28) |  |  | 2 |
 | [`LaborCostWithSurcharges(ShiftPlanner.Domain.Scheduling.ShiftTiming, System.DayOfWeek, bool, decimal, decimal?)`](../../src/ShiftPlanner.Domain/Scheduling/WageCalculator.cs#L41) |  |  | 2 |
-| [`Breakdown(ShiftPlanner.Domain.Scheduling.ShiftTiming, System.DayOfWeek, bool, decimal, decimal?)`](../../src/ShiftPlanner.Domain/Scheduling/WageCalculator.cs#L51) ⚠ |  |  | 5 |
+| [`Breakdown(ShiftPlanner.Domain.Scheduling.ShiftTiming, System.DayOfWeek, bool, decimal, decimal?)`](../../src/ShiftPlanner.Domain/Scheduling/WageCalculator.cs#L51) ⚠ | 🤖 _Calculates the labor cost breakdown for a shift based on timing, day of the week, holiday status, net hours, and hourly rate._ | behaviour 🤖: Determines the regular, night, holiday, and Sunday labor costs based on the provided parameters and returns a `LaborCostBreakdown` object.; exception 🤖: Returns null if the hourly rate is null.; usage 🤖: Used in the `DashboardAggregator` and `LaborCostWithSurcharges` methods to calculate the cost breakdown for shifts. | 5 |
 
 ### WorkingTimeCalculator
 
@@ -157,12 +173,12 @@ _Reached from:_ [`PUT /api/assignments/{id:guid}`](../api.md#flows), [`GET /api/
 | Member | Summary | Derived from code | Complexity |
 |---|---|---|---|
 | [`IsValidShiftTiming(System.TimeOnly, System.TimeOnly, bool)`](../../src/ShiftPlanner.Domain/Scheduling/WorkingTimeCalculator.cs#L18) |  |  | 2 |
-| [`NetHours(System.TimeOnly, System.TimeOnly, int, bool)`](../../src/ShiftPlanner.Domain/Scheduling/WorkingTimeCalculator.cs#L25) ⚠ |  |  | 2 |
+| [`NetHours(System.TimeOnly, System.TimeOnly, int, bool)`](../../src/ShiftPlanner.Domain/Scheduling/WorkingTimeCalculator.cs#L25) ⚠ | 🤖 _Calculates the net working hours between two times, considering breaks and whether the end time is on the next day._ | behaviour 🤖: Converts start and end times to minutes, adjusts for breaks and whether the end time is on the next day, calculates the net minutes, and returns the net hours as a decimal.; usage 🤖: Used in various methods to calculate net working hours for shifts, including in reports, planning, and validation. | 2 |
 | [`TouchesSunday(System.DateOnly, bool)`](../../src/ShiftPlanner.Domain/Scheduling/WorkingTimeCalculator.cs#L37) |  |  | 3 |
 | [`TouchesHoliday(System.DateOnly, bool, System.Collections.Generic.IReadOnlySet<System.DateOnly>)`](../../src/ShiftPlanner.Domain/Scheduling/WorkingTimeCalculator.cs#L40) |  |  | 3 |
-| [`OverlapDays(System.DateOnly, System.DateOnly, System.DateOnly, System.DateOnly)`](../../src/ShiftPlanner.Domain/Scheduling/WorkingTimeCalculator.cs#L46) ⚠ |  |  | 4 |
-| [`ExpectedHours(System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Contracts.Contract>, System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Employees.Absence>, System.Guid, System.DateOnly, System.DateOnly)`](../../src/ShiftPlanner.Domain/Scheduling/WorkingTimeCalculator.cs#L77) ⚠ |  |  | 10 |
+| [`OverlapDays(System.DateOnly, System.DateOnly, System.DateOnly, System.DateOnly)`](../../src/ShiftPlanner.Domain/Scheduling/WorkingTimeCalculator.cs#L46) ⚠ | 🤖 _Calculates the number of overlapping days between two date ranges._ | behaviour 🤖: Determines the overlapping days by finding the maximum start date and minimum end date between the two ranges and then calculating the difference.; exception 🤖: Returns 0 if there is no overlap between the two ranges. | 4 |
+| [`ExpectedHours(System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Contracts.Contract>, System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Employees.Absence>, System.Guid, System.DateOnly, System.DateOnly)`](../../src/ShiftPlanner.Domain/Scheduling/WorkingTimeCalculator.cs#L77) ⚠ | 🤖 _Calculates the expected working hours for an employee based on their contracts and absences._ | responsibilities 🤖: Computes the total expected working hours for a given employee within a specified date range, considering their active contracts and absences.; behaviour 🤖: Iterates through each day in the specified range, checks for absences, and calculates the expected hours based on the employee's active contracts.; exception 🤖: Returns 0 if the employee has no active contracts within the specified range.; usage 🤖: Used by various parts of the application to determine the expected working hours for employees, such as in reports and planning tools. | 10 |
 | [`ClampDayToMonth(System.DateOnly, int, int)`](../../src/ShiftPlanner.Domain/Scheduling/WorkingTimeCalculator.cs#L148) |  |  | 1 |
 
 ---
-_Generated from 70 symbols in [src/ShiftPlanner.Domain/Scheduling/Bundesland.cs](../../src/ShiftPlanner.Domain/Scheduling/Bundesland.cs), [src/ShiftPlanner.Domain/Scheduling/CoverageStatus.cs](../../src/ShiftPlanner.Domain/Scheduling/CoverageStatus.cs), [src/ShiftPlanner.Domain/Scheduling/GermanPublicHolidays.cs](../../src/ShiftPlanner.Domain/Scheduling/GermanPublicHolidays.cs), [src/ShiftPlanner.Domain/Scheduling/HoursBalanceCalculator.cs](../../src/ShiftPlanner.Domain/Scheduling/HoursBalanceCalculator.cs), [src/ShiftPlanner.Domain/Scheduling/PainSeverity.cs](../../src/ShiftPlanner.Domain/Scheduling/PainSeverity.cs), [src/ShiftPlanner.Domain/Scheduling/Schedule.cs](../../src/ShiftPlanner.Domain/Scheduling/Schedule.cs), [src/ShiftPlanner.Domain/Scheduling/ShiftAssignment.cs](../../src/ShiftPlanner.Domain/Scheduling/ShiftAssignment.cs), [src/ShiftPlanner.Domain/Scheduling/ShiftType.cs](../../src/ShiftPlanner.Domain/Scheduling/ShiftType.cs), [src/ShiftPlanner.Domain/Scheduling/StaffingRequirement.cs](../../src/ShiftPlanner.Domain/Scheduling/StaffingRequirement.cs), [src/ShiftPlanner.Domain/Scheduling/WageCalculator.cs](../../src/ShiftPlanner.Domain/Scheduling/WageCalculator.cs), [src/ShiftPlanner.Domain/Scheduling/WorkingTimeCalculator.cs](../../src/ShiftPlanner.Domain/Scheduling/WorkingTimeCalculator.cs) (commit `534b8b5`, profile `default`). Sections marked _fact_ are read from the code, _inferred_ come from heuristics, 🤖 marks AI drafts._
+_Generated from 70 symbols in [src/ShiftPlanner.Domain/Scheduling/Bundesland.cs](../../src/ShiftPlanner.Domain/Scheduling/Bundesland.cs), [src/ShiftPlanner.Domain/Scheduling/CoverageStatus.cs](../../src/ShiftPlanner.Domain/Scheduling/CoverageStatus.cs), [src/ShiftPlanner.Domain/Scheduling/GermanPublicHolidays.cs](../../src/ShiftPlanner.Domain/Scheduling/GermanPublicHolidays.cs), [src/ShiftPlanner.Domain/Scheduling/HoursBalanceCalculator.cs](../../src/ShiftPlanner.Domain/Scheduling/HoursBalanceCalculator.cs), [src/ShiftPlanner.Domain/Scheduling/PainSeverity.cs](../../src/ShiftPlanner.Domain/Scheduling/PainSeverity.cs), [src/ShiftPlanner.Domain/Scheduling/Schedule.cs](../../src/ShiftPlanner.Domain/Scheduling/Schedule.cs), [src/ShiftPlanner.Domain/Scheduling/ShiftAssignment.cs](../../src/ShiftPlanner.Domain/Scheduling/ShiftAssignment.cs), [src/ShiftPlanner.Domain/Scheduling/ShiftType.cs](../../src/ShiftPlanner.Domain/Scheduling/ShiftType.cs), [src/ShiftPlanner.Domain/Scheduling/StaffingRequirement.cs](../../src/ShiftPlanner.Domain/Scheduling/StaffingRequirement.cs), [src/ShiftPlanner.Domain/Scheduling/WageCalculator.cs](../../src/ShiftPlanner.Domain/Scheduling/WageCalculator.cs), [src/ShiftPlanner.Domain/Scheduling/WorkingTimeCalculator.cs](../../src/ShiftPlanner.Domain/Scheduling/WorkingTimeCalculator.cs) (commit `11abf0b`, profile `default`). Sections marked _fact_ are read from the code, _inferred_ come from heuristics, 🤖 marks AI drafts._

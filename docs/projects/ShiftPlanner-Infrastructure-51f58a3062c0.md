@@ -46,6 +46,14 @@ Source files represented in the code model: 40.
 | [StaffingRequirement](../modules/src-ShiftPlanner.Infrastructure-Persistence-Migrations.md#staffingrequirement) | class | [src/ShiftPlanner.Infrastructure/Persistence/Migrations](../modules/src-ShiftPlanner.Infrastructure-Persistence-Migrations.md) |
 | [TeamBundesland](../modules/src-ShiftPlanner.Infrastructure-Persistence-Migrations.md#teambundesland) | class | [src/ShiftPlanner.Infrastructure/Persistence/Migrations](../modules/src-ShiftPlanner.Infrastructure-Persistence-Migrations.md) |
 
+## Test traceability (1 components)
+
+Structural links to test code, not measured code coverage.
+
+| Component | Linked tests |
+|---|---|
+| [ApplicationUser](../modules/src-ShiftPlanner.Infrastructure-Persistence.md#applicationuser) | IntegrationTestFixture.CreateStaffUserAsync |
+
 ## Project references
 
 - [ShiftPlanner.Application](../projects/ShiftPlanner-Application-bbdb4cab28c5.md) — `src/ShiftPlanner.Application/ShiftPlanner.Application.csproj`

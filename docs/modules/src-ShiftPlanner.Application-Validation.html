@@ -168,6 +168,10 @@ main tbody tr:last-child td { border-bottom: 0; }
 <h1 id="srcshiftplannerapplicationvalidation">src/ShiftPlanner.Application/Validation</h1>
 <p>Layer <strong>application</strong> · project <code>ShiftPlanner.Application</code></p>
 <p>Project navigation: <a href="../projects/ShiftPlanner-Application-bbdb4cab28c5.html">ShiftPlanner.Application</a></p>
+<h2 id="overview-">Overview 🤖</h2>
+<p>Contains classes for validating various aspects of shift planning, including absences, breaks, eligibility, and staffing.</p>
+<p><strong>Usage.</strong> Used by the API controllers and dashboard to validate shift assignments and schedules before processing.</p>
+<p><em>AI draft from the facts on this page; review it, then write the module's documentation yourself.</em></p>
 <h2 id="key-components">Key components</h2>
 <div class="table-wrap"><table>
 <thead>
@@ -297,8 +301,8 @@ main tbody tr:last-child td { border-bottom: 0; }
 <tbody>
 <tr>
 <td><a href="../../src/ShiftPlanner.Application/Validation/AbsenceValidator.cs#L11"><code>Validate(System.Collections.Generic.IReadOnlyList&lt;ShiftPlanner.Domain.Scheduling.ShiftAssignment&gt;, System.Collections.Generic.IReadOnlyList&lt;ShiftPlanner.Domain.Employees.Absence&gt;, System.Collections.Generic.IReadOnlyDictionary&lt;System.Guid, ShiftPlanner.Domain.Employees.Employee&gt;, ShiftPlanner.Application.Validation.ValidationResult)</code></a> ⚠</td>
-<td></td>
-<td></td>
+<td>🤖 <em>Validates shift assignments against employee absences.</em></td>
+<td>responsibilities 🤖: Ensures no employee is scheduled during their absence.; behaviour 🤖: Iterates through each shift assignment, checks for overlapping absences, and adds validation issues to the result if found.; exception 🤖: Adds validation issues to the result if an employee is scheduled during their absence.</td>
 <td>6</td>
 </tr>
 </tbody>
@@ -360,8 +364,8 @@ main tbody tr:last-child td { border-bottom: 0; }
 <tbody>
 <tr>
 <td><a href="../../src/ShiftPlanner.Application/Validation/ContractValidator.cs#L11"><code>Validate(ShiftPlanner.Domain.Scheduling.Schedule, System.Collections.Generic.IReadOnlyList&lt;ShiftPlanner.Domain.Scheduling.ShiftAssignment&gt;, System.Collections.Generic.IReadOnlyList&lt;ShiftPlanner.Domain.Contracts.Contract&gt;, System.Collections.Generic.IReadOnlyList&lt;ShiftPlanner.Domain.Employees.Absence&gt;?, ShiftPlanner.Application.Validation.ValidationResult)</code></a> ⚠</td>
-<td></td>
-<td></td>
+<td>🤖 <em>Validates a schedule against contracts, assignments, and absences, updating a validation result with any issues.</em></td>
+<td>responsibilities 🤖: Ensures that the total planned hours for each employee do not exceed the expected hours based on their contracts and absences.; behaviour 🤖: Iterates over each employee's shift assignments, calculates the expected hours based on their contracts and absences, and compares it with the planned hours. If the planned hours exceed the expected hours, it adds a validation issue to the result.; exception 🤖: Returns validation issues if the planned hours exceed the expected hours.</td>
 <td>8</td>
 </tr>
 </tbody>
@@ -423,8 +427,8 @@ main tbody tr:last-child td { border-bottom: 0; }
 <tbody>
 <tr>
 <td><a href="../../src/ShiftPlanner.Application/Validation/ScheduleValidator.cs#L11"><code>Validate(ShiftPlanner.Domain.Scheduling.Schedule, System.Collections.Generic.IReadOnlyList&lt;ShiftPlanner.Domain.Scheduling.ShiftAssignment&gt;, System.Collections.Generic.IReadOnlyList&lt;ShiftPlanner.Domain.Employees.Employee&gt;, System.Collections.Generic.IReadOnlyList&lt;ShiftPlanner.Domain.Scheduling.ShiftType&gt;, System.Collections.Generic.IReadOnlyList&lt;ShiftPlanner.Domain.Contracts.Contract&gt;, System.Collections.Generic.IReadOnlyList&lt;ShiftPlanner.Domain.Scheduling.ShiftAssignment&gt;?, System.Collections.Generic.IReadOnlyList&lt;ShiftPlanner.Domain.Employees.Absence&gt;?, System.Collections.Generic.IReadOnlyList&lt;ShiftPlanner.Domain.Scheduling.StaffingRequirement&gt;?)</code></a> ⚠</td>
-<td></td>
-<td></td>
+<td>🤖 <em>Validates a schedule based on various rules and constraints.</em></td>
+<td>responsibilities 🤖: Ensures the schedule adheres to all business rules and constraints.; behaviour 🤖: Iterates through different validators to check for overlaps, eligibility, break minutes, staffing, contract, absence, rest time, and consecutive days.; exception 🤖: Returns a <code>ValidationResult</code> object containing any errors found during validation.; usage 🤖: Called by the <code>SchedulesController</code> to validate a schedule before processing it further.</td>
 <td>5</td>
 </tr>
 </tbody>
@@ -471,8 +475,8 @@ main tbody tr:last-child td { border-bottom: 0; }
 </tr>
 <tr>
 <td><a href="../../src/ShiftPlanner.Application/Validation/StaffingValidator.cs#L45"><code>ValidateRequirements(System.DateOnly, System.DateOnly, System.Collections.Generic.IReadOnlyList&lt;ShiftPlanner.Domain.Scheduling.ShiftAssignment&gt;, System.Collections.Generic.IReadOnlyDictionary&lt;System.Guid, ShiftPlanner.Domain.Scheduling.ShiftType&gt;, System.Collections.Generic.IReadOnlyDictionary&lt;System.Guid, ShiftPlanner.Domain.Employees.Employee&gt;, System.Collections.Generic.IReadOnlyList&lt;ShiftPlanner.Domain.Scheduling.StaffingRequirement&gt;, ShiftPlanner.Application.Validation.ValidationResult)</code></a> ⚠</td>
-<td></td>
-<td></td>
+<td>🤖 <em>Validates staffing requirements for a given schedule.</em></td>
+<td>responsibilities 🤖: Ensures that the number of staff assigned to shifts meets the required staffing levels.; behaviour 🤖: Iterates over each day in the schedule and checks if the number of staff assigned to shifts meets the staffing requirements for each requirement. If not, it adds a warning to the validation result.; exception 🤖: Does not return any errors; it only adds warnings to the validation result.</td>
 <td>10</td>
 </tr>
 </tbody>
@@ -483,12 +487,13 @@ main tbody tr:last-child td { border-bottom: 0; }
 <p><em>enum</em> · <a href="../../src/ShiftPlanner.Application/Validation/ValidationResult.cs#L14">ValidationResult.cs</a></p>
 <h3 id="validationresult">ValidationResult</h3>
 <p><em>class</em> · <a href="../../src/ShiftPlanner.Application/Validation/ValidationResult.cs#L32">ValidationResult.cs</a></p>
+<p><em>Linked tests:</em> <code>AbsenceValidatorTests.AbsenceForDifferentEmployee_NotFlagged</code>, <code>AbsenceValidatorTests.AssignmentInsideAbsenceRange_ProducesError</code>, <code>AbsenceValidatorTests.AssignmentOnAbsenceBoundaryDates_Flagged</code>, <code>AbsenceValidatorTests.AssignmentOutsideAbsenceRange_NoError</code>, <code>AbsenceValidatorTests.UnknownEmployee_FallsBackToPlaceholderName</code>, <code>BreakMinutesValidatorTests.ExactlyNineHours_OnlyThirtyMinuteBreakRequired</code>, <code>BreakMinutesValidatorTests.ExactlySixHours_NoBreakRequired</code>, <code>BreakMinutesValidatorTests.GenuinelyBackwardsShift_NotSkipped_ProcessedWithWrappedDuration</code>, +49 more — test code that uses it, not coverage</p>
 <hr />
-<p><em>Generated from 25 symbols in <a href="../../src/ShiftPlanner.Application/Validation/AbsenceValidator.cs">src/ShiftPlanner.Application/Validation/AbsenceValidator.cs</a>, <a href="../../src/ShiftPlanner.Application/Validation/BreakMinutesValidator.cs">src/ShiftPlanner.Application/Validation/BreakMinutesValidator.cs</a>, <a href="../../src/ShiftPlanner.Application/Validation/ConsecutiveDaysValidator.cs">src/ShiftPlanner.Application/Validation/ConsecutiveDaysValidator.cs</a>, <a href="../../src/ShiftPlanner.Application/Validation/ContractValidator.cs">src/ShiftPlanner.Application/Validation/ContractValidator.cs</a>, <a href="../../src/ShiftPlanner.Application/Validation/EligibilityValidator.cs">src/ShiftPlanner.Application/Validation/EligibilityValidator.cs</a>, <a href="../../src/ShiftPlanner.Application/Validation/RestTimeValidator.cs">src/ShiftPlanner.Application/Validation/RestTimeValidator.cs</a>, <a href="../../src/ShiftPlanner.Application/Validation/ScheduleValidator.cs">src/ShiftPlanner.Application/Validation/ScheduleValidator.cs</a>, <a href="../../src/ShiftPlanner.Application/Validation/ShiftOverlapValidator.cs">src/ShiftPlanner.Application/Validation/ShiftOverlapValidator.cs</a>, <a href="../../src/ShiftPlanner.Application/Validation/StaffingValidator.cs">src/ShiftPlanner.Application/Validation/StaffingValidator.cs</a>, <a href="../../src/ShiftPlanner.Application/Validation/ValidationResult.cs">src/ShiftPlanner.Application/Validation/ValidationResult.cs</a> (commit <code>534b8b5</code>, profile <code>default</code>). Sections marked <em>fact</em> are read from the code, <em>inferred</em> come from heuristics, 🤖 marks AI drafts.</em></p>
+<p><em>Generated from 25 symbols in <a href="../../src/ShiftPlanner.Application/Validation/AbsenceValidator.cs">src/ShiftPlanner.Application/Validation/AbsenceValidator.cs</a>, <a href="../../src/ShiftPlanner.Application/Validation/BreakMinutesValidator.cs">src/ShiftPlanner.Application/Validation/BreakMinutesValidator.cs</a>, <a href="../../src/ShiftPlanner.Application/Validation/ConsecutiveDaysValidator.cs">src/ShiftPlanner.Application/Validation/ConsecutiveDaysValidator.cs</a>, <a href="../../src/ShiftPlanner.Application/Validation/ContractValidator.cs">src/ShiftPlanner.Application/Validation/ContractValidator.cs</a>, <a href="../../src/ShiftPlanner.Application/Validation/EligibilityValidator.cs">src/ShiftPlanner.Application/Validation/EligibilityValidator.cs</a>, <a href="../../src/ShiftPlanner.Application/Validation/RestTimeValidator.cs">src/ShiftPlanner.Application/Validation/RestTimeValidator.cs</a>, <a href="../../src/ShiftPlanner.Application/Validation/ScheduleValidator.cs">src/ShiftPlanner.Application/Validation/ScheduleValidator.cs</a>, <a href="../../src/ShiftPlanner.Application/Validation/ShiftOverlapValidator.cs">src/ShiftPlanner.Application/Validation/ShiftOverlapValidator.cs</a>, <a href="../../src/ShiftPlanner.Application/Validation/StaffingValidator.cs">src/ShiftPlanner.Application/Validation/StaffingValidator.cs</a>, <a href="../../src/ShiftPlanner.Application/Validation/ValidationResult.cs">src/ShiftPlanner.Application/Validation/ValidationResult.cs</a> (commit <code>11abf0b</code>, profile <code>default</code>). Sections marked <em>fact</em> are read from the code, <em>inferred</em> come from heuristics, 🤖 marks AI drafts.</em></p>
 
-<footer class="generator">Generated by docwizz 0.7.32-dev.1</footer>
+<footer class="generator">Generated by docwizz 0.7.44-dev.1</footer>
 </main>
-<aside class="toc" aria-label="On this page"><div class="toc-inner"><div class="toc-title">On this page</div><ul><li><a href="#key-components">Key components</a></li><li><a href="#flows-through-this-module">Flows through this module</a></li><li><a href="#documentation-gaps">Documentation gaps</a></li><li><a href="#dependencies">Dependencies</a></li><li><a href="#components">Components</a></li></ul></div></aside>
+<aside class="toc" aria-label="On this page"><div class="toc-inner"><div class="toc-title">On this page</div><ul><li><a href="#overview-">Overview 🤖</a></li><li><a href="#key-components">Key components</a></li><li><a href="#flows-through-this-module">Flows through this module</a></li><li><a href="#documentation-gaps">Documentation gaps</a></li><li><a href="#dependencies">Dependencies</a></li><li><a href="#components">Components</a></li></ul></div></aside>
 </div>
 <script src="../search.js"></script>
 <script>(() => {

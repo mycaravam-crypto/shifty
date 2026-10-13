@@ -5,6 +5,16 @@ Layer **application** · project `ShiftPlanner.Application`
 
 Project navigation: [ShiftPlanner.Application](../projects/ShiftPlanner-Application-bbdb4cab28c5.md)
 
+## Overview 🤖
+
+Contains the logic for generating and evaluating shift suggestions based on various criteria.
+
+**Responsibilities.** Evaluates employee eligibility, absence, rest time, consecutive days, same-day overlap, shift type preference, weekday preference, and contract targets to generate and score shift suggestions.
+
+**Usage.** The ShiftPlanner API controllers use these suggestions to propose shifts to employees.
+
+_AI draft from the facts on this page; review it, then write the module's documentation yourself._
+
 ## Key components
 
 | Component | Kind | Used by | Summary |
@@ -74,6 +84,8 @@ _Reached from:_ [`GET /api/schedules/{id:guid}/auto-fill-preview`](../api.md#flo
 
 _record_ · [ShiftSuggestionEngine.cs](../../src/ShiftPlanner.Application/Suggestions/ShiftSuggestionEngine.cs#L36)
 
+_Linked tests:_ `ShiftSuggestionEngineAutoFillTests.AutoFill`, `ShiftSuggestionEngineTests.Suggest` — test code that uses it, not coverage
+
 ### ShiftSuggestion
 
 _record_ · [ShiftSuggestionEngine.cs](../../src/ShiftPlanner.Application/Suggestions/ShiftSuggestionEngine.cs#L23)
@@ -95,7 +107,7 @@ _Reached from:_ [`GET /api/schedules/{id:guid}/auto-fill-preview`](../api.md#flo
 | [`EvaluateShiftTypePreference(ShiftPlanner.Domain.Employees.Employee, ShiftPlanner.Domain.Scheduling.ShiftType, System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Employees.ShiftTypePreference>)`](../../src/ShiftPlanner.Application/Suggestions/ShiftSuggestionEngine.cs#L189) |  |  | 6 |
 | [`EvaluateWeekdayPreference(ShiftPlanner.Domain.Employees.Employee, System.DateOnly, System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Employees.WeekdayPreference>)`](../../src/ShiftPlanner.Application/Suggestions/ShiftSuggestionEngine.cs#L201) |  |  | 6 |
 | [`EvaluateContractTarget(ShiftPlanner.Domain.Employees.Employee, System.DateOnly, System.DateOnly, System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Employees.Absence>, System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Contracts.Contract>, System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Scheduling.ShiftAssignment>)`](../../src/ShiftPlanner.Application/Suggestions/ShiftSuggestionEngine.cs#L222) |  |  | 6 |
-| [`AutoFill(System.DateOnly, System.DateOnly, System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Scheduling.ShiftType>, ShiftPlanner.Application.Suggestions.SchedulingContext)`](../../src/ShiftPlanner.Application/Suggestions/ShiftSuggestionEngine.cs#L259) ⚠ |  |  | 8 |
+| [`AutoFill(System.DateOnly, System.DateOnly, System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Scheduling.ShiftType>, ShiftPlanner.Application.Suggestions.SchedulingContext)`](../../src/ShiftPlanner.Application/Suggestions/ShiftSuggestionEngine.cs#L259) ⚠ | 🤖 _Generates auto-fill proposals for shifts within a specified date range based on staffing requirements and available employees._ | responsibilities 🤖: Suggests shifts that meet staffing requirements for a given date range and context.; behaviour 🤖: Iterates through each date in the specified range and for each shift type, suggests employees who can fill the shift based on the minimum staffing requirements. Proposals are generated and returned as a list.; exception 🤖: No specific error handling is mentioned in the source code.; usage 🤖: The `AutoFillPreview` method in the `SchedulesController` calls this method to generate auto-fill proposals for previewing shift schedules. | 8 |
 
 ### SuggestionReason
 
@@ -106,4 +118,4 @@ _record_ · [ShiftSuggestionEngine.cs](../../src/ShiftPlanner.Application/Sugges
 _enum_ · [ShiftSuggestionEngine.cs](../../src/ShiftPlanner.Application/Suggestions/ShiftSuggestionEngine.cs#L7)
 
 ---
-_Generated from 19 symbols in [src/ShiftPlanner.Application/Suggestions/ShiftSuggestionEngine.cs](../../src/ShiftPlanner.Application/Suggestions/ShiftSuggestionEngine.cs) (commit `534b8b5`, profile `default`). Sections marked _fact_ are read from the code, _inferred_ come from heuristics, 🤖 marks AI drafts._
+_Generated from 19 symbols in [src/ShiftPlanner.Application/Suggestions/ShiftSuggestionEngine.cs](../../src/ShiftPlanner.Application/Suggestions/ShiftSuggestionEngine.cs) (commit `11abf0b`, profile `default`). Sections marked _fact_ are read from the code, _inferred_ come from heuristics, 🤖 marks AI drafts._

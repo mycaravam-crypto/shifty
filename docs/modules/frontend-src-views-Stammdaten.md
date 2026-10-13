@@ -9,7 +9,7 @@ Project navigation: [frontend](../projects/frontend-da6498268e99.md)
 
 | Component | Kind | Used by | Summary |
 |---|---|---|---|
-| [ShiftTypeDetailModal](#shifttypedetailmodal) | view | 1 |  |
+| [ShiftTypeDetailModal](#shifttypedetailmodal) | view | 1 | 🤖 _Displays and allows editing of a shift type in a modal dialog._ |
 | [StammdatenView](#stammdatenview) | view | 1 | issue #57: German labels for the Bundesland enum, indexed by its backend ordinal (Domain/Scheduling/Bundesland.cs) — mirrors AbsenceType's client-side label mapping. |
 
 ## Flows through this module
@@ -65,6 +65,8 @@ graph LR
 
 _component_ · [ShiftTypeDetailModal.vue](../../frontend/src/views/Stammdaten/ShiftTypeDetailModal.vue#L1) ⚠
 
+🤖 _Displays and allows editing of a shift type in a modal dialog._
+
 Props: shiftType: ShiftType
 
 Emits: close, updated
@@ -72,6 +74,10 @@ Emits: close, updated
 - **dependencies** _(fact)_: api.ts, toast.ts, errors.ts, ModalShell, ShiftTypesController
 - **events** _(fact)_: close, updated
 - **state** _(fact)_: form, saving, error
+- **behaviour** _(🤖 draft)_: Renders a form with shift type details and saves changes via an HTTP PUT request.
+- **side effects** _(🤖 draft)_: Makes an HTTP PUT request to update a shift type.
+- **exception** _(🤖 draft)_: Shows an error message if the save fails.
+- **usage** _(🤖 draft)_: Used in the StammdatenView to edit shift types.
 
 _Reached from:_ [`/stammdaten`](../frontend.md#flows)
 
@@ -91,4 +97,4 @@ _Reached from:_ [`/stammdaten`](../frontend.md#flows)
 _Evidence:_ [frontend/src/views/Stammdaten/StammdatenView.vue:1-452](../../frontend/src/views/Stammdaten/StammdatenView.vue#L1), [frontend/src/services/api.ts:1](../../frontend/src/services/api.ts#L1), [frontend/src/stores/toast.ts:1](../../frontend/src/stores/toast.ts#L1), [frontend/src/utils/errors.ts:1](../../frontend/src/utils/errors.ts#L1), [frontend/src/views/Stammdaten/ShiftTypeDetailModal.vue:1-129](../../frontend/src/views/Stammdaten/ShiftTypeDetailModal.vue#L1), [src/ShiftPlanner.Api/Controllers/TeamsController.cs:17-58](../../src/ShiftPlanner.Api/Controllers/TeamsController.cs#L17), [src/ShiftPlanner.Api/Controllers/ShiftTypesController.cs:35-120](../../src/ShiftPlanner.Api/Controllers/ShiftTypesController.cs#L35)
 
 ---
-_Generated from 2 symbols in [frontend/src/views/Stammdaten/ShiftTypeDetailModal.vue](../../frontend/src/views/Stammdaten/ShiftTypeDetailModal.vue), [frontend/src/views/Stammdaten/StammdatenView.vue](../../frontend/src/views/Stammdaten/StammdatenView.vue) (commit `534b8b5`, profile `default`). Sections marked _fact_ are read from the code, _inferred_ come from heuristics, 🤖 marks AI drafts._
+_Generated from 2 symbols in [frontend/src/views/Stammdaten/ShiftTypeDetailModal.vue](../../frontend/src/views/Stammdaten/ShiftTypeDetailModal.vue), [frontend/src/views/Stammdaten/StammdatenView.vue](../../frontend/src/views/Stammdaten/StammdatenView.vue) (commit `11abf0b`, profile `default`). Sections marked _fact_ are read from the code, _inferred_ come from heuristics, 🤖 marks AI drafts._

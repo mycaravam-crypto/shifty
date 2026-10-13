@@ -168,6 +168,11 @@ main tbody tr:last-child td { border-bottom: 0; }
 <h1 id="frontendsrcviewsschedule">frontend/src/views/Schedule</h1>
 <p>Layer <strong>ui</strong> · project <code>frontend</code> · UI components: 14, Views: 14</p>
 <p>Project navigation: <a href="../projects/frontend-da6498268e99.html">frontend</a></p>
+<h2 id="overview-">Overview 🤖</h2>
+<p>Contains Vue.js components and utility functions for the Schedule view in the frontend.</p>
+<p><strong>Responsibilities.</strong> Manages the display and interaction of the schedule view, including employee schedules, shift assignments, and validation summaries.</p>
+<p><strong>Usage.</strong> Used by the frontend router and composables to render and interact with the schedule view.</p>
+<p><em>AI draft from the facts on this page; review it, then write the module's documentation yourself.</em></p>
 <h2 id="key-components">Key components</h2>
 <div class="table-wrap"><table>
 <thead>
@@ -189,7 +194,7 @@ main tbody tr:last-child td { border-bottom: 0; }
 <td><a href="#employeeschedulerow">EmployeeScheduleRow</a></td>
 <td>view</td>
 <td>1</td>
-<td></td>
+<td>🤖 <em>Displays an employee's schedule row in the planning grid.</em></td>
 </tr>
 <tr>
 <td><a href="#employeesidebar">EmployeeSidebar</a></td>
@@ -368,11 +373,15 @@ main tbody tr:last-child td { border-bottom: 0; }
 <p><em>interface</em> · <a href="../../frontend/src/views/Schedule/types.ts#L4">types.ts</a></p>
 <h3 id="employeeschedulerow">EmployeeScheduleRow</h3>
 <p><em>component</em> · <a href="../../frontend/src/views/Schedule/EmployeeScheduleRow.vue#L1">EmployeeScheduleRow.vue</a> ⚠</p>
+<p>🤖 <em>Displays an employee's schedule row in the planning grid.</em></p>
 <p>Props: employee: Employee, days: Date[], isWeekend: (d: Date) =&gt; boolean, dragOverKey: string | null, highlightKey: string | null, shiftTypeById: (id: string) =&gt; ShiftType | undefined, assignmentsFor: (employeeId: string, dateIso: string) =&gt; Assignment[], targetHoursFor: (employeeId: string) =&gt; number | null, netHoursFor: (employeeId: string) =&gt; number, carriedOverFor: (employeeId: string) =&gt; number, laborCostFor: (employeeId: string) =&gt; number | null, drag: DragState | null, isEditable: boolean, chipPointerDown: (e: PointerEvent, payload: DragPayload) =&gt; void, isFocusableCell: (employeeId: string, dateIso: string) =&gt; boolean, cellAriaLabel: (employeeId: string, dateIso: string) =&gt; string, onCellFocus: (employeeId: string, dateIso: string) =&gt; void</p>
 <p>Emits: export-pdf, view-readonly</p>
 <ul>
 <li><strong>dependencies</strong> <em>(fact)</em>: useScheduleDnD.ts, format.ts</li>
 <li><strong>events</strong> <em>(fact)</em>: export-pdf, view-readonly</li>
+<li><strong>responsibilities</strong> <em>(🤖 draft)</em>: Renders an employee's schedule row, including their name, hours, assignments, and costs.</li>
+<li><strong>behaviour</strong> <em>(🤖 draft)</em>: Takes in employee data and renders a table row with the employee's name, schedule details, and interactive elements for assignments.</li>
+<li><strong>usage</strong> <em>(🤖 draft)</em>: Used in the planning grid to display each employee's schedule row.</li>
 </ul>
 <p><em>Reached from:</em> <a href="../frontend.html#flows"><code>/dienstplan/woche/:date</code></a></p>
 <p><em>Evidence:</em> <a href="../../frontend/src/views/Schedule/EmployeeScheduleRow.vue#L1">frontend/src/views/Schedule/EmployeeScheduleRow.vue:1-149</a>, <a href="../../frontend/src/views/Schedule/composables/useScheduleDnD.ts#L1">frontend/src/views/Schedule/composables/useScheduleDnD.ts:1</a>, <a href="../../frontend/src/views/Schedule/format.ts#L1">frontend/src/views/Schedule/format.ts:1</a></p>
@@ -510,11 +519,15 @@ main tbody tr:last-child td { border-bottom: 0; }
 <p><em>Evidence:</em> <a href="../../frontend/src/views/Schedule/ShiftAssignmentModal.vue#L1">frontend/src/views/Schedule/ShiftAssignmentModal.vue:1-229</a>, <a href="../../frontend/src/services/api.ts#L1">frontend/src/services/api.ts:1</a>, <a href="../../frontend/src/stores/toast.ts#L1">frontend/src/stores/toast.ts:1</a>, <a href="../../frontend/src/utils/errors.ts#L1">frontend/src/utils/errors.ts:1</a>, <a href="../../frontend/src/components/ModalShell.vue#L1">frontend/src/components/ModalShell.vue:1-53</a>, <a href="../../frontend/src/components/ConfirmDialog.vue#L1">frontend/src/components/ConfirmDialog.vue:1-27</a>, <a href="../../src/ShiftPlanner.Api/Controllers/SchedulesController.cs#L66">src/ShiftPlanner.Api/Controllers/SchedulesController.cs:66-687</a></p>
 <h3 id="shiftpalette">ShiftPalette</h3>
 <p><em>component</em> · <a href="../../frontend/src/views/Schedule/ShiftPalette.vue#L1">ShiftPalette.vue</a> ⚠</p>
+<p>🤖 <em>Displays a palette of shift types with options to copy shifts, open auto-fill, and suggest shifts.</em></p>
 <p>Props: activeShiftTypes: ShiftType[], hasAssignments: boolean, copyingMonth: boolean, totalLaborCost: number | null, isEditable: boolean, chipPointerDown: (e: PointerEvent, payload: DragPayload) =&gt; void, showMonthActions: boolean</p>
 <p>Emits: copy-month, open-auto-fill, suggest</p>
 <ul>
 <li><strong>dependencies</strong> <em>(fact)</em>: useScheduleDnD.ts, format.ts</li>
 <li><strong>events</strong> <em>(fact)</em>: copy-month, open-auto-fill, suggest</li>
+<li><strong>responsibilities</strong> <em>(🤖 draft)</em>: Manages the display and interaction of shift types for scheduling.</li>
+<li><strong>behaviour</strong> <em>(🤖 draft)</em>: Renders a palette of shift types with buttons for copying shifts, opening auto-fill, and suggesting shifts. Handles user interactions for these actions.</li>
+<li><strong>usage</strong> <em>(🤖 draft)</em>: Used in the ScheduleView.vue component to display and interact with shift types.</li>
 </ul>
 <p><em>Reached from:</em> <a href="../frontend.html#flows"><code>/dienstplan/woche/:date</code></a></p>
 <p><em>Evidence:</em> <a href="../../frontend/src/views/Schedule/ShiftPalette.vue#L1">frontend/src/views/Schedule/ShiftPalette.vue:1-85</a>, <a href="../../frontend/src/views/Schedule/composables/useScheduleDnD.ts#L1">frontend/src/views/Schedule/composables/useScheduleDnD.ts:1</a>, <a href="../../frontend/src/views/Schedule/format.ts#L1">frontend/src/views/Schedule/format.ts:1</a></p>
@@ -576,11 +589,11 @@ main tbody tr:last-child td { border-bottom: 0; }
 <p><em>Reached from:</em> <a href="../frontend.html#flows"><code>/dienstplan/woche/:date</code></a></p>
 <p><em>Evidence:</em> <a href="../../frontend/src/views/Schedule/ValidationSummary.vue#L1">frontend/src/views/Schedule/ValidationSummary.vue:1-123</a></p>
 <hr />
-<p><em>Generated from 33 symbols in <a href="../../frontend/src/views/Schedule/AutoFillModal.vue">frontend/src/views/Schedule/AutoFillModal.vue</a>, <a href="../../frontend/src/views/Schedule/EmployeeScheduleRow.vue">frontend/src/views/Schedule/EmployeeScheduleRow.vue</a>, <a href="../../frontend/src/views/Schedule/EmployeeSidebar.vue">frontend/src/views/Schedule/EmployeeSidebar.vue</a>, <a href="../../frontend/src/views/Schedule/format.ts">frontend/src/views/Schedule/format.ts</a>, <a href="../../frontend/src/views/Schedule/MonthOverviewView.vue">frontend/src/views/Schedule/MonthOverviewView.vue</a>, <a href="../../frontend/src/views/Schedule/PlanningGrid.vue">frontend/src/views/Schedule/PlanningGrid.vue</a>, <a href="../../frontend/src/views/Schedule/PlanningToolbar.vue">frontend/src/views/Schedule/PlanningToolbar.vue</a>, <a href="../../frontend/src/views/Schedule/SchedulePrintSheet.vue">frontend/src/views/Schedule/SchedulePrintSheet.vue</a>, <a href="../../frontend/src/views/Schedule/ScheduleView.vue">frontend/src/views/Schedule/ScheduleView.vue</a>, <a href="../../frontend/src/views/Schedule/ShiftAssignmentModal.vue">frontend/src/views/Schedule/ShiftAssignmentModal.vue</a>, <a href="../../frontend/src/views/Schedule/ShiftPalette.vue">frontend/src/views/Schedule/ShiftPalette.vue</a>, <a href="../../frontend/src/views/Schedule/ShiftPlanningGrid.vue">frontend/src/views/Schedule/ShiftPlanningGrid.vue</a>, <a href="../../frontend/src/views/Schedule/ShiftSuggestionModal.vue">frontend/src/views/Schedule/ShiftSuggestionModal.vue</a>, <a href="../../frontend/src/views/Schedule/ShiftTypeScheduleRow.vue">frontend/src/views/Schedule/ShiftTypeScheduleRow.vue</a>, <a href="../../frontend/src/views/Schedule/types.ts">frontend/src/views/Schedule/types.ts</a>, <a href="../../frontend/src/views/Schedule/ValidationSummary.vue">frontend/src/views/Schedule/ValidationSummary.vue</a> (commit <code>534b8b5</code>, profile <code>default</code>). Sections marked <em>fact</em> are read from the code, <em>inferred</em> come from heuristics, 🤖 marks AI drafts.</em></p>
+<p><em>Generated from 33 symbols in <a href="../../frontend/src/views/Schedule/AutoFillModal.vue">frontend/src/views/Schedule/AutoFillModal.vue</a>, <a href="../../frontend/src/views/Schedule/EmployeeScheduleRow.vue">frontend/src/views/Schedule/EmployeeScheduleRow.vue</a>, <a href="../../frontend/src/views/Schedule/EmployeeSidebar.vue">frontend/src/views/Schedule/EmployeeSidebar.vue</a>, <a href="../../frontend/src/views/Schedule/format.ts">frontend/src/views/Schedule/format.ts</a>, <a href="../../frontend/src/views/Schedule/MonthOverviewView.vue">frontend/src/views/Schedule/MonthOverviewView.vue</a>, <a href="../../frontend/src/views/Schedule/PlanningGrid.vue">frontend/src/views/Schedule/PlanningGrid.vue</a>, <a href="../../frontend/src/views/Schedule/PlanningToolbar.vue">frontend/src/views/Schedule/PlanningToolbar.vue</a>, <a href="../../frontend/src/views/Schedule/SchedulePrintSheet.vue">frontend/src/views/Schedule/SchedulePrintSheet.vue</a>, <a href="../../frontend/src/views/Schedule/ScheduleView.vue">frontend/src/views/Schedule/ScheduleView.vue</a>, <a href="../../frontend/src/views/Schedule/ShiftAssignmentModal.vue">frontend/src/views/Schedule/ShiftAssignmentModal.vue</a>, <a href="../../frontend/src/views/Schedule/ShiftPalette.vue">frontend/src/views/Schedule/ShiftPalette.vue</a>, <a href="../../frontend/src/views/Schedule/ShiftPlanningGrid.vue">frontend/src/views/Schedule/ShiftPlanningGrid.vue</a>, <a href="../../frontend/src/views/Schedule/ShiftSuggestionModal.vue">frontend/src/views/Schedule/ShiftSuggestionModal.vue</a>, <a href="../../frontend/src/views/Schedule/ShiftTypeScheduleRow.vue">frontend/src/views/Schedule/ShiftTypeScheduleRow.vue</a>, <a href="../../frontend/src/views/Schedule/types.ts">frontend/src/views/Schedule/types.ts</a>, <a href="../../frontend/src/views/Schedule/ValidationSummary.vue">frontend/src/views/Schedule/ValidationSummary.vue</a> (commit <code>11abf0b</code>, profile <code>default</code>). Sections marked <em>fact</em> are read from the code, <em>inferred</em> come from heuristics, 🤖 marks AI drafts.</em></p>
 
-<footer class="generator">Generated by docwizz 0.7.32-dev.1</footer>
+<footer class="generator">Generated by docwizz 0.7.44-dev.1</footer>
 </main>
-<aside class="toc" aria-label="On this page"><div class="toc-inner"><div class="toc-title">On this page</div><ul><li><a href="#key-components">Key components</a></li><li><a href="#flows-through-this-module">Flows through this module</a></li><li><a href="#documentation-gaps">Documentation gaps</a></li><li><a href="#architecture-observations">Architecture observations</a></li><li><a href="#dependencies">Dependencies</a></li><li><a href="#components">Components</a></li></ul></div></aside>
+<aside class="toc" aria-label="On this page"><div class="toc-inner"><div class="toc-title">On this page</div><ul><li><a href="#overview-">Overview 🤖</a></li><li><a href="#key-components">Key components</a></li><li><a href="#flows-through-this-module">Flows through this module</a></li><li><a href="#documentation-gaps">Documentation gaps</a></li><li><a href="#architecture-observations">Architecture observations</a></li><li><a href="#dependencies">Dependencies</a></li><li><a href="#components">Components</a></li></ul></div></aside>
 </div>
 <script src="../search.js"></script>
 <script>(() => {

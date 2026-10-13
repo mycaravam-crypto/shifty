@@ -183,7 +183,7 @@ main tbody tr:last-child td { border-bottom: 0; }
 <tr>
 <td>DELETE</td>
 <td><code>/api/absences/{id:guid}</code></td>
-<td>—</td>
+<td>🤖 <em>Deletes an absence by its ID.</em></td>
 <td><code>id: Guid</code></td>
 <td><code>IActionResult</code><br>204, 404</td>
 <td>required</td>
@@ -193,7 +193,7 @@ main tbody tr:last-child td { border-bottom: 0; }
 <tr>
 <td>GET</td>
 <td><code>/api/absences/{id:guid}</code></td>
-<td>—</td>
+<td>🤖 <em>Retrieves an absence by its ID.</em></td>
 <td><code>id: Guid</code></td>
 <td><code>AbsenceDto</code><br>200 <code>AbsenceDto</code>, 404</td>
 <td>required</td>
@@ -203,7 +203,7 @@ main tbody tr:last-child td { border-bottom: 0; }
 <tr>
 <td>PUT</td>
 <td><code>/api/absences/{id:guid}</code></td>
-<td>—</td>
+<td>🤖 <em>Updates an absence record based on the provided ID and request.</em></td>
 <td><code>id: Guid</code><br><code>request: UpdateAbsenceRequest</code></td>
 <td><code>IActionResult</code><br>204, 400, 404</td>
 <td>required</td>
@@ -213,7 +213,7 @@ main tbody tr:last-child td { border-bottom: 0; }
 <tr>
 <td>DELETE</td>
 <td><code>/api/assignments/{id:guid}</code></td>
-<td>—</td>
+<td>🤖 <em>Deletes a shift assignment by its ID and row version.</em></td>
 <td><code>id: Guid</code><br><code>[query] rowVersion: uint</code></td>
 <td><code>IActionResult</code><br>204, 404, 409</td>
 <td>required</td>
@@ -223,7 +223,7 @@ main tbody tr:last-child td { border-bottom: 0; }
 <tr>
 <td>PUT</td>
 <td><code>/api/assignments/{id:guid}</code></td>
-<td>—</td>
+<td>🤖 <em>Updates an existing shift assignment based on the provided request.</em></td>
 <td><code>id: Guid</code><br><code>request: UpdateAssignmentRequest</code></td>
 <td><code>IActionResult</code><br>204, 400, 404, 409</td>
 <td>required</td>
@@ -233,7 +233,7 @@ main tbody tr:last-child td { border-bottom: 0; }
 <tr>
 <td>DELETE</td>
 <td><code>/api/contracts/{id:guid}</code></td>
-<td>—</td>
+<td>🤖 <em>Deletes a contract by its ID.</em></td>
 <td><code>id: Guid</code></td>
 <td><code>IActionResult</code><br>204, 404</td>
 <td>required</td>
@@ -243,7 +243,7 @@ main tbody tr:last-child td { border-bottom: 0; }
 <tr>
 <td>GET</td>
 <td><code>/api/contracts/{id:guid}</code></td>
-<td>—</td>
+<td>🤖 <em>Retrieves a contract by its ID.</em></td>
 <td><code>id: Guid</code></td>
 <td><code>ContractDto</code><br>200 <code>ContractDto</code>, 404</td>
 <td>required</td>
@@ -253,7 +253,7 @@ main tbody tr:last-child td { border-bottom: 0; }
 <tr>
 <td>PUT</td>
 <td><code>/api/contracts/{id:guid}</code></td>
-<td>—</td>
+<td>🤖 <em>Updates an existing contract based on the provided request.</em></td>
 <td><code>id: Guid</code><br><code>request: UpdateContractRequest</code></td>
 <td><code>IActionResult</code><br>204, 400, 404, 409</td>
 <td>required</td>
@@ -263,7 +263,7 @@ main tbody tr:last-child td { border-bottom: 0; }
 <tr>
 <td>GET</td>
 <td><code>/api/dashboard</code></td>
-<td>—</td>
+<td>🤖 <em>Generates a dashboard for a given period, team, and shift type.</em></td>
 <td><code>from: DateOnly?</code><br><code>to: DateOnly?</code><br><code>teamId: Guid?</code><br><code>shiftTypeId: Guid?</code><br><code>ct: CancellationToken</code></td>
 <td><code>DashboardDto</code><br>200 <code>DashboardDto</code>, 400</td>
 <td>required</td>
@@ -273,7 +273,7 @@ main tbody tr:last-child td { border-bottom: 0; }
 <tr>
 <td>GET</td>
 <td><code>/api/employees</code></td>
-<td>—</td>
+<td>🤖 <em>Retrieves a list of employees with optional pagination.</em></td>
 <td><code>skip: int?</code><br><code>take: int?</code></td>
 <td><code>IEnumerable&lt;EmployeeDto&gt;</code><br>200, 400</td>
 <td>required</td>
@@ -283,7 +283,7 @@ main tbody tr:last-child td { border-bottom: 0; }
 <tr>
 <td>POST</td>
 <td><code>/api/employees</code></td>
-<td>—</td>
+<td>🤖 <em>Creates a new employee and returns the created employee details.</em></td>
 <td><code>request: CreateEmployeeRequest</code></td>
 <td><code>EmployeeDto</code><br>201 <code>EmployeeDto</code>, 400, 409</td>
 <td>required</td>
@@ -293,7 +293,7 @@ main tbody tr:last-child td { border-bottom: 0; }
 <tr>
 <td>GET</td>
 <td><code>/api/employees/{employeeId:guid}/absences</code></td>
-<td>—</td>
+<td>🤖 <em>Retrieves absences for a specific employee.</em></td>
 <td><code>employeeId: Guid</code></td>
 <td><code>IEnumerable&lt;AbsenceDto&gt;</code><br>200, 404</td>
 <td>required</td>
@@ -303,7 +303,7 @@ main tbody tr:last-child td { border-bottom: 0; }
 <tr>
 <td>POST</td>
 <td><code>/api/employees/{employeeId:guid}/absences</code></td>
-<td>—</td>
+<td>🤖 <em>Creates a new absence for an employee.</em></td>
 <td><code>employeeId: Guid</code><br><code>request: CreateAbsenceRequest</code></td>
 <td><code>AbsenceDto</code><br>201 <code>AbsenceDto</code>, 400, 404</td>
 <td>required</td>
@@ -313,7 +313,7 @@ main tbody tr:last-child td { border-bottom: 0; }
 <tr>
 <td>GET</td>
 <td><code>/api/employees/{employeeId:guid}/contracts</code></td>
-<td>—</td>
+<td>🤖 <em>Retrieves contracts for a specific employee.</em></td>
 <td><code>employeeId: Guid</code></td>
 <td><code>IEnumerable&lt;ContractDto&gt;</code><br>200, 404</td>
 <td>required</td>
@@ -323,7 +323,7 @@ main tbody tr:last-child td { border-bottom: 0; }
 <tr>
 <td>POST</td>
 <td><code>/api/employees/{employeeId:guid}/contracts</code></td>
-<td>—</td>
+<td>🤖 <em>Creates a new contract for an employee.</em></td>
 <td><code>employeeId: Guid</code><br><code>request: CreateContractRequest</code></td>
 <td><code>ContractDto</code><br>201 <code>ContractDto</code>, 400, 404, 409</td>
 <td>required</td>
@@ -333,7 +333,7 @@ main tbody tr:last-child td { border-bottom: 0; }
 <tr>
 <td>GET</td>
 <td><code>/api/employees/{employeeId:guid}/hours-adjustments</code></td>
-<td>—</td>
+<td>🤖 <em>Retrieves hours adjustments for a specific employee.</em></td>
 <td><code>employeeId: Guid</code></td>
 <td><code>IEnumerable&lt;HoursAdjustmentDto&gt;</code><br>200, 404</td>
 <td>required</td>
@@ -343,7 +343,7 @@ main tbody tr:last-child td { border-bottom: 0; }
 <tr>
 <td>POST</td>
 <td><code>/api/employees/{employeeId:guid}/hours-adjustments</code></td>
-<td>—</td>
+<td>🤖 <em>Creates a new hours adjustment for an employee.</em></td>
 <td><code>employeeId: Guid</code><br><code>request: CreateHoursAdjustmentRequest</code></td>
 <td><code>HoursAdjustmentDto</code><br>201 <code>HoursAdjustmentDto</code>, 400, 404</td>
 <td>required</td>
@@ -353,7 +353,7 @@ main tbody tr:last-child td { border-bottom: 0; }
 <tr>
 <td>DELETE</td>
 <td><code>/api/employees/{id:guid}</code></td>
-<td>—</td>
+<td>🤖 <em>Deletes an employee and optionally their assignments.</em></td>
 <td><code>id: Guid</code><br><code>deleteAssignments: bool</code></td>
 <td><code>IActionResult</code><br>204, 404, 409</td>
 <td>required</td>
@@ -363,7 +363,7 @@ main tbody tr:last-child td { border-bottom: 0; }
 <tr>
 <td>GET</td>
 <td><code>/api/employees/{id:guid}</code></td>
-<td>—</td>
+<td>🤖 <em>Retrieves an employee by their unique identifier.</em></td>
 <td><code>id: Guid</code></td>
 <td><code>EmployeeDto</code><br>200 <code>EmployeeDto</code>, 404</td>
 <td>required</td>
@@ -373,7 +373,7 @@ main tbody tr:last-child td { border-bottom: 0; }
 <tr>
 <td>PUT</td>
 <td><code>/api/employees/{id:guid}</code></td>
-<td>—</td>
+<td>🤖 <em>Updates an employee's details based on the provided request.</em></td>
 <td><code>id: Guid</code><br><code>request: UpdateEmployeeRequest</code></td>
 <td><code>IActionResult</code><br>204, 400, 404, 409</td>
 <td>required</td>
@@ -383,7 +383,7 @@ main tbody tr:last-child td { border-bottom: 0; }
 <tr>
 <td>GET</td>
 <td><code>/api/employees/{id:guid}/eligible-shift-types</code></td>
-<td>—</td>
+<td>🤖 <em>Retrieves the list of eligible shift types for a given employee.</em></td>
 <td><code>id: Guid</code></td>
 <td><code>IEnumerable&lt;ShiftTypeDto&gt;</code><br>200, 404</td>
 <td>required</td>
@@ -393,7 +393,7 @@ main tbody tr:last-child td { border-bottom: 0; }
 <tr>
 <td>PUT</td>
 <td><code>/api/employees/{id:guid}/eligible-shift-types</code></td>
-<td>—</td>
+<td>🤖 <em>Updates the eligible shift types for an employee.</em></td>
 <td><code>id: Guid</code><br><code>request: SetEligibleShiftTypesRequest</code></td>
 <td><code>IActionResult</code><br>204, 400, 404</td>
 <td>required</td>
@@ -403,7 +403,7 @@ main tbody tr:last-child td { border-bottom: 0; }
 <tr>
 <td>GET</td>
 <td><code>/api/employees/{id:guid}/hours-balance</code></td>
-<td>—</td>
+<td>🤖 <em>Calculates the hours balance for an employee up to a specified date.</em></td>
 <td><code>id: Guid</code><br><code>before: DateOnly?</code></td>
 <td><code>decimal</code><br>200 <code>decimal</code>, 404</td>
 <td>required</td>
@@ -413,7 +413,7 @@ main tbody tr:last-child td { border-bottom: 0; }
 <tr>
 <td>GET</td>
 <td><code>/api/employees/{id:guid}/hours-report</code></td>
-<td>—</td>
+<td>🤖 <em>Generates a report of hours worked by an employee within a specified date range, including shifts, absences, and balance.</em></td>
 <td><code>id: Guid</code><br><code>from: DateOnly</code><br><code>to: DateOnly</code></td>
 <td><code>HoursReportDto</code><br>200 <code>HoursReportDto</code>, 400, 404</td>
 <td>required</td>
@@ -423,7 +423,7 @@ main tbody tr:last-child td { border-bottom: 0; }
 <tr>
 <td>GET</td>
 <td><code>/api/employees/{id:guid}/shift-type-preferences</code></td>
-<td>—</td>
+<td>🤖 <em>Retrieves shift type preferences for a specific employee.</em></td>
 <td><code>id: Guid</code></td>
 <td><code>IEnumerable&lt;ShiftTypePreferenceDto&gt;</code><br>200, 404</td>
 <td>required</td>
@@ -433,7 +433,7 @@ main tbody tr:last-child td { border-bottom: 0; }
 <tr>
 <td>PUT</td>
 <td><code>/api/employees/{id:guid}/shift-type-preferences</code></td>
-<td>—</td>
+<td>🤖 <em>Updates an employee's shift type preferences.</em></td>
 <td><code>id: Guid</code><br><code>preferences: List&lt;ShiftTypePreferenceDto&gt;</code></td>
 <td><code>IActionResult</code><br>204, 400, 404</td>
 <td>required</td>
@@ -443,7 +443,7 @@ main tbody tr:last-child td { border-bottom: 0; }
 <tr>
 <td>GET</td>
 <td><code>/api/employees/{id:guid}/weekday-preferences</code></td>
-<td>—</td>
+<td>🤖 <em>Retrieves the weekday preferences for a specific employee.</em></td>
 <td><code>id: Guid</code></td>
 <td><code>IEnumerable&lt;WeekdayPreferenceDto&gt;</code><br>200, 404</td>
 <td>required</td>
@@ -453,7 +453,7 @@ main tbody tr:last-child td { border-bottom: 0; }
 <tr>
 <td>PUT</td>
 <td><code>/api/employees/{id:guid}/weekday-preferences</code></td>
-<td>—</td>
+<td>🤖 <em>Updates an employee's weekday preferences.</em></td>
 <td><code>id: Guid</code><br><code>preferences: List&lt;WeekdayPreferenceDto&gt;</code></td>
 <td><code>IActionResult</code><br>204, 400, 404</td>
 <td>required</td>
@@ -463,7 +463,7 @@ main tbody tr:last-child td { border-bottom: 0; }
 <tr>
 <td>DELETE</td>
 <td><code>/api/hours-adjustments/{id:guid}</code></td>
-<td>—</td>
+<td>🤖 <em>Deletes a hours adjustment by its id.</em></td>
 <td><code>id: Guid</code></td>
 <td><code>IActionResult</code><br>204, 404</td>
 <td>required</td>
@@ -473,7 +473,7 @@ main tbody tr:last-child td { border-bottom: 0; }
 <tr>
 <td>GET</td>
 <td><code>/api/hours-adjustments/{id:guid}</code></td>
-<td>—</td>
+<td>🤖 <em>Retrieves a hours adjustment by its ID.</em></td>
 <td><code>id: Guid</code></td>
 <td><code>HoursAdjustmentDto</code><br>200 <code>HoursAdjustmentDto</code>, 404</td>
 <td>required</td>
@@ -483,7 +483,7 @@ main tbody tr:last-child td { border-bottom: 0; }
 <tr>
 <td>PUT</td>
 <td><code>/api/hours-adjustments/{id:guid}</code></td>
-<td>—</td>
+<td>🤖 <em>Updates an existing hours adjustment by its ID.</em></td>
 <td><code>id: Guid</code><br><code>request: UpdateHoursAdjustmentRequest</code></td>
 <td><code>IActionResult</code><br>204, 400, 404</td>
 <td>required</td>
@@ -493,7 +493,7 @@ main tbody tr:last-child td { border-bottom: 0; }
 <tr>
 <td>GET</td>
 <td><code>/api/planning-board</code></td>
-<td>—</td>
+<td>🤖 <em>Retrieves planning board data for a specified date range and optionally a team.</em></td>
 <td><code>from: DateOnly</code><br><code>to: DateOnly</code><br><code>teamId: Guid?</code></td>
 <td><code>PlanningBoardDto</code><br>200 <code>PlanningBoardDto</code>, 400</td>
 <td>required</td>
@@ -503,7 +503,7 @@ main tbody tr:last-child td { border-bottom: 0; }
 <tr>
 <td>GET</td>
 <td><code>/api/public-holidays</code></td>
-<td>—</td>
+<td>🤖 <em>Retrieves public holidays within a specified date range for a given Bundesland.</em></td>
 <td><code>start: DateOnly</code><br><code>end: DateOnly</code><br><code>bundesland: Bundesland?</code></td>
 <td><code>IEnumerable&lt;PublicHoliday&gt;</code><br>200 <code>IReadOnlyList&lt;PublicHoliday&gt;</code>, 400</td>
 <td>required</td>
@@ -513,7 +513,7 @@ main tbody tr:last-child td { border-bottom: 0; }
 <tr>
 <td>GET</td>
 <td><code>/api/schedules</code></td>
-<td>—</td>
+<td>🤖 <em>Retrieves a list of schedules with optional pagination.</em></td>
 <td><code>skip: int?</code><br><code>take: int?</code></td>
 <td><code>IEnumerable&lt;ScheduleDto&gt;</code><br>200, 400</td>
 <td>required</td>
@@ -523,7 +523,7 @@ main tbody tr:last-child td { border-bottom: 0; }
 <tr>
 <td>POST</td>
 <td><code>/api/schedules</code></td>
-<td>—</td>
+<td>🤖 <em>Creates a new schedule based on the provided request and returns the created schedule.</em></td>
 <td><code>request: CreateScheduleRequest</code></td>
 <td><code>ScheduleDto</code><br>201 <code>ScheduleDto</code></td>
 <td>required</td>
@@ -533,7 +533,7 @@ main tbody tr:last-child td { border-bottom: 0; }
 <tr>
 <td>GET</td>
 <td><code>/api/schedules/{id:guid}</code></td>
-<td>—</td>
+<td>🤖 <em>Retrieves a schedule by its ID for display.</em></td>
 <td><code>id: Guid</code></td>
 <td><code>ScheduleDetailDto</code><br>200 <code>ScheduleDetailDto</code>, 404</td>
 <td>required</td>
@@ -543,7 +543,7 @@ main tbody tr:last-child td { border-bottom: 0; }
 <tr>
 <td>PUT</td>
 <td><code>/api/schedules/{id:guid}</code></td>
-<td>—</td>
+<td>🤖 <em>Updates an existing schedule's details.</em></td>
 <td><code>id: Guid</code><br><code>request: UpdateScheduleRequest</code></td>
 <td><code>IActionResult</code><br>204, 404, 409</td>
 <td>required</td>
@@ -553,7 +553,7 @@ main tbody tr:last-child td { border-bottom: 0; }
 <tr>
 <td>POST</td>
 <td><code>/api/schedules/{id:guid}/archive</code></td>
-<td>—</td>
+<td>🤖 <em>Archives a schedule by its ID.</em></td>
 <td><code>id: Guid</code></td>
 <td><code>ScheduleDto</code><br>200 <code>ScheduleDto</code>, 404, 409</td>
 <td>required</td>
@@ -563,7 +563,7 @@ main tbody tr:last-child td { border-bottom: 0; }
 <tr>
 <td>POST</td>
 <td><code>/api/schedules/{id:guid}/assignments</code></td>
-<td>—</td>
+<td>🤖 <em>Creates a new shift assignment for a given schedule.</em></td>
 <td><code>id: Guid</code><br><code>request: CreateAssignmentRequest</code></td>
 <td><code>ShiftAssignmentDto</code><br>201 <code>ShiftAssignmentDto</code>, 400, 404, 409</td>
 <td>required</td>
@@ -573,7 +573,7 @@ main tbody tr:last-child td { border-bottom: 0; }
 <tr>
 <td>POST</td>
 <td><code>/api/schedules/{id:guid}/auto-fill</code></td>
-<td>—</td>
+<td>🤖 <em>Automatically fills shift assignments for a schedule based on a request.</em></td>
 <td><code>id: Guid</code><br><code>request: AutoFillCommitRequest</code></td>
 <td><code>IEnumerable&lt;ShiftAssignmentDto&gt;</code><br>200 <code>IEnumerable&lt;ShiftAssignmentDto&gt;</code>, 400, 404, 409</td>
 <td>required</td>
@@ -583,7 +583,7 @@ main tbody tr:last-child td { border-bottom: 0; }
 <tr>
 <td>GET</td>
 <td><code>/api/schedules/{id:guid}/auto-fill-preview</code></td>
-<td>—</td>
+<td>🤖 <em>Generates auto-fill proposals for a schedule based on historical data and preferences.</em></td>
 <td><code>id: Guid</code><br><code>from: DateOnly?</code><br><code>to: DateOnly?</code><br><code>ct: CancellationToken</code></td>
 <td><code>IEnumerable&lt;AutoFillProposalDto&gt;</code><br>200 <code>IEnumerable&lt;AutoFillProposalDto&gt;</code>, 400, 404</td>
 <td>required</td>
@@ -593,7 +593,7 @@ main tbody tr:last-child td { border-bottom: 0; }
 <tr>
 <td>POST</td>
 <td><code>/api/schedules/{id:guid}/copy</code></td>
-<td>—</td>
+<td>🤖 <em>Creates a copy of a schedule for a different month.</em></td>
 <td><code>id: Guid</code><br><code>request: CopyMonthRequest</code></td>
 <td><code>CopyMonthResponse</code><br>200 <code>CopyMonthResponse</code>, 400, 404, 409</td>
 <td>required</td>
@@ -603,7 +603,7 @@ main tbody tr:last-child td { border-bottom: 0; }
 <tr>
 <td>POST</td>
 <td><code>/api/schedules/{id:guid}/publish</code></td>
-<td>—</td>
+<td>🤖 <em>Publishes a schedule by its ID.</em></td>
 <td><code>id: Guid</code></td>
 <td><code>ScheduleDto</code><br>200 <code>ScheduleDto</code>, 404, 409</td>
 <td>required</td>
@@ -613,7 +613,7 @@ main tbody tr:last-child td { border-bottom: 0; }
 <tr>
 <td>GET</td>
 <td><code>/api/schedules/{id:guid}/suggestions</code></td>
-<td>—</td>
+<td>🤖 <em>Suggests shifts for a given schedule, date, and shift type.</em></td>
 <td><code>id: Guid</code><br><code>date: DateOnly</code><br><code>shiftTypeId: Guid</code></td>
 <td><code>IEnumerable&lt;ShiftSuggestionDto&gt;</code><br>200 <code>IEnumerable&lt;ShiftSuggestionDto&gt;</code>, 400, 404</td>
 <td>required</td>
@@ -623,7 +623,7 @@ main tbody tr:last-child td { border-bottom: 0; }
 <tr>
 <td>GET</td>
 <td><code>/api/schedules/{id:guid}/validate</code></td>
-<td>—</td>
+<td>🤖 <em>Validates a schedule by its ID.</em></td>
 <td><code>id: Guid</code><br><code>ct: CancellationToken</code></td>
 <td><code>ValidationResult</code><br>200, 404</td>
 <td>required</td>
@@ -633,7 +633,7 @@ main tbody tr:last-child td { border-bottom: 0; }
 <tr>
 <td>GET</td>
 <td><code>/api/shift-types</code></td>
-<td>—</td>
+<td>🤖 <em>Retrieves a list of shift types with optional pagination.</em></td>
 <td><code>skip: int?</code><br><code>take: int?</code></td>
 <td><code>IEnumerable&lt;ShiftTypeDto&gt;</code><br>200, 400</td>
 <td>required</td>
@@ -643,7 +643,7 @@ main tbody tr:last-child td { border-bottom: 0; }
 <tr>
 <td>POST</td>
 <td><code>/api/shift-types</code></td>
-<td>—</td>
+<td>🤖 <em>Creates a new shift type based on the provided request.</em></td>
 <td><code>request: CreateShiftTypeRequest</code></td>
 <td><code>ShiftTypeDto</code><br>400, 409</td>
 <td>required</td>
@@ -653,7 +653,7 @@ main tbody tr:last-child td { border-bottom: 0; }
 <tr>
 <td>PUT</td>
 <td><code>/api/shift-types/{id:guid}</code></td>
-<td>—</td>
+<td>🤖 <em>Updates an existing shift type by its ID.</em></td>
 <td><code>id: Guid</code><br><code>request: UpdateShiftTypeRequest</code></td>
 <td><code>IActionResult</code><br>204, 400, 404, 409</td>
 <td>required</td>
@@ -663,7 +663,7 @@ main tbody tr:last-child td { border-bottom: 0; }
 <tr>
 <td>GET</td>
 <td><code>/api/staffing-requirements</code></td>
-<td>—</td>
+<td>🤖 <em>Retrieves all staffing requirements and returns them as DTOs.</em></td>
 <td>—</td>
 <td><code>IEnumerable&lt;StaffingRequirementDto&gt;</code><br>200</td>
 <td>required</td>
@@ -673,7 +673,7 @@ main tbody tr:last-child td { border-bottom: 0; }
 <tr>
 <td>POST</td>
 <td><code>/api/staffing-requirements</code></td>
-<td>—</td>
+<td>🤖 <em>Creates a new staffing requirement based on the provided request.</em></td>
 <td><code>request: CreateStaffingRequirementRequest</code></td>
 <td><code>StaffingRequirementDto</code><br>201 <code>StaffingRequirementDto</code>, 400, 409</td>
 <td>required</td>
@@ -683,7 +683,7 @@ main tbody tr:last-child td { border-bottom: 0; }
 <tr>
 <td>DELETE</td>
 <td><code>/api/staffing-requirements/{id:guid}</code></td>
-<td>—</td>
+<td>🤖 <em>Deletes a staffing requirement by its ID.</em></td>
 <td><code>id: Guid</code></td>
 <td><code>IActionResult</code><br>204, 404</td>
 <td>required</td>
@@ -693,7 +693,7 @@ main tbody tr:last-child td { border-bottom: 0; }
 <tr>
 <td>GET</td>
 <td><code>/api/staffing-requirements/{id:guid}</code></td>
-<td>—</td>
+<td>🤖 <em>Retrieves a staffing requirement by its unique identifier.</em></td>
 <td><code>id: Guid</code></td>
 <td><code>StaffingRequirementDto</code><br>200 <code>StaffingRequirementDto</code>, 404</td>
 <td>required</td>
@@ -703,7 +703,7 @@ main tbody tr:last-child td { border-bottom: 0; }
 <tr>
 <td>PUT</td>
 <td><code>/api/staffing-requirements/{id:guid}</code></td>
-<td>—</td>
+<td>🤖 <em>Updates an existing staffing requirement.</em></td>
 <td><code>id: Guid</code><br><code>request: UpdateStaffingRequirementRequest</code></td>
 <td><code>IActionResult</code><br>204, 400, 404, 409</td>
 <td>required</td>
@@ -713,7 +713,7 @@ main tbody tr:last-child td { border-bottom: 0; }
 <tr>
 <td>GET</td>
 <td><code>/api/teams</code></td>
-<td>—</td>
+<td>🤖 <em>Retrieves a list of teams with optional pagination.</em></td>
 <td><code>skip: int?</code><br><code>take: int?</code></td>
 <td><code>IEnumerable&lt;TeamDto&gt;</code><br>200, 400</td>
 <td>required</td>
@@ -723,7 +723,7 @@ main tbody tr:last-child td { border-bottom: 0; }
 <tr>
 <td>POST</td>
 <td><code>/api/teams</code></td>
-<td>—</td>
+<td>🤖 <em>Creates a new team based on the provided request.</em></td>
 <td><code>request: CreateTeamRequest</code></td>
 <td><code>TeamDto</code><br>409</td>
 <td>required</td>
@@ -733,51 +733,51 @@ main tbody tr:last-child td { border-bottom: 0; }
 <tr>
 <td>POST</td>
 <td><code>/api/v1/auth/login</code></td>
-<td>—</td>
+<td>🤖 <em>Authenticates a user and returns an access token.</em></td>
 <td><code>request: LoginRequest</code></td>
 <td><code>AccessTokenResponse</code><br>200 <code>AccessTokenResponse</code>, 401</td>
 <td>—</td>
-<td><a href="../src/ShiftPlanner.Api/Controllers/AuthController.cs#L27">AuthController.cs:27</a></td>
+<td><a href="../src/ShiftPlanner.Api/Controllers/AuthController.cs#L29">AuthController.cs:29</a></td>
 <td><code>useAuthStore</code></td>
 </tr>
 <tr>
 <td>POST</td>
 <td><code>/api/v1/auth/logout</code></td>
-<td>—</td>
+<td>🤖 <em>Logs out a user by revoking their refresh token and clearing the refresh cookie.</em></td>
 <td>—</td>
 <td><code>IActionResult</code><br>204, 401</td>
 <td>required</td>
-<td><a href="../src/ShiftPlanner.Api/Controllers/AuthController.cs#L81">AuthController.cs:81</a></td>
+<td><a href="../src/ShiftPlanner.Api/Controllers/AuthController.cs#L84">AuthController.cs:84</a></td>
 <td><code>useAuthStore</code></td>
 </tr>
 <tr>
 <td>POST</td>
 <td><code>/api/v1/auth/logout-all</code></td>
-<td>—</td>
+<td>🤖 <em>Logs out all refresh tokens for the current user.</em></td>
 <td>—</td>
 <td><code>IActionResult</code><br>204, 401</td>
 <td>required</td>
-<td><a href="../src/ShiftPlanner.Api/Controllers/AuthController.cs#L109">AuthController.cs:109</a></td>
+<td><a href="../src/ShiftPlanner.Api/Controllers/AuthController.cs#L112">AuthController.cs:112</a></td>
 <td><code>useAuthStore</code></td>
 </tr>
 <tr>
 <td>POST</td>
 <td><code>/api/v1/auth/refresh</code></td>
-<td>—</td>
+<td>🤖 <em>Refreshes an access token using a refresh token.</em></td>
 <td>—</td>
 <td><code>AccessTokenResponse</code><br>200 <code>AccessTokenResponse</code>, 401</td>
 <td>—</td>
-<td><a href="../src/ShiftPlanner.Api/Controllers/AuthController.cs#L43">AuthController.cs:43</a></td>
+<td><a href="../src/ShiftPlanner.Api/Controllers/AuthController.cs#L46">AuthController.cs:46</a></td>
 <td><code>api.ts</code>, <code>useAuthStore</code></td>
 </tr>
 <tr>
 <td>GET</td>
 <td><code>/health</code></td>
-<td>—</td>
+<td>🤖 <em>Returns a health check response indicating the service is up.</em></td>
 <td>—</td>
 <td>200 <code>&lt;anonymous type: string status&gt;</code></td>
 <td>—</td>
-<td><a href="../src/ShiftPlanner.Api/Program.cs#L210">Program.cs:210</a></td>
+<td><a href="../src/ShiftPlanner.Api/Program.cs#L212">Program.cs:212</a></td>
 <td></td>
 </tr>
 </tbody>
@@ -916,7 +916,7 @@ main tbody tr:last-child td { border-bottom: 0; }
 <em>data:</em> — · <em>external:</em> PostgreSQL</li>
 </ul>
 
-<footer class="generator">Generated by docwizz 0.7.32-dev.1</footer>
+<footer class="generator">Generated by docwizz 0.7.44-dev.1</footer>
 </main>
 <aside class="toc" aria-label="On this page"><div class="toc-inner"><div class="toc-title">On this page</div><ul><li><a href="#request-pipeline-project-shiftplannerapi">Request pipeline (project ShiftPlanner.Api)</a></li><li><a href="#flows">Flows</a></li></ul></div></aside>
 </div>
