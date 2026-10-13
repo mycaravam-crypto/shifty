@@ -1,5 +1,5 @@
 {
-  "commit": "534b8b5",
+  "commit": "11abf0b",
   "nodes": [
     {
       "id": "cs:ShiftPlanner.Api.Authentication.JwtOptions",
@@ -499,12 +499,12 @@
       "file": "src/ShiftPlanner.Api/Controllers/AuthController.cs",
       "line": 20,
       "visibility": "public",
-      "hash": "52622391e2f7",
+      "hash": "701cbdb4e457",
       "tags": [
         "controller"
       ],
       "route": "api/v1/auth",
-      "endLine": 148,
+      "endLine": 151,
       "language": "csharp"
     },
     {
@@ -512,17 +512,17 @@
       "kind": "method",
       "name": "Login",
       "file": "src/ShiftPlanner.Api/Controllers/AuthController.cs",
-      "line": 27,
+      "line": 29,
       "visibility": "public",
       "complexity": 3,
       "params": 1,
-      "hash": "cbd30579827d",
+      "hash": "de8f2e781a14",
       "tags": [
         "endpoint",
         "POST"
       ],
       "route": "api/v1/auth/login",
-      "endLine": 41,
+      "endLine": 44,
       "parameters": [
         "request: LoginRequest"
       ],
@@ -538,7 +538,7 @@
       "kind": "method",
       "name": "Refresh",
       "file": "src/ShiftPlanner.Api/Controllers/AuthController.cs",
-      "line": 43,
+      "line": 46,
       "visibility": "public",
       "complexity": 4,
       "params": 0,
@@ -548,7 +548,7 @@
         "POST"
       ],
       "route": "api/v1/auth/refresh",
-      "endLine": 74,
+      "endLine": 77,
       "returns": "AccessTokenResponse",
       "language": "csharp",
       "responses": [
@@ -561,7 +561,7 @@
       "kind": "method",
       "name": "Logout",
       "file": "src/ShiftPlanner.Api/Controllers/AuthController.cs",
-      "line": 81,
+      "line": 84,
       "visibility": "public",
       "complexity": 6,
       "params": 0,
@@ -572,7 +572,7 @@
         "authorize"
       ],
       "route": "api/v1/auth/logout",
-      "endLine": 103,
+      "endLine": 106,
       "returns": "IActionResult",
       "language": "csharp",
       "responses": [
@@ -585,7 +585,7 @@
       "kind": "method",
       "name": "LogoutAll",
       "file": "src/ShiftPlanner.Api/Controllers/AuthController.cs",
-      "line": 109,
+      "line": 112,
       "visibility": "public",
       "complexity": 4,
       "params": 0,
@@ -596,7 +596,7 @@
         "authorize"
       ],
       "route": "api/v1/auth/logout-all",
-      "endLine": 129,
+      "endLine": 132,
       "returns": "IActionResult",
       "language": "csharp",
       "responses": [
@@ -609,12 +609,12 @@
       "kind": "method",
       "name": "SetRefreshCookie",
       "file": "src/ShiftPlanner.Api/Controllers/AuthController.cs",
-      "line": 131,
+      "line": 134,
       "visibility": "private",
       "complexity": 1,
       "params": 1,
       "hash": "df123a06d0b7",
-      "endLine": 138,
+      "endLine": 141,
       "parameters": [
         "token: string"
       ],
@@ -625,12 +625,12 @@
       "kind": "method",
       "name": "ClearRefreshCookie",
       "file": "src/ShiftPlanner.Api/Controllers/AuthController.cs",
-      "line": 140,
+      "line": 143,
       "visibility": "private",
       "complexity": 1,
       "params": 0,
       "hash": "5fdaab2ea301",
-      "endLine": 147,
+      "endLine": 150,
       "language": "csharp"
     },
     {
@@ -2816,10 +2816,10 @@
       "kind": "class",
       "name": "Program",
       "file": "src/ShiftPlanner.Api/Program.cs",
-      "line": 231,
+      "line": 233,
       "visibility": "public",
       "hash": "6668d753307a",
-      "endLine": 231,
+      "endLine": 233,
       "language": "csharp"
     },
     {
@@ -2827,7 +2827,7 @@
       "kind": "endpoint",
       "name": "GET /health",
       "file": "src/ShiftPlanner.Api/Program.cs",
-      "line": 210,
+      "line": 212,
       "visibility": "public",
       "complexity": 1,
       "hash": "190cde9751ec",
@@ -2837,7 +2837,7 @@
         "minimal-api"
       ],
       "route": "/health",
-      "endLine": 210,
+      "endLine": 212,
       "language": "csharp",
       "responses": [
         "200 <anonymous type: string status>"
@@ -2870,21 +2870,21 @@
       "kind": "config",
       "name": "SeedUser:Email",
       "file": "src/ShiftPlanner.Api/Program.cs",
-      "line": 174
+      "line": 176
     },
     {
       "id": "config:seeduser:password",
       "kind": "config",
       "name": "SeedUser:Password",
       "file": "src/ShiftPlanner.Api/Program.cs",
-      "line": 176
+      "line": 178
     },
     {
       "id": "config:seeduser:role",
       "kind": "config",
       "name": "SeedUser:Role",
       "file": "src/ShiftPlanner.Api/Program.cs",
-      "line": 178
+      "line": 180
     },
     {
       "id": "cs:ShiftPlanner.Application.Dashboard.DashboardAggregator",
@@ -8576,7 +8576,7 @@
       "visibility": "public",
       "complexity": 8,
       "params": 0,
-      "hash": "f27bc9fda657",
+      "hash": "ff0c6956ea5c",
       "tags": [
         "view"
       ],
@@ -12591,49 +12591,49 @@
       "from": "proj:src/ShiftPlanner.Api/ShiftPlanner.Api.csproj",
       "to": "pipeline:UseSwagger",
       "kind": "pipeline",
-      "label": "src/ShiftPlanner.Api/Program.cs:194"
+      "label": "src/ShiftPlanner.Api/Program.cs:196"
     },
     {
       "from": "proj:src/ShiftPlanner.Api/ShiftPlanner.Api.csproj",
       "to": "pipeline:UseSwaggerUI",
       "kind": "pipeline",
-      "label": "src/ShiftPlanner.Api/Program.cs:195"
+      "label": "src/ShiftPlanner.Api/Program.cs:197"
     },
     {
       "from": "proj:src/ShiftPlanner.Api/ShiftPlanner.Api.csproj",
       "to": "cs:ShiftPlanner.Api.Middleware.GlobalExceptionMiddleware",
       "kind": "pipeline",
-      "label": "src/ShiftPlanner.Api/Program.cs:201"
+      "label": "src/ShiftPlanner.Api/Program.cs:203"
     },
     {
       "from": "proj:src/ShiftPlanner.Api/ShiftPlanner.Api.csproj",
       "to": "pipeline:UseHsts",
       "kind": "pipeline",
-      "label": "src/ShiftPlanner.Api/Program.cs:203"
+      "label": "src/ShiftPlanner.Api/Program.cs:205"
     },
     {
       "from": "proj:src/ShiftPlanner.Api/ShiftPlanner.Api.csproj",
       "to": "pipeline:UseCors",
       "kind": "pipeline",
-      "label": "src/ShiftPlanner.Api/Program.cs:204"
+      "label": "src/ShiftPlanner.Api/Program.cs:206"
     },
     {
       "from": "proj:src/ShiftPlanner.Api/ShiftPlanner.Api.csproj",
       "to": "pipeline:UseRateLimiter",
       "kind": "pipeline",
-      "label": "src/ShiftPlanner.Api/Program.cs:205"
+      "label": "src/ShiftPlanner.Api/Program.cs:207"
     },
     {
       "from": "proj:src/ShiftPlanner.Api/ShiftPlanner.Api.csproj",
       "to": "pipeline:UseAuthentication",
       "kind": "pipeline",
-      "label": "src/ShiftPlanner.Api/Program.cs:206"
+      "label": "src/ShiftPlanner.Api/Program.cs:208"
     },
     {
       "from": "proj:src/ShiftPlanner.Api/ShiftPlanner.Api.csproj",
       "to": "pipeline:UseAuthorization",
       "kind": "pipeline",
-      "label": "src/ShiftPlanner.Api/Program.cs:207"
+      "label": "src/ShiftPlanner.Api/Program.cs:209"
     },
     {
       "from": "cs:ShiftPlanner.Infrastructure.Persistence.ApplicationDbContext",
@@ -15132,8 +15132,18 @@
       "kind": "uses-namespace"
     },
     {
+      "from": "cs:ShiftPlanner.IntegrationTests.IntegrationTestFixture.CreateStaffUserAsync(UserManager<ShiftPlanner.Infrastructure.Persistence.ApplicationUser>, string, string)",
+      "to": "cs:ShiftPlanner.Infrastructure.Persistence.ApplicationUser",
+      "kind": "tests"
+    },
+    {
       "from": "cs:ShiftPlanner.Tests.Application.AbsenceValidatorTests.AssignmentInsideAbsenceRange_ProducesError()",
       "to": "cs:ShiftPlanner.Application.Validation.AbsenceValidator.Validate(System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Scheduling.ShiftAssignment>, System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Employees.Absence>, System.Collections.Generic.IReadOnlyDictionary<System.Guid, ShiftPlanner.Domain.Employees.Employee>, ShiftPlanner.Application.Validation.ValidationResult)",
+      "kind": "tests"
+    },
+    {
+      "from": "cs:ShiftPlanner.Tests.Application.AbsenceValidatorTests.AssignmentInsideAbsenceRange_ProducesError()",
+      "to": "cs:ShiftPlanner.Application.Validation.ValidationResult",
       "kind": "tests"
     },
     {
@@ -15142,8 +15152,18 @@
       "kind": "tests"
     },
     {
+      "from": "cs:ShiftPlanner.Tests.Application.AbsenceValidatorTests.AssignmentOutsideAbsenceRange_NoError()",
+      "to": "cs:ShiftPlanner.Application.Validation.ValidationResult",
+      "kind": "tests"
+    },
+    {
       "from": "cs:ShiftPlanner.Tests.Application.AbsenceValidatorTests.AbsenceForDifferentEmployee_NotFlagged()",
       "to": "cs:ShiftPlanner.Application.Validation.AbsenceValidator.Validate(System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Scheduling.ShiftAssignment>, System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Employees.Absence>, System.Collections.Generic.IReadOnlyDictionary<System.Guid, ShiftPlanner.Domain.Employees.Employee>, ShiftPlanner.Application.Validation.ValidationResult)",
+      "kind": "tests"
+    },
+    {
+      "from": "cs:ShiftPlanner.Tests.Application.AbsenceValidatorTests.AbsenceForDifferentEmployee_NotFlagged()",
+      "to": "cs:ShiftPlanner.Application.Validation.ValidationResult",
       "kind": "tests"
     },
     {
@@ -15152,8 +15172,18 @@
       "kind": "tests"
     },
     {
+      "from": "cs:ShiftPlanner.Tests.Application.AbsenceValidatorTests.AssignmentOnAbsenceBoundaryDates_Flagged()",
+      "to": "cs:ShiftPlanner.Application.Validation.ValidationResult",
+      "kind": "tests"
+    },
+    {
       "from": "cs:ShiftPlanner.Tests.Application.AbsenceValidatorTests.UnknownEmployee_FallsBackToPlaceholderName()",
       "to": "cs:ShiftPlanner.Application.Validation.AbsenceValidator.Validate(System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Scheduling.ShiftAssignment>, System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Employees.Absence>, System.Collections.Generic.IReadOnlyDictionary<System.Guid, ShiftPlanner.Domain.Employees.Employee>, ShiftPlanner.Application.Validation.ValidationResult)",
+      "kind": "tests"
+    },
+    {
+      "from": "cs:ShiftPlanner.Tests.Application.AbsenceValidatorTests.UnknownEmployee_FallsBackToPlaceholderName()",
+      "to": "cs:ShiftPlanner.Application.Validation.ValidationResult",
       "kind": "tests"
     },
     {
@@ -15162,8 +15192,18 @@
       "kind": "tests"
     },
     {
+      "from": "cs:ShiftPlanner.Tests.Application.BreakMinutesValidatorTests.ShortShift_NoBreakRequired()",
+      "to": "cs:ShiftPlanner.Application.Validation.ValidationResult",
+      "kind": "tests"
+    },
+    {
       "from": "cs:ShiftPlanner.Tests.Application.BreakMinutesValidatorTests.OverSixHours_RequiresThirtyMinuteBreak()",
       "to": "cs:ShiftPlanner.Application.Validation.BreakMinutesValidator.Validate(System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Scheduling.ShiftAssignment>, ShiftPlanner.Application.Validation.ValidationResult)",
+      "kind": "tests"
+    },
+    {
+      "from": "cs:ShiftPlanner.Tests.Application.BreakMinutesValidatorTests.OverSixHours_RequiresThirtyMinuteBreak()",
+      "to": "cs:ShiftPlanner.Application.Validation.ValidationResult",
       "kind": "tests"
     },
     {
@@ -15172,8 +15212,18 @@
       "kind": "tests"
     },
     {
+      "from": "cs:ShiftPlanner.Tests.Application.BreakMinutesValidatorTests.OverSixHours_ThirtyMinuteBreak_Satisfied()",
+      "to": "cs:ShiftPlanner.Application.Validation.ValidationResult",
+      "kind": "tests"
+    },
+    {
       "from": "cs:ShiftPlanner.Tests.Application.BreakMinutesValidatorTests.OverNineHours_RequiresFortyFiveMinuteBreak()",
       "to": "cs:ShiftPlanner.Application.Validation.BreakMinutesValidator.Validate(System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Scheduling.ShiftAssignment>, ShiftPlanner.Application.Validation.ValidationResult)",
+      "kind": "tests"
+    },
+    {
+      "from": "cs:ShiftPlanner.Tests.Application.BreakMinutesValidatorTests.OverNineHours_RequiresFortyFiveMinuteBreak()",
+      "to": "cs:ShiftPlanner.Application.Validation.ValidationResult",
       "kind": "tests"
     },
     {
@@ -15182,8 +15232,18 @@
       "kind": "tests"
     },
     {
+      "from": "cs:ShiftPlanner.Tests.Application.BreakMinutesValidatorTests.ExactlySixHours_NoBreakRequired()",
+      "to": "cs:ShiftPlanner.Application.Validation.ValidationResult",
+      "kind": "tests"
+    },
+    {
       "from": "cs:ShiftPlanner.Tests.Application.BreakMinutesValidatorTests.ExactlyNineHours_OnlyThirtyMinuteBreakRequired()",
       "to": "cs:ShiftPlanner.Application.Validation.BreakMinutesValidator.Validate(System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Scheduling.ShiftAssignment>, ShiftPlanner.Application.Validation.ValidationResult)",
+      "kind": "tests"
+    },
+    {
+      "from": "cs:ShiftPlanner.Tests.Application.BreakMinutesValidatorTests.ExactlyNineHours_OnlyThirtyMinuteBreakRequired()",
+      "to": "cs:ShiftPlanner.Application.Validation.ValidationResult",
       "kind": "tests"
     },
     {
@@ -15192,8 +15252,18 @@
       "kind": "tests"
     },
     {
+      "from": "cs:ShiftPlanner.Tests.Application.BreakMinutesValidatorTests.ZeroLengthShift_SkippedDefensively()",
+      "to": "cs:ShiftPlanner.Application.Validation.ValidationResult",
+      "kind": "tests"
+    },
+    {
       "from": "cs:ShiftPlanner.Tests.Application.BreakMinutesValidatorTests.GenuinelyBackwardsShift_NotSkipped_ProcessedWithWrappedDuration()",
       "to": "cs:ShiftPlanner.Application.Validation.BreakMinutesValidator.Validate(System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Scheduling.ShiftAssignment>, ShiftPlanner.Application.Validation.ValidationResult)",
+      "kind": "tests"
+    },
+    {
+      "from": "cs:ShiftPlanner.Tests.Application.BreakMinutesValidatorTests.GenuinelyBackwardsShift_NotSkipped_ProcessedWithWrappedDuration()",
+      "to": "cs:ShiftPlanner.Application.Validation.ValidationResult",
       "kind": "tests"
     },
     {
@@ -15202,8 +15272,18 @@
       "kind": "tests"
     },
     {
+      "from": "cs:ShiftPlanner.Tests.Application.ConsecutiveDaysValidatorTests.SixConsecutiveDays_NoError()",
+      "to": "cs:ShiftPlanner.Application.Validation.ValidationResult",
+      "kind": "tests"
+    },
+    {
       "from": "cs:ShiftPlanner.Tests.Application.ConsecutiveDaysValidatorTests.SevenConsecutiveDays_ProducesError()",
       "to": "cs:ShiftPlanner.Application.Validation.ConsecutiveDaysValidator.Validate(System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Scheduling.ShiftAssignment>, ShiftPlanner.Application.Validation.ValidationResult)",
+      "kind": "tests"
+    },
+    {
+      "from": "cs:ShiftPlanner.Tests.Application.ConsecutiveDaysValidatorTests.SevenConsecutiveDays_ProducesError()",
+      "to": "cs:ShiftPlanner.Application.Validation.ValidationResult",
       "kind": "tests"
     },
     {
@@ -15212,8 +15292,18 @@
       "kind": "tests"
     },
     {
+      "from": "cs:ShiftPlanner.Tests.Application.ConsecutiveDaysValidatorTests.SixDaysThenRestThenSixMore_NoError()",
+      "to": "cs:ShiftPlanner.Application.Validation.ValidationResult",
+      "kind": "tests"
+    },
+    {
       "from": "cs:ShiftPlanner.Tests.Application.ConsecutiveDaysValidatorTests.DuplicateAssignmentsSameDay_CountedOnce()",
       "to": "cs:ShiftPlanner.Application.Validation.ConsecutiveDaysValidator.Validate(System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Scheduling.ShiftAssignment>, ShiftPlanner.Application.Validation.ValidationResult)",
+      "kind": "tests"
+    },
+    {
+      "from": "cs:ShiftPlanner.Tests.Application.ConsecutiveDaysValidatorTests.DuplicateAssignmentsSameDay_CountedOnce()",
+      "to": "cs:ShiftPlanner.Application.Validation.ValidationResult",
       "kind": "tests"
     },
     {
@@ -15222,8 +15312,18 @@
       "kind": "tests"
     },
     {
+      "from": "cs:ShiftPlanner.Tests.Application.ContractValidatorTests.PlannedHoursWithinContract_NoError()",
+      "to": "cs:ShiftPlanner.Application.Validation.ValidationResult",
+      "kind": "tests"
+    },
+    {
       "from": "cs:ShiftPlanner.Tests.Application.ContractValidatorTests.PlannedHoursExceedContract_ProducesError()",
       "to": "cs:ShiftPlanner.Application.Validation.ContractValidator.Validate(ShiftPlanner.Domain.Scheduling.Schedule, System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Scheduling.ShiftAssignment>, System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Contracts.Contract>, System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Employees.Absence>?, ShiftPlanner.Application.Validation.ValidationResult)",
+      "kind": "tests"
+    },
+    {
+      "from": "cs:ShiftPlanner.Tests.Application.ContractValidatorTests.PlannedHoursExceedContract_ProducesError()",
+      "to": "cs:ShiftPlanner.Application.Validation.ValidationResult",
       "kind": "tests"
     },
     {
@@ -15232,8 +15332,18 @@
       "kind": "tests"
     },
     {
+      "from": "cs:ShiftPlanner.Tests.Application.ContractValidatorTests.ScalesLimitByScheduleSpan()",
+      "to": "cs:ShiftPlanner.Application.Validation.ValidationResult",
+      "kind": "tests"
+    },
+    {
       "from": "cs:ShiftPlanner.Tests.Application.ContractValidatorTests.AbsenceDays_ReduceExpectedHours()",
       "to": "cs:ShiftPlanner.Application.Validation.ContractValidator.Validate(ShiftPlanner.Domain.Scheduling.Schedule, System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Scheduling.ShiftAssignment>, System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Contracts.Contract>, System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Employees.Absence>?, ShiftPlanner.Application.Validation.ValidationResult)",
+      "kind": "tests"
+    },
+    {
+      "from": "cs:ShiftPlanner.Tests.Application.ContractValidatorTests.AbsenceDays_ReduceExpectedHours()",
+      "to": "cs:ShiftPlanner.Application.Validation.ValidationResult",
       "kind": "tests"
     },
     {
@@ -15242,8 +15352,18 @@
       "kind": "tests"
     },
     {
+      "from": "cs:ShiftPlanner.Tests.Application.ContractValidatorTests.ContractChangesMidSchedule_BlendsBothSegments_DoesNotFalseFlag()",
+      "to": "cs:ShiftPlanner.Application.Validation.ValidationResult",
+      "kind": "tests"
+    },
+    {
       "from": "cs:ShiftPlanner.Tests.Application.ContractValidatorTests.MonthlyContingentContract_PlannedWithinBudget_NoError()",
       "to": "cs:ShiftPlanner.Application.Validation.ContractValidator.Validate(ShiftPlanner.Domain.Scheduling.Schedule, System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Scheduling.ShiftAssignment>, System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Contracts.Contract>, System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Employees.Absence>?, ShiftPlanner.Application.Validation.ValidationResult)",
+      "kind": "tests"
+    },
+    {
+      "from": "cs:ShiftPlanner.Tests.Application.ContractValidatorTests.MonthlyContingentContract_PlannedWithinBudget_NoError()",
+      "to": "cs:ShiftPlanner.Application.Validation.ValidationResult",
       "kind": "tests"
     },
     {
@@ -15252,8 +15372,18 @@
       "kind": "tests"
     },
     {
+      "from": "cs:ShiftPlanner.Tests.Application.ContractValidatorTests.MonthlyContingentContract_PlannedExceedsBudget_ProducesError()",
+      "to": "cs:ShiftPlanner.Application.Validation.ValidationResult",
+      "kind": "tests"
+    },
+    {
       "from": "cs:ShiftPlanner.Tests.Application.ContractValidatorTests.NoContractCoveringSchedule_Skipped()",
       "to": "cs:ShiftPlanner.Application.Validation.ContractValidator.Validate(ShiftPlanner.Domain.Scheduling.Schedule, System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Scheduling.ShiftAssignment>, System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Contracts.Contract>, System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Employees.Absence>?, ShiftPlanner.Application.Validation.ValidationResult)",
+      "kind": "tests"
+    },
+    {
+      "from": "cs:ShiftPlanner.Tests.Application.ContractValidatorTests.NoContractCoveringSchedule_Skipped()",
+      "to": "cs:ShiftPlanner.Application.Validation.ValidationResult",
       "kind": "tests"
     },
     {
@@ -15267,8 +15397,18 @@
       "kind": "tests"
     },
     {
+      "from": "cs:ShiftPlanner.Tests.Application.DashboardAggregatorTests.CoveragePercent_AveragesAcrossRowsAndCapsAt100_AndDefaultsTo100WhenEmpty()",
+      "to": "cs:ShiftPlanner.Application.Dashboard.CoverageDayDto",
+      "kind": "tests"
+    },
+    {
       "from": "cs:ShiftPlanner.Tests.Application.DashboardAggregatorTests.BuildPainPoints_CollectsValidatorIssuesAndRespectsTeamFilter()",
       "to": "cs:ShiftPlanner.Application.Dashboard.DashboardAggregator.BuildPainPoints(System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Scheduling.Schedule>, System.Collections.Generic.IReadOnlyDictionary<System.Guid, System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Scheduling.ShiftAssignment>>, System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Scheduling.ShiftAssignment>, System.Collections.Generic.IReadOnlyDictionary<System.Guid, ShiftPlanner.Domain.Employees.Employee>, System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Scheduling.ShiftType>, System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Contracts.Contract>, System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Employees.Absence>, System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Scheduling.StaffingRequirement>, System.Guid?)",
+      "kind": "tests"
+    },
+    {
+      "from": "cs:ShiftPlanner.Tests.Application.DashboardAggregatorTests.BuildPainPoints_CollectsValidatorIssuesAndRespectsTeamFilter()",
+      "to": "cs:ShiftPlanner.Domain.Employees.Team",
       "kind": "tests"
     },
     {
@@ -15279,6 +15419,11 @@
     {
       "from": "cs:ShiftPlanner.Tests.Application.DashboardAggregatorTests.BuildPlanningStatus_CountsDraftPublishedAndConflicts()",
       "to": "cs:ShiftPlanner.Application.Dashboard.DashboardAggregator.BuildPlanningStatus(System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Scheduling.Schedule>, System.Collections.Generic.IReadOnlyList<ShiftPlanner.Application.Dashboard.PainPointDto>)",
+      "kind": "tests"
+    },
+    {
+      "from": "cs:ShiftPlanner.Tests.Application.DashboardAggregatorTests.BuildPlanningStatus_CountsDraftPublishedAndConflicts()",
+      "to": "cs:ShiftPlanner.Application.Dashboard.PainPointDto",
       "kind": "tests"
     },
     {
@@ -15294,6 +15439,11 @@
     {
       "from": "cs:ShiftPlanner.Tests.Application.DashboardAggregatorTests.BuildCostBreakdown_MatchesWageCalculatorBreakdownPerAssignment()",
       "to": "cs:ShiftPlanner.Domain.Scheduling.WageCalculator.Breakdown(ShiftPlanner.Domain.Scheduling.ShiftTiming, System.DayOfWeek, bool, decimal, decimal?)",
+      "kind": "tests"
+    },
+    {
+      "from": "cs:ShiftPlanner.Tests.Application.DashboardAggregatorTests.BuildCostBreakdown_MatchesWageCalculatorBreakdownPerAssignment()",
+      "to": "cs:ShiftPlanner.Domain.Scheduling.ShiftTiming",
       "kind": "tests"
     },
     {
@@ -15314,6 +15464,11 @@
     {
       "from": "cs:ShiftPlanner.Tests.Application.DashboardAggregatorTests.BuildUtilization_SumsCapacityAndPlannedAcrossEmployees()",
       "to": "cs:ShiftPlanner.Application.Dashboard.DashboardAggregator.BuildUtilization(System.Collections.Generic.IReadOnlyList<ShiftPlanner.Application.Dashboard.EmployeeUtilizationDto>)",
+      "kind": "tests"
+    },
+    {
+      "from": "cs:ShiftPlanner.Tests.Application.DashboardAggregatorTests.BuildUtilization_SumsCapacityAndPlannedAcrossEmployees()",
+      "to": "cs:ShiftPlanner.Application.Dashboard.EmployeeUtilizationDto",
       "kind": "tests"
     },
     {
@@ -15347,6 +15502,11 @@
       "kind": "tests"
     },
     {
+      "from": "cs:ShiftPlanner.Tests.Application.EligibilityValidatorTests.EmptyEligibilityList_TreatedAsUnrestricted_NoError()",
+      "to": "cs:ShiftPlanner.Application.Validation.ValidationResult",
+      "kind": "tests"
+    },
+    {
       "from": "cs:ShiftPlanner.Tests.Application.EligibilityValidatorTests.AssignedEligibleShiftType_NoError()",
       "to": "cs:ShiftPlanner.Domain.Employees.Employee.AddEligibleShiftType(ShiftPlanner.Domain.Scheduling.ShiftType)",
       "kind": "tests"
@@ -15357,6 +15517,11 @@
       "kind": "tests"
     },
     {
+      "from": "cs:ShiftPlanner.Tests.Application.EligibilityValidatorTests.AssignedEligibleShiftType_NoError()",
+      "to": "cs:ShiftPlanner.Application.Validation.ValidationResult",
+      "kind": "tests"
+    },
+    {
       "from": "cs:ShiftPlanner.Tests.Application.EligibilityValidatorTests.AssignedIneligibleShiftType_ProducesError()",
       "to": "cs:ShiftPlanner.Domain.Employees.Employee.AddEligibleShiftType(ShiftPlanner.Domain.Scheduling.ShiftType)",
       "kind": "tests"
@@ -15364,11 +15529,36 @@
     {
       "from": "cs:ShiftPlanner.Tests.Application.EligibilityValidatorTests.AssignedIneligibleShiftType_ProducesError()",
       "to": "cs:ShiftPlanner.Application.Validation.EligibilityValidator.Validate(System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Scheduling.ShiftAssignment>, System.Collections.Generic.IReadOnlyDictionary<System.Guid, ShiftPlanner.Domain.Employees.Employee>, ShiftPlanner.Application.Validation.ValidationResult)",
+      "kind": "tests"
+    },
+    {
+      "from": "cs:ShiftPlanner.Tests.Application.EligibilityValidatorTests.AssignedIneligibleShiftType_ProducesError()",
+      "to": "cs:ShiftPlanner.Application.Validation.ValidationResult",
       "kind": "tests"
     },
     {
       "from": "cs:ShiftPlanner.Tests.Application.EligibilityValidatorTests.UnknownEmployee_SkippedWithoutThrowing()",
       "to": "cs:ShiftPlanner.Application.Validation.EligibilityValidator.Validate(System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Scheduling.ShiftAssignment>, System.Collections.Generic.IReadOnlyDictionary<System.Guid, ShiftPlanner.Domain.Employees.Employee>, ShiftPlanner.Application.Validation.ValidationResult)",
+      "kind": "tests"
+    },
+    {
+      "from": "cs:ShiftPlanner.Tests.Application.EligibilityValidatorTests.UnknownEmployee_SkippedWithoutThrowing()",
+      "to": "cs:ShiftPlanner.Application.Validation.ValidationResult",
+      "kind": "tests"
+    },
+    {
+      "from": "cs:ShiftPlanner.Tests.Application.PlanningBoardAggregatorTests.MakeContract(System.Guid, System.DateOnly, decimal, System.DateOnly?)",
+      "to": "cs:ShiftPlanner.Domain.Contracts.Contract",
+      "kind": "tests"
+    },
+    {
+      "from": "cs:ShiftPlanner.Tests.Application.PlanningBoardAggregatorTests.MakeSchedule(System.DateOnly, System.DateOnly)",
+      "to": "cs:ShiftPlanner.Domain.Scheduling.Schedule",
+      "kind": "tests"
+    },
+    {
+      "from": "cs:ShiftPlanner.Tests.Application.PlanningBoardAggregatorTests.MakeAssignment(System.Guid, System.Guid, System.DateOnly, System.TimeOnly, System.TimeOnly)",
+      "to": "cs:ShiftPlanner.Domain.Scheduling.ShiftAssignment",
       "kind": "tests"
     },
     {
@@ -15407,8 +15597,18 @@
       "kind": "tests"
     },
     {
+      "from": "cs:ShiftPlanner.Tests.Application.PlanningBoardAggregatorTests.BuildStats_ExcludesAbsenceDaysFromTargetHours()",
+      "to": "cs:ShiftPlanner.Domain.Employees.Absence",
+      "kind": "tests"
+    },
+    {
       "from": "cs:ShiftPlanner.Tests.Application.RestTimeValidatorTests.ElevenHoursRest_NoError()",
       "to": "cs:ShiftPlanner.Application.Validation.RestTimeValidator.Validate(System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Scheduling.ShiftAssignment>, ShiftPlanner.Application.Validation.ValidationResult)",
+      "kind": "tests"
+    },
+    {
+      "from": "cs:ShiftPlanner.Tests.Application.RestTimeValidatorTests.ElevenHoursRest_NoError()",
+      "to": "cs:ShiftPlanner.Application.Validation.ValidationResult",
       "kind": "tests"
     },
     {
@@ -15417,8 +15617,18 @@
       "kind": "tests"
     },
     {
+      "from": "cs:ShiftPlanner.Tests.Application.RestTimeValidatorTests.LessThanElevenHoursRest_ProducesError()",
+      "to": "cs:ShiftPlanner.Application.Validation.ValidationResult",
+      "kind": "tests"
+    },
+    {
       "from": "cs:ShiftPlanner.Tests.Application.RestTimeValidatorTests.DifferentEmployees_NotComparedToEachOther()",
       "to": "cs:ShiftPlanner.Application.Validation.RestTimeValidator.Validate(System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Scheduling.ShiftAssignment>, ShiftPlanner.Application.Validation.ValidationResult)",
+      "kind": "tests"
+    },
+    {
+      "from": "cs:ShiftPlanner.Tests.Application.RestTimeValidatorTests.DifferentEmployees_NotComparedToEachOther()",
+      "to": "cs:ShiftPlanner.Application.Validation.ValidationResult",
       "kind": "tests"
     },
     {
@@ -15427,8 +15637,18 @@
       "kind": "tests"
     },
     {
+      "from": "cs:ShiftPlanner.Tests.Application.RestTimeValidatorTests.NonConsecutiveShiftsWithGapDay_NoError()",
+      "to": "cs:ShiftPlanner.Application.Validation.ValidationResult",
+      "kind": "tests"
+    },
+    {
       "from": "cs:ShiftPlanner.Tests.Application.RestTimeValidatorTests.CrossMidnightAssignment_ExcludedFromRestTimeCheck_NoFalseViolation()",
       "to": "cs:ShiftPlanner.Application.Validation.RestTimeValidator.Validate(System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Scheduling.ShiftAssignment>, ShiftPlanner.Application.Validation.ValidationResult)",
+      "kind": "tests"
+    },
+    {
+      "from": "cs:ShiftPlanner.Tests.Application.RestTimeValidatorTests.CrossMidnightAssignment_ExcludedFromRestTimeCheck_NoFalseViolation()",
+      "to": "cs:ShiftPlanner.Application.Validation.ValidationResult",
       "kind": "tests"
     },
     {
@@ -15437,13 +15657,28 @@
       "kind": "tests"
     },
     {
+      "from": "cs:ShiftPlanner.Tests.Application.RestTimeValidatorTests.CrossMidnightAssignment_ExcludedWithoutThrowing()",
+      "to": "cs:ShiftPlanner.Application.Validation.ValidationResult",
+      "kind": "tests"
+    },
+    {
       "from": "cs:ShiftPlanner.Tests.Application.RestTimeValidatorTests.EndsNextDayAssignment_RestMeasuredFromPushedEndInstant()",
       "to": "cs:ShiftPlanner.Application.Validation.RestTimeValidator.Validate(System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Scheduling.ShiftAssignment>, ShiftPlanner.Application.Validation.ValidationResult)",
       "kind": "tests"
     },
     {
+      "from": "cs:ShiftPlanner.Tests.Application.RestTimeValidatorTests.EndsNextDayAssignment_RestMeasuredFromPushedEndInstant()",
+      "to": "cs:ShiftPlanner.Application.Validation.ValidationResult",
+      "kind": "tests"
+    },
+    {
       "from": "cs:ShiftPlanner.Tests.Application.RestTimeValidatorTests.EndsNextDayAssignment_SufficientRestFromPushedEndInstant_NoError()",
       "to": "cs:ShiftPlanner.Application.Validation.RestTimeValidator.Validate(System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Scheduling.ShiftAssignment>, ShiftPlanner.Application.Validation.ValidationResult)",
+      "kind": "tests"
+    },
+    {
+      "from": "cs:ShiftPlanner.Tests.Application.RestTimeValidatorTests.EndsNextDayAssignment_SufficientRestFromPushedEndInstant_NoError()",
+      "to": "cs:ShiftPlanner.Application.Validation.ValidationResult",
       "kind": "tests"
     },
     {
@@ -15482,8 +15717,18 @@
       "kind": "tests"
     },
     {
+      "from": "cs:ShiftPlanner.Tests.Application.ShiftOverlapValidatorTests.NoOverlap_NoWarning()",
+      "to": "cs:ShiftPlanner.Application.Validation.ValidationResult",
+      "kind": "tests"
+    },
+    {
       "from": "cs:ShiftPlanner.Tests.Application.ShiftOverlapValidatorTests.OverlappingShiftsSameEmployeeSameDay_ProducesWarning()",
       "to": "cs:ShiftPlanner.Application.Validation.ShiftOverlapValidator.Validate(System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Scheduling.ShiftAssignment>, ShiftPlanner.Application.Validation.ValidationResult)",
+      "kind": "tests"
+    },
+    {
+      "from": "cs:ShiftPlanner.Tests.Application.ShiftOverlapValidatorTests.OverlappingShiftsSameEmployeeSameDay_ProducesWarning()",
+      "to": "cs:ShiftPlanner.Application.Validation.ValidationResult",
       "kind": "tests"
     },
     {
@@ -15492,8 +15737,18 @@
       "kind": "tests"
     },
     {
+      "from": "cs:ShiftPlanner.Tests.Application.ShiftOverlapValidatorTests.OverlapAcrossDifferentEmployees_NotFlagged()",
+      "to": "cs:ShiftPlanner.Application.Validation.ValidationResult",
+      "kind": "tests"
+    },
+    {
       "from": "cs:ShiftPlanner.Tests.Application.ShiftOverlapValidatorTests.BackToBackShifts_TouchingNotOverlapping_NoWarning()",
       "to": "cs:ShiftPlanner.Application.Validation.ShiftOverlapValidator.Validate(System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Scheduling.ShiftAssignment>, ShiftPlanner.Application.Validation.ValidationResult)",
+      "kind": "tests"
+    },
+    {
+      "from": "cs:ShiftPlanner.Tests.Application.ShiftOverlapValidatorTests.BackToBackShifts_TouchingNotOverlapping_NoWarning()",
+      "to": "cs:ShiftPlanner.Application.Validation.ValidationResult",
       "kind": "tests"
     },
     {
@@ -15502,13 +15757,33 @@
       "kind": "tests"
     },
     {
+      "from": "cs:ShiftPlanner.Tests.Application.ShiftOverlapValidatorTests.OvernightShift_OverlapsEarlyShiftNextCalendarDay_ProducesWarning()",
+      "to": "cs:ShiftPlanner.Application.Validation.ValidationResult",
+      "kind": "tests"
+    },
+    {
       "from": "cs:ShiftPlanner.Tests.Application.ShiftOverlapValidatorTests.OvernightShift_NoOverlapWithNextDayShift_NoWarning()",
       "to": "cs:ShiftPlanner.Application.Validation.ShiftOverlapValidator.Validate(System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Scheduling.ShiftAssignment>, ShiftPlanner.Application.Validation.ValidationResult)",
       "kind": "tests"
     },
     {
+      "from": "cs:ShiftPlanner.Tests.Application.ShiftOverlapValidatorTests.OvernightShift_NoOverlapWithNextDayShift_NoWarning()",
+      "to": "cs:ShiftPlanner.Application.Validation.ValidationResult",
+      "kind": "tests"
+    },
+    {
       "from": "cs:ShiftPlanner.Tests.Application.ShiftSuggestionEngineAutoFillTests.AutoFill(System.DateOnly, System.DateOnly, System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Scheduling.ShiftType>, System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Employees.Employee>, System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Scheduling.ShiftAssignment>?, System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Scheduling.ShiftAssignment>?, System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Employees.Absence>?, System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Contracts.Contract>?, System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Employees.ShiftTypePreference>?, System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Employees.WeekdayPreference>?)",
       "to": "cs:ShiftPlanner.Application.Suggestions.ShiftSuggestionEngine.AutoFill(System.DateOnly, System.DateOnly, System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Scheduling.ShiftType>, ShiftPlanner.Application.Suggestions.SchedulingContext)",
+      "kind": "tests"
+    },
+    {
+      "from": "cs:ShiftPlanner.Tests.Application.ShiftSuggestionEngineAutoFillTests.AutoFill(System.DateOnly, System.DateOnly, System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Scheduling.ShiftType>, System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Employees.Employee>, System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Scheduling.ShiftAssignment>?, System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Scheduling.ShiftAssignment>?, System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Employees.Absence>?, System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Contracts.Contract>?, System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Employees.ShiftTypePreference>?, System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Employees.WeekdayPreference>?)",
+      "to": "cs:ShiftPlanner.Application.Suggestions.SchedulingContext",
+      "kind": "tests"
+    },
+    {
+      "from": "cs:ShiftPlanner.Tests.Application.ShiftSuggestionEngineAutoFillTests.OneOpenSlot_FillsWithTopEligibleCandidate()",
+      "to": "cs:ShiftPlanner.Domain.Employees.ShiftTypePreference",
       "kind": "tests"
     },
     {
@@ -15582,8 +15857,18 @@
       "kind": "tests"
     },
     {
+      "from": "cs:ShiftPlanner.Tests.Application.ShiftSuggestionEngineRulesTests.EvaluateShiftTypePreference_Preferred_ScoresPositive()",
+      "to": "cs:ShiftPlanner.Domain.Employees.ShiftTypePreference",
+      "kind": "tests"
+    },
+    {
       "from": "cs:ShiftPlanner.Tests.Application.ShiftSuggestionEngineRulesTests.EvaluateShiftTypePreference_Avoided_ScoresNegative()",
       "to": "cs:ShiftPlanner.Application.Suggestions.ShiftSuggestionEngine.EvaluateShiftTypePreference(ShiftPlanner.Domain.Employees.Employee, ShiftPlanner.Domain.Scheduling.ShiftType, System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Employees.ShiftTypePreference>)",
+      "kind": "tests"
+    },
+    {
+      "from": "cs:ShiftPlanner.Tests.Application.ShiftSuggestionEngineRulesTests.EvaluateShiftTypePreference_Avoided_ScoresNegative()",
+      "to": "cs:ShiftPlanner.Domain.Employees.ShiftTypePreference",
       "kind": "tests"
     },
     {
@@ -15592,8 +15877,18 @@
       "kind": "tests"
     },
     {
+      "from": "cs:ShiftPlanner.Tests.Application.ShiftSuggestionEngineRulesTests.EvaluateWeekdayPreference_Preferred_ScoresPositive()",
+      "to": "cs:ShiftPlanner.Domain.Employees.WeekdayPreference",
+      "kind": "tests"
+    },
+    {
       "from": "cs:ShiftPlanner.Tests.Application.ShiftSuggestionEngineRulesTests.EvaluateWeekdayPreference_Avoided_ScoresNegative()",
       "to": "cs:ShiftPlanner.Application.Suggestions.ShiftSuggestionEngine.EvaluateWeekdayPreference(ShiftPlanner.Domain.Employees.Employee, System.DateOnly, System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Employees.WeekdayPreference>)",
+      "kind": "tests"
+    },
+    {
+      "from": "cs:ShiftPlanner.Tests.Application.ShiftSuggestionEngineRulesTests.EvaluateWeekdayPreference_Avoided_ScoresNegative()",
+      "to": "cs:ShiftPlanner.Domain.Employees.WeekdayPreference",
       "kind": "tests"
     },
     {
@@ -15617,8 +15912,23 @@
       "kind": "tests"
     },
     {
+      "from": "cs:ShiftPlanner.Tests.Application.ShiftSuggestionEngineTests.Suggest(System.DateOnly, ShiftPlanner.Domain.Scheduling.ShiftType, System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Employees.Employee>, System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Scheduling.ShiftAssignment>?, System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Employees.Absence>?, System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Scheduling.ShiftAssignment>?, System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Contracts.Contract>?, System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Employees.ShiftTypePreference>?, System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Employees.WeekdayPreference>?)",
+      "to": "cs:ShiftPlanner.Application.Suggestions.SchedulingContext",
+      "kind": "tests"
+    },
+    {
       "from": "cs:ShiftPlanner.Tests.Application.ShiftSuggestionEngineTests.NotInEligibleShiftTypes_IsIneligible()",
       "to": "cs:ShiftPlanner.Domain.Employees.Employee.AddEligibleShiftType(ShiftPlanner.Domain.Scheduling.ShiftType)",
+      "kind": "tests"
+    },
+    {
+      "from": "cs:ShiftPlanner.Tests.Application.ShiftSuggestionEngineTests.PreferredShiftType_ScoresHigherThanAvoided()",
+      "to": "cs:ShiftPlanner.Domain.Employees.ShiftTypePreference",
+      "kind": "tests"
+    },
+    {
+      "from": "cs:ShiftPlanner.Tests.Application.ShiftSuggestionEngineTests.PreferredWeekday_AddsPositiveScore()",
+      "to": "cs:ShiftPlanner.Domain.Employees.WeekdayPreference",
       "kind": "tests"
     },
     {
@@ -15627,8 +15937,18 @@
       "kind": "tests"
     },
     {
+      "from": "cs:ShiftPlanner.Tests.Application.ShiftSuggestionEngineTests.Results_OrderedByEligibleThenScoreDescending()",
+      "to": "cs:ShiftPlanner.Domain.Employees.ShiftTypePreference",
+      "kind": "tests"
+    },
+    {
       "from": "cs:ShiftPlanner.Tests.Application.StaffingValidatorTests.BelowMinStaffing_ProducesWarning()",
       "to": "cs:ShiftPlanner.Application.Validation.StaffingValidator.Validate(System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Scheduling.ShiftAssignment>, System.Collections.Generic.IReadOnlyDictionary<System.Guid, ShiftPlanner.Domain.Scheduling.ShiftType>, ShiftPlanner.Application.Validation.ValidationResult)",
+      "kind": "tests"
+    },
+    {
+      "from": "cs:ShiftPlanner.Tests.Application.StaffingValidatorTests.BelowMinStaffing_ProducesWarning()",
+      "to": "cs:ShiftPlanner.Application.Validation.ValidationResult",
       "kind": "tests"
     },
     {
@@ -15637,8 +15957,18 @@
       "kind": "tests"
     },
     {
+      "from": "cs:ShiftPlanner.Tests.Application.StaffingValidatorTests.AboveMaxStaffing_ProducesWarning()",
+      "to": "cs:ShiftPlanner.Application.Validation.ValidationResult",
+      "kind": "tests"
+    },
+    {
       "from": "cs:ShiftPlanner.Tests.Application.StaffingValidatorTests.WithinMinMaxRange_NoWarning()",
       "to": "cs:ShiftPlanner.Application.Validation.StaffingValidator.Validate(System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Scheduling.ShiftAssignment>, System.Collections.Generic.IReadOnlyDictionary<System.Guid, ShiftPlanner.Domain.Scheduling.ShiftType>, ShiftPlanner.Application.Validation.ValidationResult)",
+      "kind": "tests"
+    },
+    {
+      "from": "cs:ShiftPlanner.Tests.Application.StaffingValidatorTests.WithinMinMaxRange_NoWarning()",
+      "to": "cs:ShiftPlanner.Application.Validation.ValidationResult",
       "kind": "tests"
     },
     {
@@ -15647,8 +15977,18 @@
       "kind": "tests"
     },
     {
+      "from": "cs:ShiftPlanner.Tests.Application.StaffingValidatorTests.UnconstrainedShiftType_NeverWarns()",
+      "to": "cs:ShiftPlanner.Application.Validation.ValidationResult",
+      "kind": "tests"
+    },
+    {
       "from": "cs:ShiftPlanner.Tests.Application.StaffingValidatorTests.DayWithNoAssignment_NotFlagged()",
       "to": "cs:ShiftPlanner.Application.Validation.StaffingValidator.Validate(System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Scheduling.ShiftAssignment>, System.Collections.Generic.IReadOnlyDictionary<System.Guid, ShiftPlanner.Domain.Scheduling.ShiftType>, ShiftPlanner.Application.Validation.ValidationResult)",
+      "kind": "tests"
+    },
+    {
+      "from": "cs:ShiftPlanner.Tests.Application.StaffingValidatorTests.DayWithNoAssignment_NotFlagged()",
+      "to": "cs:ShiftPlanner.Application.Validation.ValidationResult",
       "kind": "tests"
     },
     {
@@ -15657,8 +15997,18 @@
       "kind": "tests"
     },
     {
+      "from": "cs:ShiftPlanner.Tests.Application.StaffingValidatorTests.DistinctEmployeesCounted_NotAssignmentRows()",
+      "to": "cs:ShiftPlanner.Application.Validation.ValidationResult",
+      "kind": "tests"
+    },
+    {
       "from": "cs:ShiftPlanner.Tests.Application.StaffingValidatorTests.AssignmentReferencingUnknownShiftType_SkippedWithoutThrowing()",
       "to": "cs:ShiftPlanner.Application.Validation.StaffingValidator.Validate(System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Scheduling.ShiftAssignment>, System.Collections.Generic.IReadOnlyDictionary<System.Guid, ShiftPlanner.Domain.Scheduling.ShiftType>, ShiftPlanner.Application.Validation.ValidationResult)",
+      "kind": "tests"
+    },
+    {
+      "from": "cs:ShiftPlanner.Tests.Application.StaffingValidatorTests.AssignmentReferencingUnknownShiftType_SkippedWithoutThrowing()",
+      "to": "cs:ShiftPlanner.Application.Validation.ValidationResult",
       "kind": "tests"
     },
     {
@@ -15667,8 +16017,18 @@
       "kind": "tests"
     },
     {
+      "from": "cs:ShiftPlanner.Tests.Application.StaffingValidatorValidateRequirementsTests.RequirementWithZeroAssignments_FlagsUnderstaffed()",
+      "to": "cs:ShiftPlanner.Application.Validation.ValidationResult",
+      "kind": "tests"
+    },
+    {
       "from": "cs:ShiftPlanner.Tests.Application.StaffingValidatorValidateRequirementsTests.NoRequirementConfigured_UntrackedComboNotFlagged()",
       "to": "cs:ShiftPlanner.Application.Validation.StaffingValidator.ValidateRequirements(System.DateOnly, System.DateOnly, System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Scheduling.ShiftAssignment>, System.Collections.Generic.IReadOnlyDictionary<System.Guid, ShiftPlanner.Domain.Scheduling.ShiftType>, System.Collections.Generic.IReadOnlyDictionary<System.Guid, ShiftPlanner.Domain.Employees.Employee>, System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Scheduling.StaffingRequirement>, ShiftPlanner.Application.Validation.ValidationResult)",
+      "kind": "tests"
+    },
+    {
+      "from": "cs:ShiftPlanner.Tests.Application.StaffingValidatorValidateRequirementsTests.NoRequirementConfigured_UntrackedComboNotFlagged()",
+      "to": "cs:ShiftPlanner.Application.Validation.ValidationResult",
       "kind": "tests"
     },
     {
@@ -15677,8 +16037,18 @@
       "kind": "tests"
     },
     {
+      "from": "cs:ShiftPlanner.Tests.Application.StaffingValidatorValidateRequirementsTests.RequirementMet_NoWarning()",
+      "to": "cs:ShiftPlanner.Application.Validation.ValidationResult",
+      "kind": "tests"
+    },
+    {
       "from": "cs:ShiftPlanner.Tests.Application.StaffingValidatorValidateRequirementsTests.DayOfWeekMismatch_NotFlagged()",
       "to": "cs:ShiftPlanner.Application.Validation.StaffingValidator.ValidateRequirements(System.DateOnly, System.DateOnly, System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Scheduling.ShiftAssignment>, System.Collections.Generic.IReadOnlyDictionary<System.Guid, ShiftPlanner.Domain.Scheduling.ShiftType>, System.Collections.Generic.IReadOnlyDictionary<System.Guid, ShiftPlanner.Domain.Employees.Employee>, System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Scheduling.StaffingRequirement>, ShiftPlanner.Application.Validation.ValidationResult)",
+      "kind": "tests"
+    },
+    {
+      "from": "cs:ShiftPlanner.Tests.Application.StaffingValidatorValidateRequirementsTests.DayOfWeekMismatch_NotFlagged()",
+      "to": "cs:ShiftPlanner.Application.Validation.ValidationResult",
       "kind": "tests"
     },
     {
@@ -15687,13 +16057,63 @@
       "kind": "tests"
     },
     {
+      "from": "cs:ShiftPlanner.Tests.Application.StaffingValidatorValidateRequirementsTests.TeamScopedRequirement_OnlyCountsThatTeam()",
+      "to": "cs:ShiftPlanner.Application.Validation.ValidationResult",
+      "kind": "tests"
+    },
+    {
       "from": "cs:ShiftPlanner.Tests.Application.StaffingValidatorValidateRequirementsTests.GlobalRequirement_CountsAnyTeam()",
       "to": "cs:ShiftPlanner.Application.Validation.StaffingValidator.ValidateRequirements(System.DateOnly, System.DateOnly, System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Scheduling.ShiftAssignment>, System.Collections.Generic.IReadOnlyDictionary<System.Guid, ShiftPlanner.Domain.Scheduling.ShiftType>, System.Collections.Generic.IReadOnlyDictionary<System.Guid, ShiftPlanner.Domain.Employees.Employee>, System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Scheduling.StaffingRequirement>, ShiftPlanner.Application.Validation.ValidationResult)",
       "kind": "tests"
     },
     {
+      "from": "cs:ShiftPlanner.Tests.Application.StaffingValidatorValidateRequirementsTests.GlobalRequirement_CountsAnyTeam()",
+      "to": "cs:ShiftPlanner.Application.Validation.ValidationResult",
+      "kind": "tests"
+    },
+    {
       "from": "cs:ShiftPlanner.Tests.Application.StaffingValidatorValidateRequirementsTests.SpansEntireScheduleRange_ChecksEveryMatchingDate()",
       "to": "cs:ShiftPlanner.Application.Validation.StaffingValidator.ValidateRequirements(System.DateOnly, System.DateOnly, System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Scheduling.ShiftAssignment>, System.Collections.Generic.IReadOnlyDictionary<System.Guid, ShiftPlanner.Domain.Scheduling.ShiftType>, System.Collections.Generic.IReadOnlyDictionary<System.Guid, ShiftPlanner.Domain.Employees.Employee>, System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Scheduling.StaffingRequirement>, ShiftPlanner.Application.Validation.ValidationResult)",
+      "kind": "tests"
+    },
+    {
+      "from": "cs:ShiftPlanner.Tests.Application.StaffingValidatorValidateRequirementsTests.SpansEntireScheduleRange_ChecksEveryMatchingDate()",
+      "to": "cs:ShiftPlanner.Application.Validation.ValidationResult",
+      "kind": "tests"
+    },
+    {
+      "from": "cs:ShiftPlanner.Tests.Application.TestFactory.Employee(string, string)",
+      "to": "cs:ShiftPlanner.Domain.Employees.Employee",
+      "kind": "tests"
+    },
+    {
+      "from": "cs:ShiftPlanner.Tests.Application.TestFactory.ShiftType(System.TimeOnly?, System.TimeOnly?, int?, int?)",
+      "to": "cs:ShiftPlanner.Domain.Scheduling.ShiftType",
+      "kind": "tests"
+    },
+    {
+      "from": "cs:ShiftPlanner.Tests.Application.TestFactory.Schedule(System.DateOnly, System.DateOnly)",
+      "to": "cs:ShiftPlanner.Domain.Scheduling.Schedule",
+      "kind": "tests"
+    },
+    {
+      "from": "cs:ShiftPlanner.Tests.Application.TestFactory.Contract(System.Guid, System.DateOnly, decimal, System.DateOnly?, decimal?)",
+      "to": "cs:ShiftPlanner.Domain.Contracts.Contract",
+      "kind": "tests"
+    },
+    {
+      "from": "cs:ShiftPlanner.Tests.Application.TestFactory.Assignment(System.Guid, System.Guid, System.DateOnly, System.TimeOnly, System.TimeOnly, int, System.Guid?, bool)",
+      "to": "cs:ShiftPlanner.Domain.Scheduling.ShiftAssignment",
+      "kind": "tests"
+    },
+    {
+      "from": "cs:ShiftPlanner.Tests.Application.TestFactory.Absence(System.Guid, System.DateOnly, System.DateOnly, ShiftPlanner.Domain.Employees.AbsenceType)",
+      "to": "cs:ShiftPlanner.Domain.Employees.Absence",
+      "kind": "tests"
+    },
+    {
+      "from": "cs:ShiftPlanner.Tests.Application.TestFactory.StaffingRequirement(System.Guid, System.DayOfWeek, int, System.Guid?)",
+      "to": "cs:ShiftPlanner.Domain.Scheduling.StaffingRequirement",
       "kind": "tests"
     },
     {
@@ -15724,6 +16144,11 @@
     {
       "from": "cs:ShiftPlanner.Tests.Domain.AbsenceTests.Validate_DoesNotThrowForAValidRange()",
       "to": "cs:ShiftPlanner.Domain.Employees.Absence.Validate()",
+      "kind": "tests"
+    },
+    {
+      "from": "cs:ShiftPlanner.Tests.Domain.ContractTests.MakeContract(System.Guid, System.DateOnly, System.DateOnly?)",
+      "to": "cs:ShiftPlanner.Domain.Contracts.Contract",
       "kind": "tests"
     },
     {
@@ -15812,6 +16237,16 @@
       "kind": "tests"
     },
     {
+      "from": "cs:ShiftPlanner.Tests.Domain.EmployeeCollectionEncapsulationTests.AddEligibleShiftType_AddsToTheExposedCollection()",
+      "to": "cs:ShiftPlanner.Domain.Employees.Employee",
+      "kind": "tests"
+    },
+    {
+      "from": "cs:ShiftPlanner.Tests.Domain.EmployeeCollectionEncapsulationTests.AddEligibleShiftType_AddsToTheExposedCollection()",
+      "to": "cs:ShiftPlanner.Domain.Scheduling.ShiftType",
+      "kind": "tests"
+    },
+    {
       "from": "cs:ShiftPlanner.Tests.Domain.EmployeeCollectionEncapsulationTests.RemoveEligibleShiftType_RemovesFromTheExposedCollection()",
       "to": "cs:ShiftPlanner.Domain.Employees.Employee.AddEligibleShiftType(ShiftPlanner.Domain.Scheduling.ShiftType)",
       "kind": "tests"
@@ -15819,6 +16254,16 @@
     {
       "from": "cs:ShiftPlanner.Tests.Domain.EmployeeCollectionEncapsulationTests.RemoveEligibleShiftType_RemovesFromTheExposedCollection()",
       "to": "cs:ShiftPlanner.Domain.Employees.Employee.RemoveEligibleShiftType(ShiftPlanner.Domain.Scheduling.ShiftType)",
+      "kind": "tests"
+    },
+    {
+      "from": "cs:ShiftPlanner.Tests.Domain.EmployeeCollectionEncapsulationTests.RemoveEligibleShiftType_RemovesFromTheExposedCollection()",
+      "to": "cs:ShiftPlanner.Domain.Employees.Employee",
+      "kind": "tests"
+    },
+    {
+      "from": "cs:ShiftPlanner.Tests.Domain.EmployeeCollectionEncapsulationTests.RemoveEligibleShiftType_RemovesFromTheExposedCollection()",
+      "to": "cs:ShiftPlanner.Domain.Scheduling.ShiftType",
       "kind": "tests"
     },
     {
@@ -15832,8 +16277,48 @@
       "kind": "tests"
     },
     {
+      "from": "cs:ShiftPlanner.Tests.Domain.EmployeeCollectionEncapsulationTests.ReplaceEligibleShiftTypes_ClearsAndReplacesWholesale()",
+      "to": "cs:ShiftPlanner.Domain.Employees.Employee",
+      "kind": "tests"
+    },
+    {
+      "from": "cs:ShiftPlanner.Tests.Domain.EmployeeCollectionEncapsulationTests.ReplaceEligibleShiftTypes_ClearsAndReplacesWholesale()",
+      "to": "cs:ShiftPlanner.Domain.Scheduling.ShiftType",
+      "kind": "tests"
+    },
+    {
+      "from": "cs:ShiftPlanner.Tests.Domain.EmployeeIdTests.Equality_SameUnderlyingGuid_AreEqual()",
+      "to": "cs:ShiftPlanner.Domain.Common.EmployeeId",
+      "kind": "tests"
+    },
+    {
+      "from": "cs:ShiftPlanner.Tests.Domain.EmployeeIdTests.Equality_DifferentUnderlyingGuid_AreNotEqual()",
+      "to": "cs:ShiftPlanner.Domain.Common.EmployeeId",
+      "kind": "tests"
+    },
+    {
       "from": "cs:ShiftPlanner.Tests.Domain.EmployeeIdTests.GetHashCode_SameUnderlyingGuid_ProducesSameHash()",
       "to": "cs:ShiftPlanner.Domain.Common.EmployeeId.GetHashCode()",
+      "kind": "tests"
+    },
+    {
+      "from": "cs:ShiftPlanner.Tests.Domain.EmployeeIdTests.GetHashCode_SameUnderlyingGuid_ProducesSameHash()",
+      "to": "cs:ShiftPlanner.Domain.Common.EmployeeId",
+      "kind": "tests"
+    },
+    {
+      "from": "cs:ShiftPlanner.Tests.Domain.EmployeeIdTests.UsableAsDictionaryKey_ViaValueEquality()",
+      "to": "cs:ShiftPlanner.Domain.Common.EmployeeId",
+      "kind": "tests"
+    },
+    {
+      "from": "cs:ShiftPlanner.Tests.Domain.EmployeeIdTests.ImplicitConversion_ToGuid_RoundTrips()",
+      "to": "cs:ShiftPlanner.Domain.Common.EmployeeId",
+      "kind": "tests"
+    },
+    {
+      "from": "cs:ShiftPlanner.Tests.Domain.EmployeeIdTests.ImplicitConversion_PreservesEqualityAcrossTypes()",
+      "to": "cs:ShiftPlanner.Domain.Common.EmployeeId",
       "kind": "tests"
     },
     {
@@ -15844,6 +16329,21 @@
     {
       "from": "cs:ShiftPlanner.Tests.Domain.EmployeeIdTests.ToString_MatchesUnderlyingGuidsToString()",
       "to": "cs:ShiftPlanner.Domain.Common.EmployeeId.ToString()",
+      "kind": "tests"
+    },
+    {
+      "from": "cs:ShiftPlanner.Tests.Domain.EmployeeIdTests.ToString_MatchesUnderlyingGuidsToString()",
+      "to": "cs:ShiftPlanner.Domain.Common.EmployeeId",
+      "kind": "tests"
+    },
+    {
+      "from": "cs:ShiftPlanner.Tests.Domain.EmployeeIdTests.DistinctFromScheduleId_NotInterchangeableAtCompileTime()",
+      "to": "cs:ShiftPlanner.Domain.Common.EmployeeId",
+      "kind": "tests"
+    },
+    {
+      "from": "cs:ShiftPlanner.Tests.Domain.EmployeeIdTests.DistinctFromScheduleId_NotInterchangeableAtCompileTime()",
+      "to": "cs:ShiftPlanner.Domain.Common.ScheduleId",
       "kind": "tests"
     },
     {
@@ -15967,6 +16467,21 @@
       "kind": "tests"
     },
     {
+      "from": "cs:ShiftPlanner.Tests.Domain.HoursBalanceCalculatorTests.MakeContract(System.Guid, System.DateOnly, decimal)",
+      "to": "cs:ShiftPlanner.Domain.Contracts.Contract",
+      "kind": "tests"
+    },
+    {
+      "from": "cs:ShiftPlanner.Tests.Domain.HoursBalanceCalculatorTests.MakeSchedule(System.DateOnly, System.DateOnly)",
+      "to": "cs:ShiftPlanner.Domain.Scheduling.Schedule",
+      "kind": "tests"
+    },
+    {
+      "from": "cs:ShiftPlanner.Tests.Domain.HoursBalanceCalculatorTests.MakeAssignment(System.Guid, System.Guid, System.DateOnly, System.TimeOnly, System.TimeOnly)",
+      "to": "cs:ShiftPlanner.Domain.Scheduling.ShiftAssignment",
+      "kind": "tests"
+    },
+    {
       "from": "cs:ShiftPlanner.Tests.Domain.HoursBalanceCalculatorTests.CumulativeBalance_IgnoresSchedulesNotYetElapsed()",
       "to": "cs:ShiftPlanner.Domain.Scheduling.HoursBalanceCalculator.CumulativeBalance(System.Guid, System.DateOnly, System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Scheduling.Schedule>, System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Scheduling.ShiftAssignment>, System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Contracts.Contract>, System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Employees.Absence>?, System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Employees.HoursAdjustment>?)",
       "kind": "tests"
@@ -15982,6 +16497,11 @@
       "kind": "tests"
     },
     {
+      "from": "cs:ShiftPlanner.Tests.Domain.HoursBalanceCalculatorTests.CumulativeBalance_ExcludesAbsenceDaysFromExpectedHours()",
+      "to": "cs:ShiftPlanner.Domain.Employees.Absence",
+      "kind": "tests"
+    },
+    {
       "from": "cs:ShiftPlanner.Tests.Domain.HoursBalanceCalculatorTests.CumulativeBalance_NoContractCoveringSchedule_Skipped()",
       "to": "cs:ShiftPlanner.Domain.Scheduling.HoursBalanceCalculator.CumulativeBalance(System.Guid, System.DateOnly, System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Scheduling.Schedule>, System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Scheduling.ShiftAssignment>, System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Contracts.Contract>, System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Employees.Absence>?, System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Employees.HoursAdjustment>?)",
       "kind": "tests"
@@ -15992,8 +16512,18 @@
       "kind": "tests"
     },
     {
+      "from": "cs:ShiftPlanner.Tests.Domain.HoursBalanceCalculatorTests.CumulativeBalance_AddsPositiveAdjustmentBeforeCutoff()",
+      "to": "cs:ShiftPlanner.Domain.Employees.HoursAdjustment",
+      "kind": "tests"
+    },
+    {
       "from": "cs:ShiftPlanner.Tests.Domain.HoursBalanceCalculatorTests.CumulativeBalance_SubtractsNegativeAdjustmentBeforeCutoff()",
       "to": "cs:ShiftPlanner.Domain.Scheduling.HoursBalanceCalculator.CumulativeBalance(System.Guid, System.DateOnly, System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Scheduling.Schedule>, System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Scheduling.ShiftAssignment>, System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Contracts.Contract>, System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Employees.Absence>?, System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Employees.HoursAdjustment>?)",
+      "kind": "tests"
+    },
+    {
+      "from": "cs:ShiftPlanner.Tests.Domain.HoursBalanceCalculatorTests.CumulativeBalance_SubtractsNegativeAdjustmentBeforeCutoff()",
+      "to": "cs:ShiftPlanner.Domain.Employees.HoursAdjustment",
       "kind": "tests"
     },
     {
@@ -16002,13 +16532,28 @@
       "kind": "tests"
     },
     {
+      "from": "cs:ShiftPlanner.Tests.Domain.HoursBalanceCalculatorTests.CumulativeBalance_IgnoresAdjustmentOnOrAfterCutoff()",
+      "to": "cs:ShiftPlanner.Domain.Employees.HoursAdjustment",
+      "kind": "tests"
+    },
+    {
       "from": "cs:ShiftPlanner.Tests.Domain.HoursBalanceCalculatorTests.CumulativeBalance_IgnoresAdjustmentForAnotherEmployee()",
       "to": "cs:ShiftPlanner.Domain.Scheduling.HoursBalanceCalculator.CumulativeBalance(System.Guid, System.DateOnly, System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Scheduling.Schedule>, System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Scheduling.ShiftAssignment>, System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Contracts.Contract>, System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Employees.Absence>?, System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Employees.HoursAdjustment>?)",
       "kind": "tests"
     },
     {
+      "from": "cs:ShiftPlanner.Tests.Domain.HoursBalanceCalculatorTests.CumulativeBalance_IgnoresAdjustmentForAnotherEmployee()",
+      "to": "cs:ShiftPlanner.Domain.Employees.HoursAdjustment",
+      "kind": "tests"
+    },
+    {
       "from": "cs:ShiftPlanner.Tests.Domain.HoursBalanceCalculatorTests.CumulativeBalance_CombinesScheduleDeviationAndAdjustment()",
       "to": "cs:ShiftPlanner.Domain.Scheduling.HoursBalanceCalculator.CumulativeBalance(System.Guid, System.DateOnly, System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Scheduling.Schedule>, System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Scheduling.ShiftAssignment>, System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Contracts.Contract>, System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Employees.Absence>?, System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Employees.HoursAdjustment>?)",
+      "kind": "tests"
+    },
+    {
+      "from": "cs:ShiftPlanner.Tests.Domain.HoursBalanceCalculatorTests.CumulativeBalance_CombinesScheduleDeviationAndAdjustment()",
+      "to": "cs:ShiftPlanner.Domain.Employees.HoursAdjustment",
       "kind": "tests"
     },
     {
@@ -16037,8 +16582,18 @@
       "kind": "tests"
     },
     {
+      "from": "cs:ShiftPlanner.Tests.Domain.RefreshTokenTests.IsActive_TrueWhenNotRevokedAndNotExpired()",
+      "to": "cs:ShiftPlanner.Domain.Common.RefreshToken",
+      "kind": "tests"
+    },
+    {
       "from": "cs:ShiftPlanner.Tests.Domain.RefreshTokenTests.IsActive_FalseWhenRevoked()",
       "to": "cs:ShiftPlanner.Domain.Common.RefreshToken.Hash(string)",
+      "kind": "tests"
+    },
+    {
+      "from": "cs:ShiftPlanner.Tests.Domain.RefreshTokenTests.IsActive_FalseWhenRevoked()",
+      "to": "cs:ShiftPlanner.Domain.Common.RefreshToken",
       "kind": "tests"
     },
     {
@@ -16047,8 +16602,18 @@
       "kind": "tests"
     },
     {
+      "from": "cs:ShiftPlanner.Tests.Domain.RefreshTokenTests.IsActive_FalseWhenExpired()",
+      "to": "cs:ShiftPlanner.Domain.Common.RefreshToken",
+      "kind": "tests"
+    },
+    {
       "from": "cs:ShiftPlanner.Tests.Domain.RefreshTokenTests.IsActive_FalseWhenRevokedAndExpired()",
       "to": "cs:ShiftPlanner.Domain.Common.RefreshToken.Hash(string)",
+      "kind": "tests"
+    },
+    {
+      "from": "cs:ShiftPlanner.Tests.Domain.RefreshTokenTests.IsActive_FalseWhenRevokedAndExpired()",
+      "to": "cs:ShiftPlanner.Domain.Common.RefreshToken",
       "kind": "tests"
     },
     {
@@ -16057,8 +16622,43 @@
       "kind": "tests"
     },
     {
+      "from": "cs:ShiftPlanner.Tests.Domain.RefreshTokenTests.IsActive_TrueRightUpToExpiry()",
+      "to": "cs:ShiftPlanner.Domain.Common.RefreshToken",
+      "kind": "tests"
+    },
+    {
+      "from": "cs:ShiftPlanner.Tests.Domain.ScheduleIdTests.Equality_SameUnderlyingGuid_AreEqual()",
+      "to": "cs:ShiftPlanner.Domain.Common.ScheduleId",
+      "kind": "tests"
+    },
+    {
+      "from": "cs:ShiftPlanner.Tests.Domain.ScheduleIdTests.Equality_DifferentUnderlyingGuid_AreNotEqual()",
+      "to": "cs:ShiftPlanner.Domain.Common.ScheduleId",
+      "kind": "tests"
+    },
+    {
       "from": "cs:ShiftPlanner.Tests.Domain.ScheduleIdTests.GetHashCode_SameUnderlyingGuid_ProducesSameHash()",
       "to": "cs:ShiftPlanner.Domain.Common.ScheduleId.GetHashCode()",
+      "kind": "tests"
+    },
+    {
+      "from": "cs:ShiftPlanner.Tests.Domain.ScheduleIdTests.GetHashCode_SameUnderlyingGuid_ProducesSameHash()",
+      "to": "cs:ShiftPlanner.Domain.Common.ScheduleId",
+      "kind": "tests"
+    },
+    {
+      "from": "cs:ShiftPlanner.Tests.Domain.ScheduleIdTests.UsableAsDictionaryKey_ViaValueEquality()",
+      "to": "cs:ShiftPlanner.Domain.Common.ScheduleId",
+      "kind": "tests"
+    },
+    {
+      "from": "cs:ShiftPlanner.Tests.Domain.ScheduleIdTests.ImplicitConversion_ToGuid_RoundTrips()",
+      "to": "cs:ShiftPlanner.Domain.Common.ScheduleId",
+      "kind": "tests"
+    },
+    {
+      "from": "cs:ShiftPlanner.Tests.Domain.ScheduleIdTests.ImplicitConversion_PreservesEqualityAcrossTypes()",
+      "to": "cs:ShiftPlanner.Domain.Common.ScheduleId",
       "kind": "tests"
     },
     {
@@ -16069,6 +16669,16 @@
     {
       "from": "cs:ShiftPlanner.Tests.Domain.ScheduleIdTests.ToString_MatchesUnderlyingGuidsToString()",
       "to": "cs:ShiftPlanner.Domain.Common.ScheduleId.ToString()",
+      "kind": "tests"
+    },
+    {
+      "from": "cs:ShiftPlanner.Tests.Domain.ScheduleIdTests.ToString_MatchesUnderlyingGuidsToString()",
+      "to": "cs:ShiftPlanner.Domain.Common.ScheduleId",
+      "kind": "tests"
+    },
+    {
+      "from": "cs:ShiftPlanner.Tests.Domain.ScheduleTests.NewDraftSchedule()",
+      "to": "cs:ShiftPlanner.Domain.Scheduling.Schedule",
       "kind": "tests"
     },
     {
@@ -16132,8 +16742,18 @@
       "kind": "tests"
     },
     {
+      "from": "cs:ShiftPlanner.Tests.Domain.WageCalculatorTests.LaborCostWithSurcharges_NullRate_ReturnsNull()",
+      "to": "cs:ShiftPlanner.Domain.Scheduling.ShiftTiming",
+      "kind": "tests"
+    },
+    {
       "from": "cs:ShiftPlanner.Tests.Domain.WageCalculatorTests.LaborCostWithSurcharges_PlainWeekday_NoSurcharge()",
       "to": "cs:ShiftPlanner.Domain.Scheduling.WageCalculator.LaborCostWithSurcharges(ShiftPlanner.Domain.Scheduling.ShiftTiming, System.DayOfWeek, bool, decimal, decimal?)",
+      "kind": "tests"
+    },
+    {
+      "from": "cs:ShiftPlanner.Tests.Domain.WageCalculatorTests.LaborCostWithSurcharges_PlainWeekday_NoSurcharge()",
+      "to": "cs:ShiftPlanner.Domain.Scheduling.ShiftTiming",
       "kind": "tests"
     },
     {
@@ -16142,8 +16762,18 @@
       "kind": "tests"
     },
     {
+      "from": "cs:ShiftPlanner.Tests.Domain.WageCalculatorTests.LaborCostWithSurcharges_NightOverlap_AddsPartialSurcharge()",
+      "to": "cs:ShiftPlanner.Domain.Scheduling.ShiftTiming",
+      "kind": "tests"
+    },
+    {
       "from": "cs:ShiftPlanner.Tests.Domain.WageCalculatorTests.LaborCostWithSurcharges_Sunday_AddsFiftyPercent()",
       "to": "cs:ShiftPlanner.Domain.Scheduling.WageCalculator.LaborCostWithSurcharges(ShiftPlanner.Domain.Scheduling.ShiftTiming, System.DayOfWeek, bool, decimal, decimal?)",
+      "kind": "tests"
+    },
+    {
+      "from": "cs:ShiftPlanner.Tests.Domain.WageCalculatorTests.LaborCostWithSurcharges_Sunday_AddsFiftyPercent()",
+      "to": "cs:ShiftPlanner.Domain.Scheduling.ShiftTiming",
       "kind": "tests"
     },
     {
@@ -16152,8 +16782,18 @@
       "kind": "tests"
     },
     {
+      "from": "cs:ShiftPlanner.Tests.Domain.WageCalculatorTests.LaborCostWithSurcharges_Holiday_AddsOneHundredTwentyFivePercent()",
+      "to": "cs:ShiftPlanner.Domain.Scheduling.ShiftTiming",
+      "kind": "tests"
+    },
+    {
       "from": "cs:ShiftPlanner.Tests.Domain.WageCalculatorTests.LaborCostWithSurcharges_HolidayOnSunday_DoesNotStack_HolidayWins()",
       "to": "cs:ShiftPlanner.Domain.Scheduling.WageCalculator.LaborCostWithSurcharges(ShiftPlanner.Domain.Scheduling.ShiftTiming, System.DayOfWeek, bool, decimal, decimal?)",
+      "kind": "tests"
+    },
+    {
+      "from": "cs:ShiftPlanner.Tests.Domain.WageCalculatorTests.LaborCostWithSurcharges_HolidayOnSunday_DoesNotStack_HolidayWins()",
+      "to": "cs:ShiftPlanner.Domain.Scheduling.ShiftTiming",
       "kind": "tests"
     },
     {
@@ -16162,8 +16802,18 @@
       "kind": "tests"
     },
     {
+      "from": "cs:ShiftPlanner.Tests.Domain.WageCalculatorTests.LaborCostWithSurcharges_NightStacksAdditivelyWithSunday()",
+      "to": "cs:ShiftPlanner.Domain.Scheduling.ShiftTiming",
+      "kind": "tests"
+    },
+    {
       "from": "cs:ShiftPlanner.Tests.Domain.WageCalculatorTests.LaborCostWithSurcharges_NightWindowSpanningMidnight_CountsBothSides()",
       "to": "cs:ShiftPlanner.Domain.Scheduling.WageCalculator.LaborCostWithSurcharges(ShiftPlanner.Domain.Scheduling.ShiftTiming, System.DayOfWeek, bool, decimal, decimal?)",
+      "kind": "tests"
+    },
+    {
+      "from": "cs:ShiftPlanner.Tests.Domain.WageCalculatorTests.LaborCostWithSurcharges_NightWindowSpanningMidnight_CountsBothSides()",
+      "to": "cs:ShiftPlanner.Domain.Scheduling.ShiftTiming",
       "kind": "tests"
     },
     {
@@ -16172,8 +16822,18 @@
       "kind": "tests"
     },
     {
+      "from": "cs:ShiftPlanner.Tests.Domain.WageCalculatorTests.Breakdown_NullRate_ReturnsNull()",
+      "to": "cs:ShiftPlanner.Domain.Scheduling.ShiftTiming",
+      "kind": "tests"
+    },
+    {
       "from": "cs:ShiftPlanner.Tests.Domain.WageCalculatorTests.Breakdown_PlainWeekday_OnlyRegular()",
       "to": "cs:ShiftPlanner.Domain.Scheduling.WageCalculator.Breakdown(ShiftPlanner.Domain.Scheduling.ShiftTiming, System.DayOfWeek, bool, decimal, decimal?)",
+      "kind": "tests"
+    },
+    {
+      "from": "cs:ShiftPlanner.Tests.Domain.WageCalculatorTests.Breakdown_PlainWeekday_OnlyRegular()",
+      "to": "cs:ShiftPlanner.Domain.Scheduling.ShiftTiming",
       "kind": "tests"
     },
     {
@@ -16182,8 +16842,18 @@
       "kind": "tests"
     },
     {
+      "from": "cs:ShiftPlanner.Tests.Domain.WageCalculatorTests.Breakdown_NightOverlap_SplitOutSeparately()",
+      "to": "cs:ShiftPlanner.Domain.Scheduling.ShiftTiming",
+      "kind": "tests"
+    },
+    {
       "from": "cs:ShiftPlanner.Tests.Domain.WageCalculatorTests.Breakdown_Sunday_SplitOutSeparately()",
       "to": "cs:ShiftPlanner.Domain.Scheduling.WageCalculator.Breakdown(ShiftPlanner.Domain.Scheduling.ShiftTiming, System.DayOfWeek, bool, decimal, decimal?)",
+      "kind": "tests"
+    },
+    {
+      "from": "cs:ShiftPlanner.Tests.Domain.WageCalculatorTests.Breakdown_Sunday_SplitOutSeparately()",
+      "to": "cs:ShiftPlanner.Domain.Scheduling.ShiftTiming",
       "kind": "tests"
     },
     {
@@ -16192,6 +16862,11 @@
       "kind": "tests"
     },
     {
+      "from": "cs:ShiftPlanner.Tests.Domain.WageCalculatorTests.Breakdown_Holiday_SplitOutSeparately_HolidayWinsOverSunday()",
+      "to": "cs:ShiftPlanner.Domain.Scheduling.ShiftTiming",
+      "kind": "tests"
+    },
+    {
       "from": "cs:ShiftPlanner.Tests.Domain.WageCalculatorTests.Breakdown_TotalAlwaysMatchesLaborCost(int, int, int, int, System.DayOfWeek, bool, decimal, decimal)",
       "to": "cs:ShiftPlanner.Domain.Scheduling.WageCalculator.Breakdown(ShiftPlanner.Domain.Scheduling.ShiftTiming, System.DayOfWeek, bool, decimal, decimal?)",
       "kind": "tests"
@@ -16202,8 +16877,18 @@
       "kind": "tests"
     },
     {
+      "from": "cs:ShiftPlanner.Tests.Domain.WageCalculatorTests.Breakdown_TotalAlwaysMatchesLaborCost(int, int, int, int, System.DayOfWeek, bool, decimal, decimal)",
+      "to": "cs:ShiftPlanner.Domain.Scheduling.ShiftTiming",
+      "kind": "tests"
+    },
+    {
       "from": "cs:ShiftPlanner.Tests.Domain.WageCalculatorTests.LaborCostWithSurcharges_BreakStartTimeUnset_MatchesOldApproximation()",
       "to": "cs:ShiftPlanner.Domain.Scheduling.WageCalculator.LaborCostWithSurcharges(ShiftPlanner.Domain.Scheduling.ShiftTiming, System.DayOfWeek, bool, decimal, decimal?)",
+      "kind": "tests"
+    },
+    {
+      "from": "cs:ShiftPlanner.Tests.Domain.WageCalculatorTests.LaborCostWithSurcharges_BreakStartTimeUnset_MatchesOldApproximation()",
+      "to": "cs:ShiftPlanner.Domain.Scheduling.ShiftTiming",
       "kind": "tests"
     },
     {
@@ -16212,8 +16897,18 @@
       "kind": "tests"
     },
     {
+      "from": "cs:ShiftPlanner.Tests.Domain.WageCalculatorTests.LaborCostWithSurcharges_BreakEntirelyInsideNightWindow_ReducesNightSurcharge()",
+      "to": "cs:ShiftPlanner.Domain.Scheduling.ShiftTiming",
+      "kind": "tests"
+    },
+    {
       "from": "cs:ShiftPlanner.Tests.Domain.WageCalculatorTests.LaborCostWithSurcharges_BreakEntirelyOutsideNightWindow_NoReduction()",
       "to": "cs:ShiftPlanner.Domain.Scheduling.WageCalculator.LaborCostWithSurcharges(ShiftPlanner.Domain.Scheduling.ShiftTiming, System.DayOfWeek, bool, decimal, decimal?)",
+      "kind": "tests"
+    },
+    {
+      "from": "cs:ShiftPlanner.Tests.Domain.WageCalculatorTests.LaborCostWithSurcharges_BreakEntirelyOutsideNightWindow_NoReduction()",
+      "to": "cs:ShiftPlanner.Domain.Scheduling.ShiftTiming",
       "kind": "tests"
     },
     {
@@ -16222,8 +16917,18 @@
       "kind": "tests"
     },
     {
+      "from": "cs:ShiftPlanner.Tests.Domain.WageCalculatorTests.LaborCostWithSurcharges_BreakStraddlesNightWindowBoundary_PartialReduction()",
+      "to": "cs:ShiftPlanner.Domain.Scheduling.ShiftTiming",
+      "kind": "tests"
+    },
+    {
       "from": "cs:ShiftPlanner.Tests.Domain.WageCalculatorTests.LaborCost_BreakSpanningPastMidnight_ClampsToEndOfDay()",
       "to": "cs:ShiftPlanner.Domain.Scheduling.WageCalculator.LaborCostWithSurcharges(ShiftPlanner.Domain.Scheduling.ShiftTiming, System.DayOfWeek, bool, decimal, decimal?)",
+      "kind": "tests"
+    },
+    {
+      "from": "cs:ShiftPlanner.Tests.Domain.WageCalculatorTests.LaborCost_BreakSpanningPastMidnight_ClampsToEndOfDay()",
+      "to": "cs:ShiftPlanner.Domain.Scheduling.ShiftTiming",
       "kind": "tests"
     },
     {
@@ -16232,13 +16937,28 @@
       "kind": "tests"
     },
     {
+      "from": "cs:ShiftPlanner.Tests.Domain.WageCalculatorTests.LaborCostWithSurcharges_EndsNextDay_FullyWithinNightWindow()",
+      "to": "cs:ShiftPlanner.Domain.Scheduling.ShiftTiming",
+      "kind": "tests"
+    },
+    {
       "from": "cs:ShiftPlanner.Tests.Domain.WageCalculatorTests.LaborCostWithSurcharges_EndsNextDay_PartialNightOverlapOnBothSides()",
       "to": "cs:ShiftPlanner.Domain.Scheduling.WageCalculator.LaborCostWithSurcharges(ShiftPlanner.Domain.Scheduling.ShiftTiming, System.DayOfWeek, bool, decimal, decimal?)",
       "kind": "tests"
     },
     {
+      "from": "cs:ShiftPlanner.Tests.Domain.WageCalculatorTests.LaborCostWithSurcharges_EndsNextDay_PartialNightOverlapOnBothSides()",
+      "to": "cs:ShiftPlanner.Domain.Scheduling.ShiftTiming",
+      "kind": "tests"
+    },
+    {
       "from": "cs:ShiftPlanner.Tests.Domain.WageCalculatorTests.LaborCostWithSurcharges_EndsNextDay_BreakOnFollowingDayReducesNightOverlap()",
       "to": "cs:ShiftPlanner.Domain.Scheduling.WageCalculator.LaborCostWithSurcharges(ShiftPlanner.Domain.Scheduling.ShiftTiming, System.DayOfWeek, bool, decimal, decimal?)",
+      "kind": "tests"
+    },
+    {
+      "from": "cs:ShiftPlanner.Tests.Domain.WageCalculatorTests.LaborCostWithSurcharges_EndsNextDay_BreakOnFollowingDayReducesNightOverlap()",
+      "to": "cs:ShiftPlanner.Domain.Scheduling.ShiftTiming",
       "kind": "tests"
     },
     {
@@ -16332,8 +17052,23 @@
       "kind": "tests"
     },
     {
+      "from": "cs:ShiftPlanner.Tests.Domain.WorkingTimeCalculatorTests.ExpectedHours_ScalesWeeklyHoursBySpan()",
+      "to": "cs:ShiftPlanner.Domain.Contracts.Contract",
+      "kind": "tests"
+    },
+    {
       "from": "cs:ShiftPlanner.Tests.Domain.WorkingTimeCalculatorTests.ExpectedHours_ExcludesAbsenceDaysOverlappingRange()",
       "to": "cs:ShiftPlanner.Domain.Scheduling.WorkingTimeCalculator.ExpectedHours(System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Contracts.Contract>, System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Employees.Absence>, System.Guid, System.DateOnly, System.DateOnly)",
+      "kind": "tests"
+    },
+    {
+      "from": "cs:ShiftPlanner.Tests.Domain.WorkingTimeCalculatorTests.ExpectedHours_ExcludesAbsenceDaysOverlappingRange()",
+      "to": "cs:ShiftPlanner.Domain.Contracts.Contract",
+      "kind": "tests"
+    },
+    {
+      "from": "cs:ShiftPlanner.Tests.Domain.WorkingTimeCalculatorTests.ExpectedHours_ExcludesAbsenceDaysOverlappingRange()",
+      "to": "cs:ShiftPlanner.Domain.Employees.Absence",
       "kind": "tests"
     },
     {
@@ -16342,8 +17077,23 @@
       "kind": "tests"
     },
     {
+      "from": "cs:ShiftPlanner.Tests.Domain.WorkingTimeCalculatorTests.ExpectedHours_AbsenceForDifferentEmployee_Ignored()",
+      "to": "cs:ShiftPlanner.Domain.Contracts.Contract",
+      "kind": "tests"
+    },
+    {
+      "from": "cs:ShiftPlanner.Tests.Domain.WorkingTimeCalculatorTests.ExpectedHours_AbsenceForDifferentEmployee_Ignored()",
+      "to": "cs:ShiftPlanner.Domain.Employees.Absence",
+      "kind": "tests"
+    },
+    {
       "from": "cs:ShiftPlanner.Tests.Domain.WorkingTimeCalculatorTests.ExpectedHours_ContractChangesMidSpan_BlendsBothSegments()",
       "to": "cs:ShiftPlanner.Domain.Scheduling.WorkingTimeCalculator.ExpectedHours(System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Contracts.Contract>, System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Employees.Absence>, System.Guid, System.DateOnly, System.DateOnly)",
+      "kind": "tests"
+    },
+    {
+      "from": "cs:ShiftPlanner.Tests.Domain.WorkingTimeCalculatorTests.ExpectedHours_ContractChangesMidSpan_BlendsBothSegments()",
+      "to": "cs:ShiftPlanner.Domain.Contracts.Contract",
       "kind": "tests"
     },
     {
@@ -16352,8 +17102,18 @@
       "kind": "tests"
     },
     {
+      "from": "cs:ShiftPlanner.Tests.Domain.WorkingTimeCalculatorTests.ExpectedHours_GapBetweenContracts_ContributesZeroForUncoveredDays()",
+      "to": "cs:ShiftPlanner.Domain.Contracts.Contract",
+      "kind": "tests"
+    },
+    {
       "from": "cs:ShiftPlanner.Tests.Domain.WorkingTimeCalculatorTests.ExpectedHours_MonthlyContingent_FullCalendarMonth_ReturnsExactFigure()",
       "to": "cs:ShiftPlanner.Domain.Scheduling.WorkingTimeCalculator.ExpectedHours(System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Contracts.Contract>, System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Employees.Absence>, System.Guid, System.DateOnly, System.DateOnly)",
+      "kind": "tests"
+    },
+    {
+      "from": "cs:ShiftPlanner.Tests.Domain.WorkingTimeCalculatorTests.ExpectedHours_MonthlyContingent_FullCalendarMonth_ReturnsExactFigure()",
+      "to": "cs:ShiftPlanner.Domain.Contracts.Contract",
       "kind": "tests"
     },
     {
@@ -16362,8 +17122,18 @@
       "kind": "tests"
     },
     {
+      "from": "cs:ShiftPlanner.Tests.Domain.WorkingTimeCalculatorTests.ExpectedHours_MonthlyContingent_PartialMonth_ProratesLinearly()",
+      "to": "cs:ShiftPlanner.Domain.Contracts.Contract",
+      "kind": "tests"
+    },
+    {
       "from": "cs:ShiftPlanner.Tests.Domain.WorkingTimeCalculatorTests.ExpectedHours_MonthlyContingent_SpansTwoCalendarMonths_ProratesEachMonthSeparately()",
       "to": "cs:ShiftPlanner.Domain.Scheduling.WorkingTimeCalculator.ExpectedHours(System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Contracts.Contract>, System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Employees.Absence>, System.Guid, System.DateOnly, System.DateOnly)",
+      "kind": "tests"
+    },
+    {
+      "from": "cs:ShiftPlanner.Tests.Domain.WorkingTimeCalculatorTests.ExpectedHours_MonthlyContingent_SpansTwoCalendarMonths_ProratesEachMonthSeparately()",
+      "to": "cs:ShiftPlanner.Domain.Contracts.Contract",
       "kind": "tests"
     },
     {
@@ -16372,13 +17142,33 @@
       "kind": "tests"
     },
     {
+      "from": "cs:ShiftPlanner.Tests.Domain.WorkingTimeCalculatorTests.ExpectedHours_MonthlyContingent_ExcludesAbsenceDays()",
+      "to": "cs:ShiftPlanner.Domain.Contracts.Contract",
+      "kind": "tests"
+    },
+    {
+      "from": "cs:ShiftPlanner.Tests.Domain.WorkingTimeCalculatorTests.ExpectedHours_MonthlyContingent_ExcludesAbsenceDays()",
+      "to": "cs:ShiftPlanner.Domain.Employees.Absence",
+      "kind": "tests"
+    },
+    {
       "from": "cs:ShiftPlanner.Tests.Domain.WorkingTimeCalculatorTests.ExpectedHours_MonthlyContingentSet_TakesPrecedenceOverWeeklyHours()",
       "to": "cs:ShiftPlanner.Domain.Scheduling.WorkingTimeCalculator.ExpectedHours(System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Contracts.Contract>, System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Employees.Absence>, System.Guid, System.DateOnly, System.DateOnly)",
       "kind": "tests"
     },
     {
+      "from": "cs:ShiftPlanner.Tests.Domain.WorkingTimeCalculatorTests.ExpectedHours_MonthlyContingentSet_TakesPrecedenceOverWeeklyHours()",
+      "to": "cs:ShiftPlanner.Domain.Contracts.Contract",
+      "kind": "tests"
+    },
+    {
       "from": "cs:ShiftPlanner.Tests.Domain.WorkingTimeCalculatorTests.ExpectedHours_MonthlyContingentContractChangesMidMonth_BlendsWithWeeklySegment()",
       "to": "cs:ShiftPlanner.Domain.Scheduling.WorkingTimeCalculator.ExpectedHours(System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Contracts.Contract>, System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Employees.Absence>, System.Guid, System.DateOnly, System.DateOnly)",
+      "kind": "tests"
+    },
+    {
+      "from": "cs:ShiftPlanner.Tests.Domain.WorkingTimeCalculatorTests.ExpectedHours_MonthlyContingentContractChangesMidMonth_BlendsWithWeeklySegment()",
+      "to": "cs:ShiftPlanner.Domain.Contracts.Contract",
       "kind": "tests"
     },
     {

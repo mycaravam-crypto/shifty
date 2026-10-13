@@ -5,6 +5,16 @@ Layer **state** · project `frontend`
 
 Project navigation: [frontend](../projects/frontend-da6498268e99.md)
 
+## Overview 🤖
+
+Manages the state and logic for various parts of the frontend application, including authentication, settings, and toasts.
+
+**Responsibilities.** Provides reactive stores for managing authentication state, application settings, and toast notifications.
+
+**Usage.** Used by various components, views, and services throughout the frontend to manage and interact with application state.
+
+_AI draft from the facts on this page; review it, then write the module's documentation yourself._
+
 ## Key components
 
 | Component | Kind | Used by | Summary |
@@ -75,4 +85,4 @@ _module_ · [toast.ts](../../frontend/src/stores/toast.ts#L1)
 _type_ · [toast.ts](../../frontend/src/stores/toast.ts#L3)
 
 ---
-_Generated from 8 symbols in [frontend/src/stores/auth.ts](../../frontend/src/stores/auth.ts), [frontend/src/stores/settings.ts](../../frontend/src/stores/settings.ts), [frontend/src/stores/toast.ts](../../frontend/src/stores/toast.ts) (commit `534b8b5`, profile `default`). Sections marked _fact_ are read from the code, _inferred_ come from heuristics, 🤖 marks AI drafts._
+_Generated from 8 symbols in [frontend/src/stores/auth.ts](../../frontend/src/stores/auth.ts), [frontend/src/stores/settings.ts](../../frontend/src/stores/settings.ts), [frontend/src/stores/toast.ts](../../frontend/src/stores/toast.ts) (commit `11abf0b`, profile `default`). Sections marked _fact_ are read from the code, _inferred_ come from heuristics, 🤖 marks AI drafts._

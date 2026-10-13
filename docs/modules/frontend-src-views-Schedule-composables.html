@@ -168,6 +168,11 @@ main tbody tr:last-child td { border-bottom: 0; }
 <h1 id="frontendsrcviewsschedulecomposables">frontend/src/views/Schedule/composables</h1>
 <p>Layer <strong>state</strong> · project <code>frontend</code></p>
 <p>Project navigation: <a href="../projects/frontend-da6498268e99.html">frontend</a></p>
+<h2 id="overview-">Overview 🤖</h2>
+<p>Contains Vue composables for managing various aspects of the schedule view, including keyboard navigation, planning actions, planning board data, drag-and-drop interactions, and filters.</p>
+<p><strong>Responsibilities.</strong> Manages keyboard navigation, planning actions, planning board data, drag-and-drop interactions, and filters for the schedule view.</p>
+<p><strong>Usage.</strong> Used by the schedule view components to manage their respective functionalities.</p>
+<p><em>AI draft from the facts on this page; review it, then write the module's documentation yourself.</em></p>
 <h2 id="key-components">Key components</h2>
 <div class="table-wrap"><table>
 <thead>
@@ -296,8 +301,8 @@ main tbody tr:last-child td { border-bottom: 0; }
 <tbody>
 <tr>
 <td><a href="../../frontend/src/views/Schedule/composables/useGridKeyboardNav.ts#L18"><code>useGridKeyboardNav</code></a> ⚠</td>
-<td></td>
-<td></td>
+<td>🤖 <em>Manages keyboard navigation for a grid, handling focus and key events.</em></td>
+<td>responsibilities 🤖: Provides functions to handle keyboard navigation within a grid, including focus management and key event handling.; behaviour 🤖: Initializes a reactive reference for the focused cell. Provides functions to check if a cell is focusable, get the ARIA label for a cell, set the focused cell, get the currently focused grid cell, and handle keydown events for grid cells.; usage 🤖: Used in the ScheduleView.vue component to manage keyboard navigation within the grid.</td>
 <td>24</td>
 </tr>
 </tbody>
@@ -316,7 +321,7 @@ main tbody tr:last-child td { border-bottom: 0; }
 <tbody>
 <tr>
 <td><a href="../../frontend/src/views/Schedule/composables/usePlanningActions.ts#L26"><code>usePlanningActions</code></a> ⚠</td>
-<td></td>
+<td>🤖 <em>Manages actions related to planning, such as creating, publishing, archiving, and copying schedules.</em></td>
 <td></td>
 <td>35</td>
 </tr>
@@ -336,8 +341,8 @@ main tbody tr:last-child td { border-bottom: 0; }
 <tbody>
 <tr>
 <td><a href="../../frontend/src/views/Schedule/composables/usePlanningBoard.ts#L38"><code>usePlanningBoard</code></a> ⚠</td>
-<td></td>
-<td></td>
+<td>🤖 <em>Loads and manages data for the planning board, including employees, teams, shift types, schedules, and holidays.</em></td>
+<td>side effects 🤖: Makes HTTP calls to fetch data from the ShiftPlanner API.; usage 🤖: Used in the MonthOverviewView.vue and ScheduleView.vue components to load and display planning board data.</td>
 <td>64</td>
 </tr>
 </tbody>
@@ -374,8 +379,8 @@ main tbody tr:last-child td { border-bottom: 0; }
 </tr>
 <tr>
 <td><a href="../../frontend/src/views/Schedule/composables/useScheduleDnD.ts#L69"><code>useScheduleDnD</code></a> ⚠</td>
-<td></td>
-<td></td>
+<td>🤖 <em>Manages drag-and-drop interactions for scheduling, handling pointer events and invoking callbacks.</em></td>
+<td>behaviour 🤖: Initializes drag state, listens for pointer events, and invokes callbacks based on drag actions.; exception 🤖: None explicitly handled in the source.; usage 🤖: Used in the ScheduleView.vue to handle drag-and-drop for scheduling.</td>
 <td>16</td>
 </tr>
 </tbody>
@@ -394,18 +399,18 @@ main tbody tr:last-child td { border-bottom: 0; }
 <tbody>
 <tr>
 <td><a href="../../frontend/src/views/Schedule/composables/useScheduleFilters.ts#L10"><code>useScheduleFilters</code></a> ⚠</td>
-<td></td>
-<td></td>
+<td>🤖 <em>Manages filters for the schedule view, including search and team filters.</em></td>
+<td>responsibilities 🤖: Manages state for search and team filters; applies filters from the URL; handles default team settings; consumes deep links.; behaviour 🤖: Initializes filters from the URL; updates the URL when filters change; applies default team settings if no team is specified in the URL; consumes deep links to navigate to a specific schedule.; side effects 🤖: Updates the URL query parameters.; usage 🤖: Used in the ScheduleView and MonthOverviewView components to manage and apply filters.</td>
 <td>9</td>
 </tr>
 </tbody>
 </table></div>
 <hr />
-<p><em>Generated from 16 symbols in <a href="../../frontend/src/views/Schedule/composables/useGridKeyboardNav.ts">frontend/src/views/Schedule/composables/useGridKeyboardNav.ts</a>, <a href="../../frontend/src/views/Schedule/composables/usePlanningActions.ts">frontend/src/views/Schedule/composables/usePlanningActions.ts</a>, <a href="../../frontend/src/views/Schedule/composables/usePlanningBoard.ts">frontend/src/views/Schedule/composables/usePlanningBoard.ts</a>, <a href="../../frontend/src/views/Schedule/composables/useScheduleDnD.ts">frontend/src/views/Schedule/composables/useScheduleDnD.ts</a>, <a href="../../frontend/src/views/Schedule/composables/useScheduleFilters.ts">frontend/src/views/Schedule/composables/useScheduleFilters.ts</a> (commit <code>534b8b5</code>, profile <code>default</code>). Sections marked <em>fact</em> are read from the code, <em>inferred</em> come from heuristics, 🤖 marks AI drafts.</em></p>
+<p><em>Generated from 16 symbols in <a href="../../frontend/src/views/Schedule/composables/useGridKeyboardNav.ts">frontend/src/views/Schedule/composables/useGridKeyboardNav.ts</a>, <a href="../../frontend/src/views/Schedule/composables/usePlanningActions.ts">frontend/src/views/Schedule/composables/usePlanningActions.ts</a>, <a href="../../frontend/src/views/Schedule/composables/usePlanningBoard.ts">frontend/src/views/Schedule/composables/usePlanningBoard.ts</a>, <a href="../../frontend/src/views/Schedule/composables/useScheduleDnD.ts">frontend/src/views/Schedule/composables/useScheduleDnD.ts</a>, <a href="../../frontend/src/views/Schedule/composables/useScheduleFilters.ts">frontend/src/views/Schedule/composables/useScheduleFilters.ts</a> (commit <code>11abf0b</code>, profile <code>default</code>). Sections marked <em>fact</em> are read from the code, <em>inferred</em> come from heuristics, 🤖 marks AI drafts.</em></p>
 
-<footer class="generator">Generated by docwizz 0.7.32-dev.1</footer>
+<footer class="generator">Generated by docwizz 0.7.44-dev.1</footer>
 </main>
-<aside class="toc" aria-label="On this page"><div class="toc-inner"><div class="toc-title">On this page</div><ul><li><a href="#key-components">Key components</a></li><li><a href="#flows-through-this-module">Flows through this module</a></li><li><a href="#documentation-gaps">Documentation gaps</a></li><li><a href="#architecture-observations">Architecture observations</a></li><li><a href="#dependencies">Dependencies</a></li><li><a href="#components">Components</a></li></ul></div></aside>
+<aside class="toc" aria-label="On this page"><div class="toc-inner"><div class="toc-title">On this page</div><ul><li><a href="#overview-">Overview 🤖</a></li><li><a href="#key-components">Key components</a></li><li><a href="#flows-through-this-module">Flows through this module</a></li><li><a href="#documentation-gaps">Documentation gaps</a></li><li><a href="#architecture-observations">Architecture observations</a></li><li><a href="#dependencies">Dependencies</a></li><li><a href="#components">Components</a></li></ul></div></aside>
 </div>
 <script src="../search.js"></script>
 <script>(() => {

@@ -36,12 +36,17 @@ graph LR
 
 _component_ · [LoginView.vue](../../frontend/src/views/Login/LoginView.vue#L1) ⚠
 
+🤖 _Manages the login process for the application._
+
 - **dependencies** _(fact)_: auth.ts, errors.ts
 - **state** _(fact)_: email, password, error, loading
+- **behaviour** _(🤖 draft)_: Handles user input for email and password, attempts to authenticate the user, and navigates to the schedule page on successful login.
+- **exception** _(🤖 draft)_: Displays error messages for authentication failures, such as invalid credentials or rate limiting.
+- **usage** _(🤖 draft)_: Called when the user submits the login form.
 
 _Reached from:_ [`/login`](../frontend.md#flows)
 
 _Evidence:_ [frontend/src/views/Login/LoginView.vue:1-81](../../frontend/src/views/Login/LoginView.vue#L1), [frontend/src/stores/auth.ts:1](../../frontend/src/stores/auth.ts#L1), [frontend/src/utils/errors.ts:1](../../frontend/src/utils/errors.ts#L1)
 
 ---
-_Generated from 1 symbols in [frontend/src/views/Login/LoginView.vue](../../frontend/src/views/Login/LoginView.vue) (commit `534b8b5`, profile `default`). Sections marked _fact_ are read from the code, _inferred_ come from heuristics, 🤖 marks AI drafts._
+_Generated from 1 symbols in [frontend/src/views/Login/LoginView.vue](../../frontend/src/views/Login/LoginView.vue) (commit `11abf0b`, profile `default`). Sections marked _fact_ are read from the code, _inferred_ come from heuristics, 🤖 marks AI drafts._

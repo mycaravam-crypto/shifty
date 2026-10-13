@@ -5,6 +5,16 @@ Layer **application** · project `ShiftPlanner.Application`
 
 Project navigation: [ShiftPlanner.Application](../projects/ShiftPlanner-Application-bbdb4cab28c5.md)
 
+## Overview 🤖
+
+Contains logic for aggregating and building data for the dashboard.
+
+**Responsibilities.** Aggregates data for the dashboard, including coverage, pain points, planning status, cost breakdowns, and employee utilization.
+
+**Usage.** Used by the API controllers to generate data for the dashboard.
+
+_AI draft from the facts on this page; review it, then write the module's documentation yourself._
+
 ## Key components
 
 | Component | Kind | Used by | Summary |
@@ -98,6 +108,8 @@ _record_ · [DashboardDtos.cs](../../src/ShiftPlanner.Application/Dashboard/Dash
 
 _record_ · [DashboardDtos.cs](../../src/ShiftPlanner.Application/Dashboard/DashboardDtos.cs#L24)
 
+_Linked tests:_ `DashboardAggregatorTests.CoveragePercent_AveragesAcrossRowsAndCapsAt100_AndDefaultsTo100WhenEmpty` — test code that uses it, not coverage
+
 ### DashboardAggregator
 
 _class_ · [DashboardAggregator.cs](../../src/ShiftPlanner.Application/Dashboard/DashboardAggregator.cs#L14)
@@ -108,11 +120,11 @@ _Reached from:_ [`GET /api/dashboard`](../api.md#flows) · _Linked tests:_ `Dash
 |---|---|---|---|
 | [`ResolvePeriod(System.DateOnly?, System.DateOnly?, System.DateOnly)`](../../src/ShiftPlanner.Application/Dashboard/DashboardAggregator.cs#L16) |  |  | 3 |
 | [`DeltaPercent(decimal, decimal)`](../../src/ShiftPlanner.Application/Dashboard/DashboardAggregator.cs#L25) |  |  | 2 |
-| [`BuildCoverage(System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Scheduling.ShiftAssignment>, System.Collections.Generic.IReadOnlyDictionary<System.Guid, ShiftPlanner.Domain.Scheduling.ShiftType>, System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Scheduling.StaffingRequirement>, System.Collections.Generic.IReadOnlyDictionary<System.Guid, ShiftPlanner.Domain.Employees.Employee>, System.DateOnly, System.DateOnly, System.Guid?, System.Guid?)`](../../src/ShiftPlanner.Application/Dashboard/DashboardAggregator.cs#L28) ⚠ |  |  | 22 |
+| [`BuildCoverage(System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Scheduling.ShiftAssignment>, System.Collections.Generic.IReadOnlyDictionary<System.Guid, ShiftPlanner.Domain.Scheduling.ShiftType>, System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Scheduling.StaffingRequirement>, System.Collections.Generic.IReadOnlyDictionary<System.Guid, ShiftPlanner.Domain.Employees.Employee>, System.DateOnly, System.DateOnly, System.Guid?, System.Guid?)`](../../src/ShiftPlanner.Application/Dashboard/DashboardAggregator.cs#L28) ⚠ | 🤖 _Aggregates coverage data for a dashboard based on shift assignments, requirements, and staff._ | responsibilities 🤖: Calculates coverage percentage for each day within a specified period, considering shift types and staffing requirements.; behaviour 🤖: Groups assignments by date and shift type, calculates coverage, and adds missing requirement-driven rows.; exception 🤖: None explicitly stated in the source.; usage 🤖: Called by the DashboardController to generate coverage data for the dashboard. | 22 |
 | [`CoveragePercent(System.Collections.Generic.IReadOnlyList<ShiftPlanner.Application.Dashboard.CoverageDayDto>)`](../../src/ShiftPlanner.Application/Dashboard/DashboardAggregator.cs#L95) |  |  | 2 |
-| [`BuildPainPoints(System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Scheduling.Schedule>, System.Collections.Generic.IReadOnlyDictionary<System.Guid, System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Scheduling.ShiftAssignment>>, System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Scheduling.ShiftAssignment>, System.Collections.Generic.IReadOnlyDictionary<System.Guid, ShiftPlanner.Domain.Employees.Employee>, System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Scheduling.ShiftType>, System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Contracts.Contract>, System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Employees.Absence>, System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Scheduling.StaffingRequirement>, System.Guid?)`](../../src/ShiftPlanner.Application/Dashboard/DashboardAggregator.cs#L98) ⚠ |  |  | 9 |
+| [`BuildPainPoints(System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Scheduling.Schedule>, System.Collections.Generic.IReadOnlyDictionary<System.Guid, System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Scheduling.ShiftAssignment>>, System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Scheduling.ShiftAssignment>, System.Collections.Generic.IReadOnlyDictionary<System.Guid, ShiftPlanner.Domain.Employees.Employee>, System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Scheduling.ShiftType>, System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Contracts.Contract>, System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Employees.Absence>, System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Scheduling.StaffingRequirement>, System.Guid?)`](../../src/ShiftPlanner.Application/Dashboard/DashboardAggregator.cs#L98) ⚠ | 🤖 _Aggregates pain points from schedules, assignments, and other data sources for the dashboard._ | responsibilities 🤖: Calculates pain points based on schedule validation results, filtering by team if provided.; behaviour 🤖: Iterates through each schedule, retrieves relevant assignments, and validates them. Collects pain points based on validation results, filtering by team if specified.; exception 🤖: No specific error handling is mentioned in the source.; usage 🤖: Called by the DashboardController to fetch pain points for the dashboard. | 9 |
 | [`BuildPlanningStatus(System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Scheduling.Schedule>, System.Collections.Generic.IReadOnlyList<ShiftPlanner.Application.Dashboard.PainPointDto>)`](../../src/ShiftPlanner.Application/Dashboard/DashboardAggregator.cs#L137) |  |  | 2 |
-| [`BuildCostBreakdown(System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Scheduling.ShiftAssignment>, System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Contracts.Contract>, System.Collections.Generic.IReadOnlyDictionary<System.Guid, ShiftPlanner.Domain.Scheduling.Bundesland?>, System.Collections.Generic.IReadOnlyDictionary<ShiftPlanner.Domain.Scheduling.Bundesland, System.Collections.Generic.HashSet<System.DateOnly>>, System.Collections.Generic.HashSet<System.DateOnly>)`](../../src/ShiftPlanner.Application/Dashboard/DashboardAggregator.cs#L152) ⚠ |  |  | 6 |
+| [`BuildCostBreakdown(System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Scheduling.ShiftAssignment>, System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Contracts.Contract>, System.Collections.Generic.IReadOnlyDictionary<System.Guid, ShiftPlanner.Domain.Scheduling.Bundesland?>, System.Collections.Generic.IReadOnlyDictionary<ShiftPlanner.Domain.Scheduling.Bundesland, System.Collections.Generic.HashSet<System.DateOnly>>, System.Collections.Generic.HashSet<System.DateOnly>)`](../../src/ShiftPlanner.Application/Dashboard/DashboardAggregator.cs#L152) ⚠ | 🤖 _Aggregates cost breakdowns for shifts based on assignments, contracts, and regional holidays._ | responsibilities 🤖: Calculates regular, night, Sunday, and holiday costs for shifts.; behaviour 🤖: Iterates through shift assignments, determines active contracts, calculates net hours, and aggregates costs based on regional and national holidays.; exception 🤖: No specific error handling is mentioned in the source.; usage 🤖: Called by the DashboardController to generate cost breakdowns for the dashboard. | 6 |
 | [`BuildEmployeeUtilization(System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Employees.Employee>, System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Scheduling.ShiftAssignment>, System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Contracts.Contract>, System.Collections.Generic.IReadOnlyList<ShiftPlanner.Domain.Employees.Absence>, System.DateOnly, System.DateOnly)`](../../src/ShiftPlanner.Application/Dashboard/DashboardAggregator.cs#L192) |  |  | 3 |
 | [`BuildUtilization(System.Collections.Generic.IReadOnlyList<ShiftPlanner.Application.Dashboard.EmployeeUtilizationDto>)`](../../src/ShiftPlanner.Application/Dashboard/DashboardAggregator.cs#L209) |  |  | 1 |
 | [`UtilizationPercent(System.Collections.Generic.IReadOnlyList<ShiftPlanner.Application.Dashboard.EmployeeUtilizationDto>)`](../../src/ShiftPlanner.Application/Dashboard/DashboardAggregator.cs#L215) |  |  | 2 |
@@ -129,9 +141,13 @@ _record_ · [DashboardDtos.cs](../../src/ShiftPlanner.Application/Dashboard/Dash
 
 _record_ · [DashboardDtos.cs](../../src/ShiftPlanner.Application/Dashboard/DashboardDtos.cs#L54)
 
+_Linked tests:_ `DashboardAggregatorTests.BuildUtilization_SumsCapacityAndPlannedAcrossEmployees` — test code that uses it, not coverage
+
 ### PainPointDto
 
 _record_ · [DashboardDtos.cs](../../src/ShiftPlanner.Application/Dashboard/DashboardDtos.cs#L34)
+
+_Linked tests:_ `DashboardAggregatorTests.BuildPlanningStatus_CountsDraftPublishedAndConflicts` — test code that uses it, not coverage
 
 ### PlanningStatusDto
 
@@ -146,4 +162,4 @@ _record_ · [DashboardDtos.cs](../../src/ShiftPlanner.Application/Dashboard/Dash
 _record_ · [DashboardDtos.cs](../../src/ShiftPlanner.Application/Dashboard/DashboardDtos.cs#L58)
 
 ---
-_Generated from 23 symbols in [src/ShiftPlanner.Application/Dashboard/DashboardAggregator.cs](../../src/ShiftPlanner.Application/Dashboard/DashboardAggregator.cs), [src/ShiftPlanner.Application/Dashboard/DashboardDtos.cs](../../src/ShiftPlanner.Application/Dashboard/DashboardDtos.cs) (commit `534b8b5`, profile `default`). Sections marked _fact_ are read from the code, _inferred_ come from heuristics, 🤖 marks AI drafts._
+_Generated from 23 symbols in [src/ShiftPlanner.Application/Dashboard/DashboardAggregator.cs](../../src/ShiftPlanner.Application/Dashboard/DashboardAggregator.cs), [src/ShiftPlanner.Application/Dashboard/DashboardDtos.cs](../../src/ShiftPlanner.Application/Dashboard/DashboardDtos.cs) (commit `11abf0b`, profile `default`). Sections marked _fact_ are read from the code, _inferred_ come from heuristics, 🤖 marks AI drafts._

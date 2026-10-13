@@ -5,6 +5,16 @@ Layer **domain** · project `ShiftPlanner.Domain` · Entities: 1
 
 Project navigation: [ShiftPlanner.Domain](../projects/ShiftPlanner-Domain-f2a83529199c.md)
 
+## Overview 🤖
+
+Contains contracts and related utilities for managing shift planning.
+
+**Responsibilities.** Manages contract data and provides utility methods for contract operations.
+
+**Usage.** Used by various parts of the application to manage and validate contracts.
+
+_AI draft from the facts on this page; review it, then write the module's documentation yourself._
+
 ## Flows through this module
 
 - `PUT /api/contracts/{id:guid}`: ContractsController → ApplicationDbContext, Contract → PostgreSQL
@@ -34,14 +44,14 @@ Used by: [src/ShiftPlanner.Api/Controllers](src-ShiftPlanner.Api-Controllers.md)
 
 _class_ · [Contract.cs](../../src/ShiftPlanner.Domain/Contracts/Contract.cs#L5)
 
-_Reached from:_ [`PUT /api/contracts/{id:guid}`](../api.md#flows), [`GET /api/dashboard`](../api.md#flows), [`POST /api/employees/{employeeId:guid}/contracts`](../api.md#flows), [`GET /api/employees/{id:guid}/hours-balance`](../api.md#flows), [`GET /api/employees/{id:guid}/hours-report`](../api.md#flows), [`GET /api/planning-board`](../api.md#flows), [`GET /api/schedules/{id:guid}`](../api.md#flows), [`POST /api/schedules/{id:guid}/auto-fill`](../api.md#flows), +4 more · _Linked tests:_ `ContractTests.ActiveOn_IgnoresOtherEmployeesContracts` (via `Contract.ActiveOn(IEnumerable<Contract>, Guid, DateOnly)`), `ContractTests.ActiveOn_NoContractCoveringDate_ReturnsNull` (via `Contract.ActiveOn(IEnumerable<Contract>, Guid, DateOnly)`), `ContractTests.ActiveOn_OpenEndedContract_CoversEveryFutureDate` (via `Contract.ActiveOn(IEnumerable<Contract>, Guid, DateOnly)`), `ContractTests.ActiveOn_PicksContractCoveringDate` (via `Contract.ActiveOn(IEnumerable<Contract>, Guid, DateOnly)`), `ContractTests.ActiveOn_TwoCandidates_PicksMostRecentlyStarting` (via `Contract.ActiveOn(IEnumerable<Contract>, Guid, DateOnly)`), `ContractTests.Create_MonthlyHoursOmitted_DefaultsToNull` (via `Contract.Create(Guid, Guid, DateOnly, DateOnly?, decimal, int, decimal, decimal?, decimal?)`), `ContractTests.Create_MonthlyHoursProvided_IsPersistedOnTheContract` (via `Contract.Create(Guid, Guid, DateOnly, DateOnly?, decimal, int, decimal, decimal?, decimal?)`), `ContractTests.Create_SucceedsWhenValidToEqualsValidFrom` (via `Contract.Create(Guid, Guid, DateOnly, DateOnly?, decimal, int, decimal, decimal?, decimal?)`), +7 more — test code that uses it, not coverage
+_Reached from:_ [`PUT /api/contracts/{id:guid}`](../api.md#flows), [`GET /api/dashboard`](../api.md#flows), [`POST /api/employees/{employeeId:guid}/contracts`](../api.md#flows), [`GET /api/employees/{id:guid}/hours-balance`](../api.md#flows), [`GET /api/employees/{id:guid}/hours-report`](../api.md#flows), [`GET /api/planning-board`](../api.md#flows), [`GET /api/schedules/{id:guid}`](../api.md#flows), [`POST /api/schedules/{id:guid}/auto-fill`](../api.md#flows), +4 more · _Linked tests:_ `PlanningBoardAggregatorTests.MakeContract`, `TestFactory.Contract`, `ContractTests.MakeContract`, `HoursBalanceCalculatorTests.MakeContract`, `WorkingTimeCalculatorTests.ExpectedHours_AbsenceForDifferentEmployee_Ignored`, `WorkingTimeCalculatorTests.ExpectedHours_ContractChangesMidSpan_BlendsBothSegments`, `WorkingTimeCalculatorTests.ExpectedHours_ExcludesAbsenceDaysOverlappingRange`, `WorkingTimeCalculatorTests.ExpectedHours_GapBetweenContracts_ContributesZeroForUncoveredDays`, +22 more — test code that uses it, not coverage
 
 | Member | Summary | Derived from code | Complexity |
 |---|---|---|---|
-| [`ActiveOn(System.Collections.Generic.IEnumerable<ShiftPlanner.Domain.Contracts.Contract>, System.Guid, System.DateOnly)`](../../src/ShiftPlanner.Domain/Contracts/Contract.cs#L35) ⚠ |  |  | 4 |
-| [`Overlaps(System.DateOnly, System.DateOnly?, System.DateOnly, System.DateOnly?)`](../../src/ShiftPlanner.Domain/Contracts/Contract.cs#L43) ⚠ |  |  | 4 |
+| [`ActiveOn(System.Collections.Generic.IEnumerable<ShiftPlanner.Domain.Contracts.Contract>, System.Guid, System.DateOnly)`](../../src/ShiftPlanner.Domain/Contracts/Contract.cs#L35) ⚠ | 🤖 _Finds the most recent active contract for an employee on a specific date._ | behaviour 🤖: Filters contracts by employee ID and date range, then returns the most recent one.; exception 🤖: Returns null if no contract matches the criteria. | 4 |
+| [`Overlaps(System.DateOnly, System.DateOnly?, System.DateOnly, System.DateOnly?)`](../../src/ShiftPlanner.Domain/Contracts/Contract.cs#L43) ⚠ | 🤖 _Determines if two date ranges overlap._ | behaviour 🤖: Compares two date ranges to check if they overlap. Returns true if they do, false otherwise.; usage 🤖: Used to validate contract dates in the create and update contract endpoints. | 4 |
 | [`Create(System.Guid, System.Guid, System.DateOnly, System.DateOnly?, decimal, int, decimal, decimal?, decimal?)`](../../src/ShiftPlanner.Domain/Contracts/Contract.cs#L52) |  |  | 1 |
 | [`Validate()`](../../src/ShiftPlanner.Domain/Contracts/Contract.cs#L75) |  |  | 3 |
 
 ---
-_Generated from 14 symbols in [src/ShiftPlanner.Domain/Contracts/Contract.cs](../../src/ShiftPlanner.Domain/Contracts/Contract.cs) (commit `534b8b5`, profile `default`). Sections marked _fact_ are read from the code, _inferred_ come from heuristics, 🤖 marks AI drafts._
+_Generated from 14 symbols in [src/ShiftPlanner.Domain/Contracts/Contract.cs](../../src/ShiftPlanner.Domain/Contracts/Contract.cs) (commit `11abf0b`, profile `default`). Sections marked _fact_ are read from the code, _inferred_ come from heuristics, 🤖 marks AI drafts._

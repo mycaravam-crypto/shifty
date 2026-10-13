@@ -168,6 +168,11 @@ main tbody tr:last-child td { border-bottom: 0; }
 <h1 id="srcshiftplannerdomaincommon">src/ShiftPlanner.Domain/Common</h1>
 <p>Layer <strong>domain</strong> · project <code>ShiftPlanner.Domain</code> · Entities: 3</p>
 <p>Project navigation: <a href="../projects/ShiftPlanner-Domain-f2a83529199c.html">ShiftPlanner.Domain</a></p>
+<h2 id="overview-">Overview 🤖</h2>
+<p>Contains common domain models and utilities used across the ShiftPlanner application.</p>
+<p><strong>Responsibilities.</strong> Provides data models and utilities for handling API keys, audit logs, employee IDs, refresh tokens, and schedule IDs.</p>
+<p><strong>Usage.</strong> Used by authentication, controller, and persistence modules to manage domain data.</p>
+<p><em>AI draft from the facts on this page; review it, then write the module's documentation yourself.</em></p>
 <h2 id="key-components">Key components</h2>
 <div class="table-wrap"><table>
 <thead>
@@ -234,7 +239,7 @@ main tbody tr:last-child td { border-bottom: 0; }
 <p><em>class</em> · <a href="../../src/ShiftPlanner.Domain/Common/AuditLog.cs#L3">AuditLog.cs</a></p>
 <h3 id="employeeid">EmployeeId</h3>
 <p><em>record</em> · <a href="../../src/ShiftPlanner.Domain/Common/EmployeeId.cs#L14">EmployeeId.cs</a></p>
-<p><em>Linked tests:</em> <code>EmployeeIdTests.New_ProducesDistinctNonEmptyIds</code> (via <code>EmployeeId.New()</code>), <code>EmployeeIdTests.ToString_MatchesUnderlyingGuidsToString</code> (via <code>EmployeeId.ToString()</code>) — test code that uses it, not coverage</p>
+<p><em>Linked tests:</em> <code>EmployeeIdTests.DistinctFromScheduleId_NotInterchangeableAtCompileTime</code>, <code>EmployeeIdTests.Equality_DifferentUnderlyingGuid_AreNotEqual</code>, <code>EmployeeIdTests.Equality_SameUnderlyingGuid_AreEqual</code>, <code>EmployeeIdTests.GetHashCode_SameUnderlyingGuid_ProducesSameHash</code>, <code>EmployeeIdTests.ImplicitConversion_PreservesEqualityAcrossTypes</code>, <code>EmployeeIdTests.ImplicitConversion_ToGuid_RoundTrips</code>, <code>EmployeeIdTests.ToString_MatchesUnderlyingGuidsToString</code>, <code>EmployeeIdTests.UsableAsDictionaryKey_ViaValueEquality</code>, +1 more — test code that uses it, not coverage</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -273,7 +278,7 @@ main tbody tr:last-child td { border-bottom: 0; }
 </table></div>
 <h3 id="refreshtoken">RefreshToken</h3>
 <p><em>class</em> · <a href="../../src/ShiftPlanner.Domain/Common/RefreshToken.cs#L10">RefreshToken.cs</a></p>
-<p><em>Reached from:</em> <a href="../api.html#flows"><code>POST /api/v1/auth/login</code></a>, <a href="../api.html#flows"><code>POST /api/v1/auth/logout</code></a>, <a href="../api.html#flows"><code>POST /api/v1/auth/refresh</code></a> · <em>Linked tests:</em> <code>RefreshTokenTests.Hash_DiffersForDifferentInput</code> (via <code>RefreshToken.Hash(string)</code>), <code>RefreshTokenTests.Hash_IsDeterministic</code> (via <code>RefreshToken.Hash(string)</code>), <code>RefreshTokenTests.Hash_IsSha256HexEncoded</code> (via <code>RefreshToken.Hash(string)</code>), <code>RefreshTokenTests.Hash_NeverReturnsTheRawToken</code> (via <code>RefreshToken.Hash(string)</code>), <code>RefreshTokenTests.IsActive_FalseWhenExpired</code> (via <code>RefreshToken.Hash(string)</code>), <code>RefreshTokenTests.IsActive_FalseWhenRevoked</code> (via <code>RefreshToken.Hash(string)</code>), <code>RefreshTokenTests.IsActive_FalseWhenRevokedAndExpired</code> (via <code>RefreshToken.Hash(string)</code>), <code>RefreshTokenTests.IsActive_TrueRightUpToExpiry</code> (via <code>RefreshToken.Hash(string)</code>), +1 more — test code that uses it, not coverage</p>
+<p><em>Reached from:</em> <a href="../api.html#flows"><code>POST /api/v1/auth/login</code></a>, <a href="../api.html#flows"><code>POST /api/v1/auth/logout</code></a>, <a href="../api.html#flows"><code>POST /api/v1/auth/refresh</code></a> · <em>Linked tests:</em> <code>RefreshTokenTests.IsActive_FalseWhenExpired</code>, <code>RefreshTokenTests.IsActive_FalseWhenRevoked</code>, <code>RefreshTokenTests.IsActive_FalseWhenRevokedAndExpired</code>, <code>RefreshTokenTests.IsActive_TrueRightUpToExpiry</code>, <code>RefreshTokenTests.IsActive_TrueWhenNotRevokedAndNotExpired</code>, <code>RefreshTokenTests.Hash_DiffersForDifferentInput</code> (via <code>RefreshToken.Hash(string)</code>), <code>RefreshTokenTests.Hash_IsDeterministic</code> (via <code>RefreshToken.Hash(string)</code>), <code>RefreshTokenTests.Hash_IsSha256HexEncoded</code> (via <code>RefreshToken.Hash(string)</code>), +1 more — test code that uses it, not coverage</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -294,7 +299,7 @@ main tbody tr:last-child td { border-bottom: 0; }
 </table></div>
 <h3 id="scheduleid">ScheduleId</h3>
 <p><em>record</em> · <a href="../../src/ShiftPlanner.Domain/Common/ScheduleId.cs#L6">ScheduleId.cs</a></p>
-<p><em>Linked tests:</em> <code>ScheduleIdTests.New_ProducesDistinctNonEmptyIds</code> (via <code>ScheduleId.New()</code>), <code>ScheduleIdTests.ToString_MatchesUnderlyingGuidsToString</code> (via <code>ScheduleId.ToString()</code>) — test code that uses it, not coverage</p>
+<p><em>Linked tests:</em> <code>EmployeeIdTests.DistinctFromScheduleId_NotInterchangeableAtCompileTime</code>, <code>ScheduleIdTests.Equality_DifferentUnderlyingGuid_AreNotEqual</code>, <code>ScheduleIdTests.Equality_SameUnderlyingGuid_AreEqual</code>, <code>ScheduleIdTests.GetHashCode_SameUnderlyingGuid_ProducesSameHash</code>, <code>ScheduleIdTests.ImplicitConversion_PreservesEqualityAcrossTypes</code>, <code>ScheduleIdTests.ImplicitConversion_ToGuid_RoundTrips</code>, <code>ScheduleIdTests.ToString_MatchesUnderlyingGuidsToString</code>, <code>ScheduleIdTests.UsableAsDictionaryKey_ViaValueEquality</code>, +1 more — test code that uses it, not coverage</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -332,11 +337,11 @@ main tbody tr:last-child td { border-bottom: 0; }
 </tbody>
 </table></div>
 <hr />
-<p><em>Generated from 37 symbols in <a href="../../src/ShiftPlanner.Domain/Common/ApiKey.cs">src/ShiftPlanner.Domain/Common/ApiKey.cs</a>, <a href="../../src/ShiftPlanner.Domain/Common/AuditLog.cs">src/ShiftPlanner.Domain/Common/AuditLog.cs</a>, <a href="../../src/ShiftPlanner.Domain/Common/EmployeeId.cs">src/ShiftPlanner.Domain/Common/EmployeeId.cs</a>, <a href="../../src/ShiftPlanner.Domain/Common/RefreshToken.cs">src/ShiftPlanner.Domain/Common/RefreshToken.cs</a>, <a href="../../src/ShiftPlanner.Domain/Common/ScheduleId.cs">src/ShiftPlanner.Domain/Common/ScheduleId.cs</a> (commit <code>534b8b5</code>, profile <code>default</code>). Sections marked <em>fact</em> are read from the code, <em>inferred</em> come from heuristics, 🤖 marks AI drafts.</em></p>
+<p><em>Generated from 37 symbols in <a href="../../src/ShiftPlanner.Domain/Common/ApiKey.cs">src/ShiftPlanner.Domain/Common/ApiKey.cs</a>, <a href="../../src/ShiftPlanner.Domain/Common/AuditLog.cs">src/ShiftPlanner.Domain/Common/AuditLog.cs</a>, <a href="../../src/ShiftPlanner.Domain/Common/EmployeeId.cs">src/ShiftPlanner.Domain/Common/EmployeeId.cs</a>, <a href="../../src/ShiftPlanner.Domain/Common/RefreshToken.cs">src/ShiftPlanner.Domain/Common/RefreshToken.cs</a>, <a href="../../src/ShiftPlanner.Domain/Common/ScheduleId.cs">src/ShiftPlanner.Domain/Common/ScheduleId.cs</a> (commit <code>11abf0b</code>, profile <code>default</code>). Sections marked <em>fact</em> are read from the code, <em>inferred</em> come from heuristics, 🤖 marks AI drafts.</em></p>
 
-<footer class="generator">Generated by docwizz 0.7.32-dev.1</footer>
+<footer class="generator">Generated by docwizz 0.7.44-dev.1</footer>
 </main>
-<aside class="toc" aria-label="On this page"><div class="toc-inner"><div class="toc-title">On this page</div><ul><li><a href="#key-components">Key components</a></li><li><a href="#flows-through-this-module">Flows through this module</a></li><li><a href="#dependencies">Dependencies</a></li><li><a href="#components">Components</a></li></ul></div></aside>
+<aside class="toc" aria-label="On this page"><div class="toc-inner"><div class="toc-title">On this page</div><ul><li><a href="#overview-">Overview 🤖</a></li><li><a href="#key-components">Key components</a></li><li><a href="#flows-through-this-module">Flows through this module</a></li><li><a href="#dependencies">Dependencies</a></li><li><a href="#components">Components</a></li></ul></div></aside>
 </div>
 <script src="../search.js"></script>
 <script>(() => {

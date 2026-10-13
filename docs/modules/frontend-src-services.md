@@ -32,4 +32,4 @@ graph LR
 _module_ · [api.ts](../../frontend/src/services/api.ts#L1)
 
 ---
-_Generated from 1 symbols in [frontend/src/services/api.ts](../../frontend/src/services/api.ts) (commit `534b8b5`, profile `default`). Sections marked _fact_ are read from the code, _inferred_ come from heuristics, 🤖 marks AI drafts._
+_Generated from 1 symbols in [frontend/src/services/api.ts](../../frontend/src/services/api.ts) (commit `11abf0b`, profile `default`). Sections marked _fact_ are read from the code, _inferred_ come from heuristics, 🤖 marks AI drafts._

@@ -5,6 +5,14 @@ Layer **api** · project `ShiftPlanner.Api` · Middleware: 1
 
 Project navigation: [ShiftPlanner.Api](../projects/ShiftPlanner-Api-b964678aa746.md)
 
+## Overview 🤖
+
+Contains middleware for handling API key authentication and global exception handling.
+
+**Responsibilities.** Authenticates incoming requests using API keys and handles exceptions globally.
+
+_AI draft from the facts on this page; review it, then write the module's documentation yourself._
+
 ## Key components
 
 | Component | Kind | Used by | Summary |
@@ -42,4 +50,4 @@ _class_ · [GlobalExceptionMiddleware.cs](../../src/ShiftPlanner.Api/Middleware/
 | [`InvokeAsync(HttpContext)`](../../src/ShiftPlanner.Api/Middleware/GlobalExceptionMiddleware.cs#L17) |  |  | 5 |
 
 ---
-_Generated from 5 symbols in [src/ShiftPlanner.Api/Middleware/ApiKeyAuthenticationHandler.cs](../../src/ShiftPlanner.Api/Middleware/ApiKeyAuthenticationHandler.cs), [src/ShiftPlanner.Api/Middleware/GlobalExceptionMiddleware.cs](../../src/ShiftPlanner.Api/Middleware/GlobalExceptionMiddleware.cs) (commit `534b8b5`, profile `default`). Sections marked _fact_ are read from the code, _inferred_ come from heuristics, 🤖 marks AI drafts._
+_Generated from 5 symbols in [src/ShiftPlanner.Api/Middleware/ApiKeyAuthenticationHandler.cs](../../src/ShiftPlanner.Api/Middleware/ApiKeyAuthenticationHandler.cs), [src/ShiftPlanner.Api/Middleware/GlobalExceptionMiddleware.cs](../../src/ShiftPlanner.Api/Middleware/GlobalExceptionMiddleware.cs) (commit `11abf0b`, profile `default`). Sections marked _fact_ are read from the code, _inferred_ come from heuristics, 🤖 marks AI drafts._

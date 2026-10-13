@@ -1,0 +1,167 @@
+{
+  "vue:frontend/src/components/AppShell.vue@ec7689049f29@ollama/qwen2.5-coder:7b": {
+    "score": 3,
+    "missing": [
+      "constraints",
+      "side effects",
+      "errors"
+    ],
+    "note": "The documentation lacks details on the constraints a caller must respect, the side effects the component has, and any potential errors it might throw."
+  },
+  "vue:frontend/src/views/Dashboard/DashboardView.vue@1bbddfd315c8@ollama/qwen2.5-coder:7b": {
+    "score": 3,
+    "missing": [
+      "constraints",
+      "side effects",
+      "errors"
+    ],
+    "note": "The documentation lacks details on the constraints a caller must respect, the side effects the component has, and the errors it might throw."
+  },
+  "vue:frontend/src/views/Employees/EmployeeDetailModal.vue@b0417182006e@ollama/qwen2.5-coder:7b": {
+    "score": 3,
+    "missing": [
+      "constraints",
+      "side effects",
+      "errors"
+    ],
+    "note": "The documentation lacks details on the constraints a caller must respect, the side effects of calling the component, and the potential errors that can occur."
+  },
+  "vue:frontend/src/views/Employees/EmployeesView.vue@0ab557f7e5b9@ollama/qwen2.5-coder:7b": {
+    "score": 3,
+    "missing": [
+      "constraints",
+      "side effects",
+      "errors"
+    ],
+    "note": "The documentation lacks details on the constraints a caller must respect, the side effects of calling the function, and the errors it can throw."
+  },
+  "vue:frontend/src/views/Employees/HoursReportPrintSheet.vue@3c3745d7d519@ollama/qwen2.5-coder:7b": {
+    "score": 3,
+    "missing": [
+      "constraints",
+      "side effects",
+      "errors"
+    ],
+    "note": "The documentation lacks details on the constraints a caller must respect, potential side effects, and error handling."
+  },
+  "vue:frontend/src/views/Schedule/AutoFillModal.vue@2b7f525f00a0@ollama/qwen2.5-coder:7b": {
+    "score": 3,
+    "missing": [
+      "constraints",
+      "side effects",
+      "errors"
+    ],
+    "note": "The documentation lacks details on the constraints a caller must respect, the side effects of calling the component, and the potential errors that can occur."
+  },
+  "vue:frontend/src/views/Schedule/EmployeeSidebar.vue@bf0e674e0a80@ollama/qwen2.5-coder:7b": {
+    "score": 3,
+    "missing": [
+      "constraints",
+      "side effects",
+      "errors"
+    ],
+    "note": "The documentation lacks details on the constraints a caller must respect, potential side effects, and error handling."
+  },
+  "vue:frontend/src/views/Schedule/MonthOverviewView.vue@f2c39c86c681@ollama/qwen2.5-coder:7b": {
+    "score": 3,
+    "missing": [
+      "constraints",
+      "side effects",
+      "errors"
+    ],
+    "note": "The documentation lacks details on the constraints a caller must respect, the side effects the component has, and the errors it might throw."
+  },
+  "vue:frontend/src/views/Schedule/PlanningGrid.vue@523962994f63@ollama/qwen2.5-coder:7b": {
+    "score": 3,
+    "missing": [
+      "constraints",
+      "side effects",
+      "errors"
+    ],
+    "note": "The documentation lacks details on the constraints a caller must respect, potential side effects, and error handling."
+  },
+  "vue:frontend/src/views/Schedule/PlanningToolbar.vue@686da98ad323@ollama/qwen2.5-coder:7b": {
+    "score": 3,
+    "missing": [
+      "purpose",
+      "constraints",
+      "side effects",
+      "errors"
+    ],
+    "note": "The documentation lacks details on the purpose, constraints, side effects, and errors associated with the component."
+  },
+  "vue:frontend/src/views/Schedule/SchedulePrintSheet.vue@36d32a70c273@ollama/qwen2.5-coder:7b": {
+    "score": 3,
+    "missing": [
+      "constraints",
+      "side effects",
+      "errors"
+    ],
+    "note": "The documentation lacks details on the constraints a caller must respect, potential side effects, and error handling."
+  },
+  "vue:frontend/src/views/Schedule/ScheduleView.vue@2f189cd9a7f3@ollama/qwen2.5-coder:7b": {
+    "score": 3,
+    "missing": [
+      "constraints",
+      "side effects",
+      "errors"
+    ],
+    "note": "The documentation lacks details on the constraints a caller must respect, the side effects the component has, and the errors it might throw."
+  },
+  "vue:frontend/src/views/Schedule/ShiftAssignmentModal.vue@246c4023a786@ollama/qwen2.5-coder:7b": {
+    "score": 3,
+    "missing": [
+      "constraints",
+      "side effects",
+      "errors"
+    ],
+    "note": "The documentation lacks details on the constraints a caller must respect, the side effects of calling the component, and the errors it can throw."
+  },
+  "vue:frontend/src/views/Schedule/ShiftPlanningGrid.vue@1d0ba5a3876c@ollama/qwen2.5-coder:7b": {
+    "score": 3,
+    "missing": [
+      "constraints",
+      "side effects",
+      "errors"
+    ],
+    "note": "The documentation lacks details on the constraints a caller must respect, potential side effects, and error handling."
+  },
+  "vue:frontend/src/views/Schedule/ShiftSuggestionModal.vue@cb9719dce51e@ollama/qwen2.5-coder:7b": {
+    "score": 3,
+    "missing": [
+      "purpose",
+      "constraints",
+      "side effects",
+      "errors"
+    ],
+    "note": "The documentation lacks details on the purpose, constraints a caller must respect, side effects, and errors that can occur."
+  },
+  "vue:frontend/src/views/Schedule/ShiftTypeScheduleRow.vue@85cbeef6d904@ollama/qwen2.5-coder:7b": {
+    "score": 3,
+    "missing": [
+      "constraints",
+      "side effects",
+      "errors"
+    ],
+    "note": "The documentation lacks details on the constraints a caller must respect, potential side effects, and error handling."
+  },
+  "vue:frontend/src/views/Schedule/ValidationSummary.vue@84decf37f9f7@ollama/qwen2.5-coder:7b": {
+    "score": 3,
+    "missing": [
+      "purpose",
+      "constraints",
+      "side effects",
+      "errors"
+    ],
+    "note": "The documentation lacks details on the purpose, constraints, side effects, and potential errors of the component."
+  },
+  "vue:frontend/src/views/Stammdaten/StammdatenView.vue@5625fcbf99db@ollama/qwen2.5-coder:7b": {
+    "score": 3,
+    "missing": [
+      "constraints",
+      "side effects",
+      "errors"
+    ],
+    "note": "The documentation lacks details on the constraints a caller must respect, the side effects of calling the component, and the errors it might throw."
+  }
+}

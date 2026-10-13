@@ -5,6 +5,16 @@ Layer **domain** · project `ShiftPlanner.Domain` · Entities: 6
 
 Project navigation: [ShiftPlanner.Domain](../projects/ShiftPlanner-Domain-f2a83529199c.md)
 
+## Overview 🤖
+
+Contains domain models and logic related to employees, including their shifts, preferences, and absences.
+
+**Responsibilities.** Defines the domain models and business logic for employees, including their shifts, preferences, and absences.
+
+**Usage.** The API controllers and persistence layer use these models and logic to manage employee data.
+
+_AI draft from the facts on this page; review it, then write the module's documentation yourself._
+
 ## Key components
 
 | Component | Kind | Used by | Summary |
@@ -37,7 +47,7 @@ Used by: [src/ShiftPlanner.Api/Controllers](src-ShiftPlanner.Api-Controllers.md)
 
 _class_ · [Absence.cs](../../src/ShiftPlanner.Domain/Employees/Absence.cs#L14)
 
-_Reached from:_ [`POST /api/employees/{employeeId:guid}/absences`](../api.md#flows) · _Linked tests:_ `AbsenceTests.Create_SucceedsWhenToEqualsFrom` (via `Absence.Create(Guid, Guid, DateOnly, DateOnly, AbsenceType, string?)`), `AbsenceTests.Create_SucceedsWhenToIsAfterFrom` (via `Absence.Create(Guid, Guid, DateOnly, DateOnly, AbsenceType, string?)`), `AbsenceTests.Create_ThrowsWhenToPrecedesFrom` (via `Absence.Create(Guid, Guid, DateOnly, DateOnly, AbsenceType, string?)`), `AbsenceTests.Validate_DoesNotThrowForAValidRange` (via `Absence.Create(Guid, Guid, DateOnly, DateOnly, AbsenceType, string?)`), `AbsenceTests.Validate_ThrowsAfterMutatingToBeforeFrom` (via `Absence.Create(Guid, Guid, DateOnly, DateOnly, AbsenceType, string?)`) — test code that uses it, not coverage
+_Reached from:_ [`POST /api/employees/{employeeId:guid}/absences`](../api.md#flows) · _Linked tests:_ `PlanningBoardAggregatorTests.BuildStats_ExcludesAbsenceDaysFromTargetHours`, `TestFactory.Absence`, `HoursBalanceCalculatorTests.CumulativeBalance_ExcludesAbsenceDaysFromExpectedHours`, `WorkingTimeCalculatorTests.ExpectedHours_AbsenceForDifferentEmployee_Ignored`, `WorkingTimeCalculatorTests.ExpectedHours_ExcludesAbsenceDaysOverlappingRange`, `WorkingTimeCalculatorTests.ExpectedHours_MonthlyContingent_ExcludesAbsenceDays`, `AbsenceTests.Create_SucceedsWhenToEqualsFrom` (via `Absence.Create(Guid, Guid, DateOnly, DateOnly, AbsenceType, string?)`), `AbsenceTests.Create_SucceedsWhenToIsAfterFrom` (via `Absence.Create(Guid, Guid, DateOnly, DateOnly, AbsenceType, string?)`), +3 more — test code that uses it, not coverage
 
 | Member | Summary | Derived from code | Complexity |
 |---|---|---|---|
@@ -54,7 +64,7 @@ _Reached from:_ [`POST /api/employees/{employeeId:guid}/absences`](../api.md#flo
 
 _class_ · [Employee.cs](../../src/ShiftPlanner.Domain/Employees/Employee.cs#L5)
 
-_Linked tests:_ `EligibilityValidatorTests.AssignedEligibleShiftType_NoError` (via `Employee.AddEligibleShiftType(ShiftType)`), `EligibilityValidatorTests.AssignedIneligibleShiftType_ProducesError` (via `Employee.AddEligibleShiftType(ShiftType)`), `ScheduleValidatorTests.KitchenSink_MessySchedule_TripsAllEightRuleTypesWithoutMaskingOrBleed` (via `Employee.AddEligibleShiftType(ShiftType)`), `ShiftSuggestionEngineAutoFillTests.NoEligibleCandidate_SlotIsSkipped` (via `Employee.AddEligibleShiftType(ShiftType)`), `ShiftSuggestionEngineRulesTests.EvaluateEligibility_RestrictedToOtherShiftType_IsIneligible` (via `Employee.AddEligibleShiftType(ShiftType)`), `ShiftSuggestionEngineTests.NotInEligibleShiftTypes_IsIneligible` (via `Employee.AddEligibleShiftType(ShiftType)`), `ShiftSuggestionEngineTests.Results_OrderedByEligibleThenScoreDescending` (via `Employee.AddEligibleShiftType(ShiftType)`), `EmployeeCollectionEncapsulationTests.AddEligibleShiftType_AddsToTheExposedCollection` (via `Employee.AddEligibleShiftType(ShiftType)`), +2 more — test code that uses it, not coverage
+_Linked tests:_ `TestFactory.Employee`, `EmployeeCollectionEncapsulationTests.AddEligibleShiftType_AddsToTheExposedCollection`, `EmployeeCollectionEncapsulationTests.RemoveEligibleShiftType_RemovesFromTheExposedCollection`, `EmployeeCollectionEncapsulationTests.ReplaceEligibleShiftTypes_ClearsAndReplacesWholesale`, `EligibilityValidatorTests.AssignedEligibleShiftType_NoError` (via `Employee.AddEligibleShiftType(ShiftType)`), `EligibilityValidatorTests.AssignedIneligibleShiftType_ProducesError` (via `Employee.AddEligibleShiftType(ShiftType)`), `ScheduleValidatorTests.KitchenSink_MessySchedule_TripsAllEightRuleTypesWithoutMaskingOrBleed` (via `Employee.AddEligibleShiftType(ShiftType)`), `ShiftSuggestionEngineAutoFillTests.NoEligibleCandidate_SlotIsSkipped` (via `Employee.AddEligibleShiftType(ShiftType)`), +3 more — test code that uses it, not coverage
 
 | Member | Summary | Derived from code | Complexity |
 |---|---|---|---|
@@ -70,7 +80,7 @@ _Linked tests:_ `EligibilityValidatorTests.AssignedEligibleShiftType_NoError` (v
 
 _class_ · [HoursAdjustment.cs](../../src/ShiftPlanner.Domain/Employees/HoursAdjustment.cs#L9)
 
-_Reached from:_ [`POST /api/employees/{employeeId:guid}/hours-adjustments`](../api.md#flows) · _Linked tests:_ `HoursAdjustmentTests.Create_SucceedsWithANegativeDelta` (via `HoursAdjustment.Create(Guid, Guid, DateOnly, decimal, string, string, DateTimeOffset)`), `HoursAdjustmentTests.Create_SucceedsWithAPositiveDeltaAndReason` (via `HoursAdjustment.Create(Guid, Guid, DateOnly, decimal, string, string, DateTimeOffset)`), `HoursAdjustmentTests.Create_ThrowsWhenHoursDeltaIsZero` (via `HoursAdjustment.Create(Guid, Guid, DateOnly, decimal, string, string, DateTimeOffset)`), `HoursAdjustmentTests.Create_ThrowsWhenReasonIsBlank` (via `HoursAdjustment.Create(Guid, Guid, DateOnly, decimal, string, string, DateTimeOffset)`), `HoursAdjustmentTests.Validate_ThrowsAfterMutatingReasonToBlank` (via `HoursAdjustment.Create(Guid, Guid, DateOnly, decimal, string, string, DateTimeOffset)`) — test code that uses it, not coverage
+_Reached from:_ [`POST /api/employees/{employeeId:guid}/hours-adjustments`](../api.md#flows) · _Linked tests:_ `HoursBalanceCalculatorTests.CumulativeBalance_AddsPositiveAdjustmentBeforeCutoff`, `HoursBalanceCalculatorTests.CumulativeBalance_CombinesScheduleDeviationAndAdjustment`, `HoursBalanceCalculatorTests.CumulativeBalance_IgnoresAdjustmentForAnotherEmployee`, `HoursBalanceCalculatorTests.CumulativeBalance_IgnoresAdjustmentOnOrAfterCutoff`, `HoursBalanceCalculatorTests.CumulativeBalance_SubtractsNegativeAdjustmentBeforeCutoff`, `HoursAdjustmentTests.Create_SucceedsWithANegativeDelta` (via `HoursAdjustment.Create(Guid, Guid, DateOnly, decimal, string, string, DateTimeOffset)`), `HoursAdjustmentTests.Create_SucceedsWithAPositiveDeltaAndReason` (via `HoursAdjustment.Create(Guid, Guid, DateOnly, decimal, string, string, DateTimeOffset)`), `HoursAdjustmentTests.Create_ThrowsWhenHoursDeltaIsZero` (via `HoursAdjustment.Create(Guid, Guid, DateOnly, decimal, string, string, DateTimeOffset)`), +2 more — test code that uses it, not coverage
 
 | Member | Summary | Derived from code | Complexity |
 |---|---|---|---|
@@ -87,13 +97,19 @@ _Reached from:_ [`PUT /api/employees/{id:guid}/shift-type-preferences`](../api.m
 
 _class_ · [ShiftTypePreference.cs](../../src/ShiftPlanner.Domain/Employees/ShiftTypePreference.cs#L7)
 
+_Linked tests:_ `ShiftSuggestionEngineAutoFillTests.OneOpenSlot_FillsWithTopEligibleCandidate`, `ShiftSuggestionEngineRulesTests.EvaluateShiftTypePreference_Avoided_ScoresNegative`, `ShiftSuggestionEngineRulesTests.EvaluateShiftTypePreference_Preferred_ScoresPositive`, `ShiftSuggestionEngineTests.PreferredShiftType_ScoresHigherThanAvoided`, `ShiftSuggestionEngineTests.Results_OrderedByEligibleThenScoreDescending` — test code that uses it, not coverage
+
 ### Team
 
 _class_ · [Team.cs](../../src/ShiftPlanner.Domain/Employees/Team.cs#L5)
+
+_Linked tests:_ `DashboardAggregatorTests.BuildPainPoints_CollectsValidatorIssuesAndRespectsTeamFilter` — test code that uses it, not coverage
 
 ### WeekdayPreference
 
 _class_ · [WeekdayPreference.cs](../../src/ShiftPlanner.Domain/Employees/WeekdayPreference.cs#L4)
 
+_Linked tests:_ `ShiftSuggestionEngineRulesTests.EvaluateWeekdayPreference_Avoided_ScoresNegative`, `ShiftSuggestionEngineRulesTests.EvaluateWeekdayPreference_Preferred_ScoresPositive`, `ShiftSuggestionEngineTests.PreferredWeekday_AddsPositiveScore` — test code that uses it, not coverage
+
 ---
-_Generated from 57 symbols in [src/ShiftPlanner.Domain/Employees/Absence.cs](../../src/ShiftPlanner.Domain/Employees/Absence.cs), [src/ShiftPlanner.Domain/Employees/Employee.cs](../../src/ShiftPlanner.Domain/Employees/Employee.cs), [src/ShiftPlanner.Domain/Employees/HoursAdjustment.cs](../../src/ShiftPlanner.Domain/Employees/HoursAdjustment.cs), [src/ShiftPlanner.Domain/Employees/PreferenceLevel.cs](../../src/ShiftPlanner.Domain/Employees/PreferenceLevel.cs), [src/ShiftPlanner.Domain/Employees/ShiftTypePreference.cs](../../src/ShiftPlanner.Domain/Employees/ShiftTypePreference.cs), [src/ShiftPlanner.Domain/Employees/Team.cs](../../src/ShiftPlanner.Domain/Employees/Team.cs), [src/ShiftPlanner.Domain/Employees/WeekdayPreference.cs](../../src/ShiftPlanner.Domain/Employees/WeekdayPreference.cs) (commit `534b8b5`, profile `default`). Sections marked _fact_ are read from the code, _inferred_ come from heuristics, 🤖 marks AI drafts._
+_Generated from 57 symbols in [src/ShiftPlanner.Domain/Employees/Absence.cs](../../src/ShiftPlanner.Domain/Employees/Absence.cs), [src/ShiftPlanner.Domain/Employees/Employee.cs](../../src/ShiftPlanner.Domain/Employees/Employee.cs), [src/ShiftPlanner.Domain/Employees/HoursAdjustment.cs](../../src/ShiftPlanner.Domain/Employees/HoursAdjustment.cs), [src/ShiftPlanner.Domain/Employees/PreferenceLevel.cs](../../src/ShiftPlanner.Domain/Employees/PreferenceLevel.cs), [src/ShiftPlanner.Domain/Employees/ShiftTypePreference.cs](../../src/ShiftPlanner.Domain/Employees/ShiftTypePreference.cs), [src/ShiftPlanner.Domain/Employees/Team.cs](../../src/ShiftPlanner.Domain/Employees/Team.cs), [src/ShiftPlanner.Domain/Employees/WeekdayPreference.cs](../../src/ShiftPlanner.Domain/Employees/WeekdayPreference.cs) (commit `11abf0b`, profile `default`). Sections marked _fact_ are read from the code, _inferred_ come from heuristics, 🤖 marks AI drafts._

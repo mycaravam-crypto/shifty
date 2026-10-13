@@ -5,6 +5,16 @@ Layer **application** · project `ShiftPlanner.Application`
 
 Project navigation: [ShiftPlanner.Application](../projects/ShiftPlanner-Application-bbdb4cab28c5.md)
 
+## Overview 🤖
+
+Manages the aggregation and statistics for employees on a planning board.
+
+**Responsibilities.** Aggregates employee statistics based on scheduling data and contracts.
+
+**Usage.** Used by the API controllers to fetch planning board statistics.
+
+_AI draft from the facts on this page; review it, then write the module's documentation yourself._
+
 ## Key components
 
 | Component | Kind | Used by | Summary |
@@ -51,4 +61,4 @@ _Reached from:_ [`GET /api/planning-board`](../api.md#flows) · _Linked tests:_ 
 _record_ · [PlanningBoardAggregator.cs](../../src/ShiftPlanner.Application/Planning/PlanningBoardAggregator.cs#L15)
 
 ---
-_Generated from 4 symbols in [src/ShiftPlanner.Application/Planning/PlanningBoardAggregator.cs](../../src/ShiftPlanner.Application/Planning/PlanningBoardAggregator.cs) (commit `534b8b5`, profile `default`). Sections marked _fact_ are read from the code, _inferred_ come from heuristics, 🤖 marks AI drafts._
+_Generated from 4 symbols in [src/ShiftPlanner.Application/Planning/PlanningBoardAggregator.cs](../../src/ShiftPlanner.Application/Planning/PlanningBoardAggregator.cs) (commit `11abf0b`, profile `default`). Sections marked _fact_ are read from the code, _inferred_ come from heuristics, 🤖 marks AI drafts._

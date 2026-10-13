@@ -5,82 +5,92 @@ Layer **api** · project `ShiftPlanner.Api` · Controllers: 12, API endpoints: 5
 
 Project navigation: [ShiftPlanner.Api](../projects/ShiftPlanner-Api-b964678aa746.md)
 
+## Overview 🤖
+
+Contains controllers for managing various aspects of shift planning, including absences, authentication, contracts, and employees.
+
+**Responsibilities.** Manages HTTP endpoints for shift planning, authentication, and employee data.
+
+**Usage.** The frontend's services and views call these endpoints to interact with shift planning data.
+
+_AI draft from the facts on this page; review it, then write the module's documentation yourself._
+
 ## Key components
 
 | Component | Kind | Used by | Summary |
 |---|---|---|---|
-| [SchedulesController](#schedulescontroller) | controller | 6 |  |
-| [ShiftTypesController](#shifttypescontroller) | controller | 6 |  |
-| [TeamsController](#teamscontroller) | controller | 5 |  |
-| [EmployeesController](#employeescontroller) | controller | 4 |  |
-| [AbsencesController](#absencescontroller) | controller | 2 |  |
-| [AuthController](#authcontroller) | controller | 2 |  |
-| [ContractsController](#contractscontroller) | controller | 2 |  |
+| [SchedulesController](#schedulescontroller) | controller | 6 | 🤖 _Manages schedules, including creating, updating, and retrieving schedule details._ |
+| [ShiftTypesController](#shifttypescontroller) | controller | 6 | 🤖 _Manages shift types through HTTP endpoints._ |
+| [TeamsController](#teamscontroller) | controller | 5 | 🤖 _Manages teams through HTTP endpoints._ |
+| [EmployeesController](#employeescontroller) | controller | 4 | 🤖 _Manages employee data, including retrieving, creating, and updating employee records._ |
+| [AbsencesController](#absencescontroller) | controller | 2 | 🤖 _Manages absences for employees, including retrieving, creating, updating, and deleting absences._ |
+| [AuthController](#authcontroller) | controller | 2 | 🤖 _Manages authentication and authorization for the application._ |
+| [ContractsController](#contractscontroller) | controller | 2 | 🤖 _Manages contracts for employees, including retrieving, creating, updating, and deleting contracts._ |
 | [ShiftAssignmentDto](#shiftassignmentdto) | record | 2 |  |
 
 ## API
 
 | Endpoint | Summary | Authorization |
 |---|---|---|
-| `DELETE /api/absences/{id:guid}` | — | required |
-| `GET /api/absences/{id:guid}` | — | required |
-| `PUT /api/absences/{id:guid}` | — | required |
-| `DELETE /api/assignments/{id:guid}` | — | required |
-| `PUT /api/assignments/{id:guid}` | — | required |
-| `DELETE /api/contracts/{id:guid}` | — | required |
-| `GET /api/contracts/{id:guid}` | — | required |
-| `PUT /api/contracts/{id:guid}` | — | required |
-| `GET /api/dashboard` | — | required |
-| `GET /api/employees` | — | required |
-| `POST /api/employees` | — | required |
-| `GET /api/employees/{employeeId:guid}/absences` | — | required |
-| `POST /api/employees/{employeeId:guid}/absences` | — | required |
-| `GET /api/employees/{employeeId:guid}/contracts` | — | required |
-| `POST /api/employees/{employeeId:guid}/contracts` | — | required |
-| `GET /api/employees/{employeeId:guid}/hours-adjustments` | — | required |
-| `POST /api/employees/{employeeId:guid}/hours-adjustments` | — | required |
-| `DELETE /api/employees/{id:guid}` | — | required |
-| `GET /api/employees/{id:guid}` | — | required |
-| `PUT /api/employees/{id:guid}` | — | required |
-| `GET /api/employees/{id:guid}/eligible-shift-types` | — | required |
-| `PUT /api/employees/{id:guid}/eligible-shift-types` | — | required |
-| `GET /api/employees/{id:guid}/hours-balance` | — | required |
-| `GET /api/employees/{id:guid}/hours-report` | — | required |
-| `GET /api/employees/{id:guid}/shift-type-preferences` | — | required |
-| `PUT /api/employees/{id:guid}/shift-type-preferences` | — | required |
-| `GET /api/employees/{id:guid}/weekday-preferences` | — | required |
-| `PUT /api/employees/{id:guid}/weekday-preferences` | — | required |
-| `DELETE /api/hours-adjustments/{id:guid}` | — | required |
-| `GET /api/hours-adjustments/{id:guid}` | — | required |
-| `PUT /api/hours-adjustments/{id:guid}` | — | required |
-| `GET /api/planning-board` | — | required |
-| `GET /api/public-holidays` | — | required |
-| `GET /api/schedules` | — | required |
-| `POST /api/schedules` | — | required |
-| `GET /api/schedules/{id:guid}` | — | required |
-| `PUT /api/schedules/{id:guid}` | — | required |
-| `POST /api/schedules/{id:guid}/archive` | — | required |
-| `POST /api/schedules/{id:guid}/assignments` | — | required |
-| `POST /api/schedules/{id:guid}/auto-fill` | — | required |
-| `GET /api/schedules/{id:guid}/auto-fill-preview` | — | required |
-| `POST /api/schedules/{id:guid}/copy` | — | required |
-| `POST /api/schedules/{id:guid}/publish` | — | required |
-| `GET /api/schedules/{id:guid}/suggestions` | — | required |
-| `GET /api/schedules/{id:guid}/validate` | — | required |
-| `GET /api/shift-types` | — | required |
-| `POST /api/shift-types` | — | required |
-| `PUT /api/shift-types/{id:guid}` | — | required |
-| `GET /api/staffing-requirements` | — | required |
-| `POST /api/staffing-requirements` | — | required |
-| `DELETE /api/staffing-requirements/{id:guid}` | — | required |
-| `GET /api/staffing-requirements/{id:guid}` | — | required |
-| `PUT /api/staffing-requirements/{id:guid}` | — | required |
-| `GET /api/teams` | — | required |
-| `POST /api/teams` | — | required |
-| `POST /api/v1/auth/login` | — | — |
-| `POST /api/v1/auth/logout` | — | required |
-| `POST /api/v1/auth/logout-all` | — | required |
-| `POST /api/v1/auth/refresh` | — | — |
+| `DELETE /api/absences/{id:guid}` | 🤖 _Deletes an absence by its ID._ | required |
+| `GET /api/absences/{id:guid}` | 🤖 _Retrieves an absence by its ID._ | required |
+| `PUT /api/absences/{id:guid}` | 🤖 _Updates an absence record based on the provided ID and request._ | required |
+| `DELETE /api/assignments/{id:guid}` | 🤖 _Deletes a shift assignment by its ID and row version._ | required |
+| `PUT /api/assignments/{id:guid}` | 🤖 _Updates an existing shift assignment based on the provided request._ | required |
+| `DELETE /api/contracts/{id:guid}` | 🤖 _Deletes a contract by its ID._ | required |
+| `GET /api/contracts/{id:guid}` | 🤖 _Retrieves a contract by its ID._ | required |
+| `PUT /api/contracts/{id:guid}` | 🤖 _Updates an existing contract based on the provided request._ | required |
+| `GET /api/dashboard` | 🤖 _Generates a dashboard for a given period, team, and shift type._ | required |
+| `GET /api/employees` | 🤖 _Retrieves a list of employees with optional pagination._ | required |
+| `POST /api/employees` | 🤖 _Creates a new employee and returns the created employee details._ | required |
+| `GET /api/employees/{employeeId:guid}/absences` | 🤖 _Retrieves absences for a specific employee._ | required |
+| `POST /api/employees/{employeeId:guid}/absences` | 🤖 _Creates a new absence for an employee._ | required |
+| `GET /api/employees/{employeeId:guid}/contracts` | 🤖 _Retrieves contracts for a specific employee._ | required |
+| `POST /api/employees/{employeeId:guid}/contracts` | 🤖 _Creates a new contract for an employee._ | required |
+| `GET /api/employees/{employeeId:guid}/hours-adjustments` | 🤖 _Retrieves hours adjustments for a specific employee._ | required |
+| `POST /api/employees/{employeeId:guid}/hours-adjustments` | 🤖 _Creates a new hours adjustment for an employee._ | required |
+| `DELETE /api/employees/{id:guid}` | 🤖 _Deletes an employee and optionally their assignments._ | required |
+| `GET /api/employees/{id:guid}` | 🤖 _Retrieves an employee by their unique identifier._ | required |
+| `PUT /api/employees/{id:guid}` | 🤖 _Updates an employee's details based on the provided request._ | required |
+| `GET /api/employees/{id:guid}/eligible-shift-types` | 🤖 _Retrieves the list of eligible shift types for a given employee._ | required |
+| `PUT /api/employees/{id:guid}/eligible-shift-types` | 🤖 _Updates the eligible shift types for an employee._ | required |
+| `GET /api/employees/{id:guid}/hours-balance` | 🤖 _Calculates the hours balance for an employee up to a specified date._ | required |
+| `GET /api/employees/{id:guid}/hours-report` | 🤖 _Generates a report of hours worked by an employee within a specified date range, including shifts, absences, and balance._ | required |
+| `GET /api/employees/{id:guid}/shift-type-preferences` | 🤖 _Retrieves shift type preferences for a specific employee._ | required |
+| `PUT /api/employees/{id:guid}/shift-type-preferences` | 🤖 _Updates an employee's shift type preferences._ | required |
+| `GET /api/employees/{id:guid}/weekday-preferences` | 🤖 _Retrieves the weekday preferences for a specific employee._ | required |
+| `PUT /api/employees/{id:guid}/weekday-preferences` | 🤖 _Updates an employee's weekday preferences._ | required |
+| `DELETE /api/hours-adjustments/{id:guid}` | 🤖 _Deletes a hours adjustment by its id._ | required |
+| `GET /api/hours-adjustments/{id:guid}` | 🤖 _Retrieves a hours adjustment by its ID._ | required |
+| `PUT /api/hours-adjustments/{id:guid}` | 🤖 _Updates an existing hours adjustment by its ID._ | required |
+| `GET /api/planning-board` | 🤖 _Retrieves planning board data for a specified date range and optionally a team._ | required |
+| `GET /api/public-holidays` | 🤖 _Retrieves public holidays within a specified date range for a given Bundesland._ | required |
+| `GET /api/schedules` | 🤖 _Retrieves a list of schedules with optional pagination._ | required |
+| `POST /api/schedules` | 🤖 _Creates a new schedule based on the provided request and returns the created schedule._ | required |
+| `GET /api/schedules/{id:guid}` | 🤖 _Retrieves a schedule by its ID for display._ | required |
+| `PUT /api/schedules/{id:guid}` | 🤖 _Updates an existing schedule's details._ | required |
+| `POST /api/schedules/{id:guid}/archive` | 🤖 _Archives a schedule by its ID._ | required |
+| `POST /api/schedules/{id:guid}/assignments` | 🤖 _Creates a new shift assignment for a given schedule._ | required |
+| `POST /api/schedules/{id:guid}/auto-fill` | 🤖 _Automatically fills shift assignments for a schedule based on a request._ | required |
+| `GET /api/schedules/{id:guid}/auto-fill-preview` | 🤖 _Generates auto-fill proposals for a schedule based on historical data and preferences._ | required |
+| `POST /api/schedules/{id:guid}/copy` | 🤖 _Creates a copy of a schedule for a different month._ | required |
+| `POST /api/schedules/{id:guid}/publish` | 🤖 _Publishes a schedule by its ID._ | required |
+| `GET /api/schedules/{id:guid}/suggestions` | 🤖 _Suggests shifts for a given schedule, date, and shift type._ | required |
+| `GET /api/schedules/{id:guid}/validate` | 🤖 _Validates a schedule by its ID._ | required |
+| `GET /api/shift-types` | 🤖 _Retrieves a list of shift types with optional pagination._ | required |
+| `POST /api/shift-types` | 🤖 _Creates a new shift type based on the provided request._ | required |
+| `PUT /api/shift-types/{id:guid}` | 🤖 _Updates an existing shift type by its ID._ | required |
+| `GET /api/staffing-requirements` | 🤖 _Retrieves all staffing requirements and returns them as DTOs._ | required |
+| `POST /api/staffing-requirements` | 🤖 _Creates a new staffing requirement based on the provided request._ | required |
+| `DELETE /api/staffing-requirements/{id:guid}` | 🤖 _Deletes a staffing requirement by its ID._ | required |
+| `GET /api/staffing-requirements/{id:guid}` | 🤖 _Retrieves a staffing requirement by its unique identifier._ | required |
+| `PUT /api/staffing-requirements/{id:guid}` | 🤖 _Updates an existing staffing requirement._ | required |
+| `GET /api/teams` | 🤖 _Retrieves a list of teams with optional pagination._ | required |
+| `POST /api/teams` | 🤖 _Creates a new team based on the provided request._ | required |
+| `POST /api/v1/auth/login` | 🤖 _Authenticates a user and returns an access token._ | — |
+| `POST /api/v1/auth/logout` | 🤖 _Logs out a user by revoking their refresh token and clearing the refresh cookie._ | required |
+| `POST /api/v1/auth/logout-all` | 🤖 _Logs out all refresh tokens for the current user._ | required |
+| `POST /api/v1/auth/refresh` | 🤖 _Refreshes an access token using a refresh token._ | — |
 
 Contracts and callers: [API](../api.md).
 
@@ -133,17 +143,23 @@ _record_ · [AbsencesController.cs](../../src/ShiftPlanner.Api/Controllers/Absen
 
 _class_ · [AbsencesController.cs](../../src/ShiftPlanner.Api/Controllers/AbsencesController.cs#L17) ⚠
 
+🤖 _Manages absences for employees, including retrieving, creating, updating, and deleting absences._
+
 - **dependencies** _(fact)_: ApplicationDbContext, Absence
+- **responsibilities** _(🤖 draft)_: Handles HTTP requests for absences, interacting with the database through the `ApplicationDbContext`.
+- **behaviour** _(🤖 draft)_: Provides endpoints to get absences for a specific employee, get a single absence by ID, create a new absence, update an existing absence, and delete an absence.
+- **side effects** _(🤖 draft)_: Writes to the database when creating, updating, or deleting absences.
+- **exception** _(🤖 draft)_: Returns 404 when an employee or absence is not found. Returns 400 when creating or updating an absence with invalid data.
 
 _Evidence:_ [src/ShiftPlanner.Api/Controllers/AbsencesController.cs:17-107](../../src/ShiftPlanner.Api/Controllers/AbsencesController.cs#L17), [src/ShiftPlanner.Infrastructure/Persistence/ApplicationDbContext.cs:17-162](../../src/ShiftPlanner.Infrastructure/Persistence/ApplicationDbContext.cs#L17), [src/ShiftPlanner.Domain/Employees/Absence.cs:14-49](../../src/ShiftPlanner.Domain/Employees/Absence.cs#L14)
 
 | Member | Summary | Derived from code | Complexity |
 |---|---|---|---|
-| [`GetForEmployee(System.Guid)`](../../src/ShiftPlanner.Api/Controllers/AbsencesController.cs#L25) ⚠ |  | input: employeeId: Guid; output: IEnumerable\<AbsenceDto>; authorization: required | 2 |
-| [`GetById(System.Guid)`](../../src/ShiftPlanner.Api/Controllers/AbsencesController.cs#L39) ⚠ |  | input: id: Guid; output: AbsenceDto; authorization: required | 2 |
-| [`Create(System.Guid, ShiftPlanner.Api.Controllers.CreateAbsenceRequest)`](../../src/ShiftPlanner.Api/Controllers/AbsencesController.cs#L46) ⚠ |  | input: employeeId: Guid, request: CreateAbsenceRequest; output: AbsenceDto; authorization: required | 3 |
-| [`Update(System.Guid, ShiftPlanner.Api.Controllers.UpdateAbsenceRequest)`](../../src/ShiftPlanner.Api/Controllers/AbsencesController.cs#L68) ⚠ |  | input: id: Guid, request: UpdateAbsenceRequest; output: IActionResult; authorization: required | 3 |
-| [`Delete(System.Guid)`](../../src/ShiftPlanner.Api/Controllers/AbsencesController.cs#L95) ⚠ |  | input: id: Guid; output: IActionResult; authorization: required | 2 |
+| [`GetForEmployee(System.Guid)`](../../src/ShiftPlanner.Api/Controllers/AbsencesController.cs#L25) ⚠ | 🤖 _Retrieves absences for a specific employee._ | input: employeeId: Guid; output: IEnumerable\<AbsenceDto>; authorization: required; behaviour 🤖: Checks if the employee exists; if not, returns 404. Otherwise, fetches and returns absences sorted by date.; exception 🤖: Returns 404 if the employee does not exist.; usage 🤖: Called from the employee detail modal and planning board. | 2 |
+| [`GetById(System.Guid)`](../../src/ShiftPlanner.Api/Controllers/AbsencesController.cs#L39) ⚠ | 🤖 _Retrieves an absence by its ID._ | input: id: Guid; output: AbsenceDto; authorization: required; behaviour 🤖: Fetches the absence from the database and returns it as a DTO.; exception 🤖: Returns 404 if no absence with the given ID exists. | 2 |
+| [`Create(System.Guid, ShiftPlanner.Api.Controllers.CreateAbsenceRequest)`](../../src/ShiftPlanner.Api/Controllers/AbsencesController.cs#L46) ⚠ | 🤖 _Creates a new absence for an employee._ | input: employeeId: Guid, request: CreateAbsenceRequest; output: AbsenceDto; authorization: required; responsibilities 🤖: Handles the creation of absences for employees.; behaviour 🤖: Validates the employee exists; creates a new absence using the provided details; saves the absence to the database; returns the created absence.; side effects 🤖: Writes to the database.; exception 🤖: Returns 404 if the employee does not exist; returns 400 if the absence creation fails due to invalid data.; usage 🤖: Called when creating a new absence from the employee detail modal. | 3 |
+| [`Update(System.Guid, ShiftPlanner.Api.Controllers.UpdateAbsenceRequest)`](../../src/ShiftPlanner.Api/Controllers/AbsencesController.cs#L68) ⚠ | 🤖 _Updates an absence record based on the provided ID and request._ | input: id: Guid, request: UpdateAbsenceRequest; output: IActionResult; authorization: required; behaviour 🤖: Fetches the absence from the database, updates its properties with the request data, validates the updated absence, and saves the changes. Returns a 404 if the absence is not found, a 400 if validation fails, or 204 if successful.; exception 🤖: Returns 404 if the absence with the given ID does not exist. Returns 400 if the updated absence fails validation. | 3 |
+| [`Delete(System.Guid)`](../../src/ShiftPlanner.Api/Controllers/AbsencesController.cs#L95) ⚠ | 🤖 _Deletes an absence by its ID._ | input: id: Guid; output: IActionResult; authorization: required; behaviour 🤖: Finds the absence by ID, removes it if found, and returns NoContent if successful.; side effects 🤖: Deletes a record from the database.; exception 🤖: Returns 404 if the absence is not found.; usage 🤖: Called from the frontend when an absence needs to be deleted. | 2 |
 
 ### AccessTokenResponse
 
@@ -153,16 +169,21 @@ _record_ · [AuthController.cs](../../src/ShiftPlanner.Api/Controllers/AuthContr
 
 _class_ · [AuthController.cs](../../src/ShiftPlanner.Api/Controllers/AuthController.cs#L20) ⚠
 
-- **dependencies** _(fact)_: ApplicationDbContext, JwtTokenFactory, AccessTokenResponse, RefreshToken
+🤖 _Manages authentication and authorization for the application._
 
-_Evidence:_ [src/ShiftPlanner.Api/Controllers/AuthController.cs:20-148](../../src/ShiftPlanner.Api/Controllers/AuthController.cs#L20), [src/ShiftPlanner.Infrastructure/Persistence/ApplicationDbContext.cs:17-162](../../src/ShiftPlanner.Infrastructure/Persistence/ApplicationDbContext.cs#L17), [src/ShiftPlanner.Api/Authentication/JwtTokenFactory.cs:20-127](../../src/ShiftPlanner.Api/Authentication/JwtTokenFactory.cs#L20), [src/ShiftPlanner.Api/Controllers/AuthController.cs:17](../../src/ShiftPlanner.Api/Controllers/AuthController.cs#L17), [src/ShiftPlanner.Domain/Common/RefreshToken.cs:10-28](../../src/ShiftPlanner.Domain/Common/RefreshToken.cs#L10)
+- **dependencies** _(fact)_: ApplicationDbContext, JwtTokenFactory, AccessTokenResponse, RefreshToken
+- **responsibilities** _(🤖 draft)_: Handles login, token refresh, and logout operations.
+- **side effects** _(🤖 draft)_: Sets and clears refresh cookies; updates database with token revocation.
+- **exception** _(🤖 draft)_: Returns 401 for unauthorized access; handles exceptions gracefully.
+
+_Evidence:_ [src/ShiftPlanner.Api/Controllers/AuthController.cs:20-151](../../src/ShiftPlanner.Api/Controllers/AuthController.cs#L20), [src/ShiftPlanner.Infrastructure/Persistence/ApplicationDbContext.cs:17-162](../../src/ShiftPlanner.Infrastructure/Persistence/ApplicationDbContext.cs#L17), [src/ShiftPlanner.Api/Authentication/JwtTokenFactory.cs:20-127](../../src/ShiftPlanner.Api/Authentication/JwtTokenFactory.cs#L20), [src/ShiftPlanner.Api/Controllers/AuthController.cs:17](../../src/ShiftPlanner.Api/Controllers/AuthController.cs#L17), [src/ShiftPlanner.Domain/Common/RefreshToken.cs:10-28](../../src/ShiftPlanner.Domain/Common/RefreshToken.cs#L10)
 
 | Member | Summary | Derived from code | Complexity |
 |---|---|---|---|
-| [`Login(ShiftPlanner.Api.Controllers.LoginRequest)`](../../src/ShiftPlanner.Api/Controllers/AuthController.cs#L27) ⚠ |  | input: request: LoginRequest; output: AccessTokenResponse; authorization: none declared | 3 |
-| [`Refresh()`](../../src/ShiftPlanner.Api/Controllers/AuthController.cs#L43) ⚠ |  | output: AccessTokenResponse; authorization: none declared | 4 |
-| [`Logout()`](../../src/ShiftPlanner.Api/Controllers/AuthController.cs#L81) ⚠ |  | output: IActionResult; authorization: required | 6 |
-| [`LogoutAll()`](../../src/ShiftPlanner.Api/Controllers/AuthController.cs#L109) ⚠ |  | output: IActionResult; authorization: required | 4 |
+| [`Login(ShiftPlanner.Api.Controllers.LoginRequest)`](../../src/ShiftPlanner.Api/Controllers/AuthController.cs#L29) ⚠ | 🤖 _Authenticates a user and returns an access token._ | input: request: LoginRequest; output: AccessTokenResponse; authorization: none declared; behaviour 🤖: Validates the user's credentials, generates a refresh token, saves it, and returns an access token.; exception 🤖: Returns 401 if the credentials are invalid.; usage 🤖: The frontend calls it when a user logs in. | 3 |
+| [`Refresh()`](../../src/ShiftPlanner.Api/Controllers/AuthController.cs#L46) ⚠ | 🤖 _Refreshes an access token using a refresh token._ | output: AccessTokenResponse; authorization: none declared; behaviour 🤖: Validates the refresh token, creates a new access token, and returns it.; side effects 🤖: Writes a new refresh token record to the database.; exception 🤖: Returns 401 if the refresh token is invalid or the user is not found. | 4 |
+| [`Logout()`](../../src/ShiftPlanner.Api/Controllers/AuthController.cs#L84) ⚠ | 🤖 _Logs out a user by revoking their refresh token and clearing the refresh cookie._ | output: IActionResult; authorization: required; behaviour 🤖: Retrieves the user ID from the authentication cookie, hashes the refresh token, and revokes the corresponding record in the database. Clears the refresh cookie and returns a NoContent response.; side effects 🤖: Revokes a refresh token in the database and clears a cookie.; exception 🤖: Returns Unauthorized if no user ID is found.; usage 🤖: Called when a user logs out through the frontend. | 6 |
+| [`LogoutAll()`](../../src/ShiftPlanner.Api/Controllers/AuthController.cs#L112) ⚠ | 🤖 _Logs out all refresh tokens for the current user._ | output: IActionResult; authorization: required; behaviour 🤖: Retrieves all active refresh tokens for the user, revokes them, and clears the refresh cookie.; side effects 🤖: Revokes refresh tokens and clears a cookie.; exception 🤖: Returns 401 if the user is not authenticated.; usage 🤖: The frontend calls it when the user logs out. | 4 |
 
 ### AutoFillCommitItem
 
@@ -184,17 +205,23 @@ _record_ · [ContractsController.cs](../../src/ShiftPlanner.Api/Controllers/Cont
 
 _class_ · [ContractsController.cs](../../src/ShiftPlanner.Api/Controllers/ContractsController.cs#L35) ⚠
 
+🤖 _Manages contracts for employees, including retrieving, creating, updating, and deleting contracts._
+
 - **dependencies** _(fact)_: ApplicationDbContext, Contract
+- **responsibilities** _(🤖 draft)_: Handles HTTP requests for contracts, interacting with the database through `ApplicationDbContext`.
+- **behaviour** _(🤖 draft)_: Processes GET, POST, PUT, and DELETE requests to manage contracts.
+- **side effects** _(🤖 draft)_: Writes to the database when creating, updating, or deleting contracts.
+- **exception** _(🤖 draft)_: Returns 404 when a contract or employee is not found, 409 when a conflict occurs (e.g., overlapping contracts), and 400 for invalid requests.
 
 _Evidence:_ [src/ShiftPlanner.Api/Controllers/ContractsController.cs:35-151](../../src/ShiftPlanner.Api/Controllers/ContractsController.cs#L35), [src/ShiftPlanner.Infrastructure/Persistence/ApplicationDbContext.cs:17-162](../../src/ShiftPlanner.Infrastructure/Persistence/ApplicationDbContext.cs#L17), [src/ShiftPlanner.Domain/Contracts/Contract.cs:5-83](../../src/ShiftPlanner.Domain/Contracts/Contract.cs#L5)
 
 | Member | Summary | Derived from code | Complexity |
 |---|---|---|---|
-| [`GetForEmployee(System.Guid)`](../../src/ShiftPlanner.Api/Controllers/ContractsController.cs#L43) ⚠ |  | input: employeeId: Guid; output: IEnumerable\<ContractDto>; authorization: required | 2 |
-| [`GetById(System.Guid)`](../../src/ShiftPlanner.Api/Controllers/ContractsController.cs#L57) ⚠ |  | input: id: Guid; output: ContractDto; authorization: required | 2 |
-| [`Create(System.Guid, ShiftPlanner.Api.Controllers.CreateContractRequest)`](../../src/ShiftPlanner.Api/Controllers/ContractsController.cs#L64) ⚠ |  | input: employeeId: Guid, request: CreateContractRequest; output: ContractDto; authorization: required | 6 |
-| [`Update(System.Guid, ShiftPlanner.Api.Controllers.UpdateContractRequest)`](../../src/ShiftPlanner.Api/Controllers/ContractsController.cs#L99) ⚠ |  | input: id: Guid, request: UpdateContractRequest; output: IActionResult; authorization: required | 8 |
-| [`Delete(System.Guid)`](../../src/ShiftPlanner.Api/Controllers/ContractsController.cs#L139) ⚠ |  | input: id: Guid; output: IActionResult; authorization: required | 2 |
+| [`GetForEmployee(System.Guid)`](../../src/ShiftPlanner.Api/Controllers/ContractsController.cs#L43) ⚠ | 🤖 _Retrieves contracts for a specific employee._ | input: employeeId: Guid; output: IEnumerable\<ContractDto>; authorization: required; behaviour 🤖: Filters contracts by employee ID, orders them by valid from date, and returns them as DTOs.; exception 🤖: Returns 404 if no employee with the given ID exists.; usage 🤖: Called from employee detail modal and planning board components. | 2 |
+| [`GetById(System.Guid)`](../../src/ShiftPlanner.Api/Controllers/ContractsController.cs#L57) ⚠ | 🤖 _Retrieves a contract by its ID._ | input: id: Guid; output: ContractDto; authorization: required; behaviour 🤖: Fetches the contract from the database and returns it as a DTO.; exception 🤖: Returns 404 if no contract with the given ID exists. | 2 |
+| [`Create(System.Guid, ShiftPlanner.Api.Controllers.CreateContractRequest)`](../../src/ShiftPlanner.Api/Controllers/ContractsController.cs#L64) ⚠ | 🤖 _Creates a new contract for an employee._ | input: employeeId: Guid, request: CreateContractRequest; output: ContractDto; authorization: required; responsibilities 🤖: Validates the request, checks for overlaps, creates a new contract, and saves it.; behaviour 🤖: Validates the employee and contract details, checks for overlapping contracts, creates a new contract, and returns the created contract.; side effects 🤖: Writes to the database.; exception 🤖: Returns 404 if the employee does not exist; returns 409 if the contract overlaps with an existing one; returns 400 if the contract details are invalid.; usage 🤖: Called when creating a new contract from the employee detail modal. | 6 |
+| [`Update(System.Guid, ShiftPlanner.Api.Controllers.UpdateContractRequest)`](../../src/ShiftPlanner.Api/Controllers/ContractsController.cs#L99) ⚠ | 🤖 _Updates an existing contract based on the provided request._ | input: id: Guid, request: UpdateContractRequest; output: IActionResult; authorization: required; responsibilities 🤖: Ensures the contract's validity, updates the contract details, and saves the changes.; behaviour 🤖: Fetches the contract by ID, validates the update request, checks for overlaps, updates the contract, and saves the changes.; side effects 🤖: Writes to the database.; exception 🤖: Returns 404 if the contract is not found; returns 409 if the update would cause overlaps.; usage 🤖: Called from the frontend when an employee's contract needs to be updated. | 8 |
+| [`Delete(System.Guid)`](../../src/ShiftPlanner.Api/Controllers/ContractsController.cs#L139) ⚠ | 🤖 _Deletes a contract by its ID._ | input: id: Guid; output: IActionResult; authorization: required; behaviour 🤖: Finds the contract by ID, removes it if found, and returns NoContent if successful.; exception 🤖: Returns NotFound if no contract with the given ID exists.; usage 🤖: Called from the EmployeeDetailModal.vue when a user tries to delete a contract. | 2 |
 
 ### CopyMonthRequest
 
@@ -244,13 +271,19 @@ _record_ · [TeamsController.cs](../../src/ShiftPlanner.Api/Controllers/TeamsCon
 
 _class_ · [DashboardController.cs](../../src/ShiftPlanner.Api/Controllers/DashboardController.cs#L22) ⚠
 
+🤖 _Provides a dashboard with various KPIs and data for shifts, including coverage, pain points, and cost breakdowns._
+
 - **dependencies** _(fact)_: ApplicationDbContext, DashboardAggregator, GermanPublicHolidays, DashboardKpisDto, DashboardDto, CostOverviewDto
+- **responsibilities** _(🤖 draft)_: Aggregates data from various repositories to generate a comprehensive dashboard for shift planning.
+- **behaviour** _(🤖 draft)_: Fetches data from the database, processes it using the `DashboardAggregator`, and returns a `DashboardDto` containing KPIs, coverage, pain points, and cost details.
+- **side effects** _(🤖 draft)_: Reads data from the database.
+- **exception** _(🤖 draft)_: Returns a 400 error if the 'to' date is before the 'from' date.
 
 _Evidence:_ [src/ShiftPlanner.Api/Controllers/DashboardController.cs:22-150](../../src/ShiftPlanner.Api/Controllers/DashboardController.cs#L22), [src/ShiftPlanner.Infrastructure/Persistence/ApplicationDbContext.cs:17-162](../../src/ShiftPlanner.Infrastructure/Persistence/ApplicationDbContext.cs#L17), [src/ShiftPlanner.Application/Dashboard/DashboardAggregator.cs:14-221](../../src/ShiftPlanner.Application/Dashboard/DashboardAggregator.cs#L14), [src/ShiftPlanner.Domain/Scheduling/GermanPublicHolidays.cs:23-103](../../src/ShiftPlanner.Domain/Scheduling/GermanPublicHolidays.cs#L23), [src/ShiftPlanner.Application/Dashboard/DashboardDtos.cs:16-20](../../src/ShiftPlanner.Application/Dashboard/DashboardDtos.cs#L16), [src/ShiftPlanner.Application/Dashboard/DashboardDtos.cs:11-14](../../src/ShiftPlanner.Application/Dashboard/DashboardDtos.cs#L11), [src/ShiftPlanner.Application/Dashboard/DashboardDtos.cs:44](../../src/ShiftPlanner.Application/Dashboard/DashboardDtos.cs#L44)
 
 | Member | Summary | Derived from code | Complexity |
 |---|---|---|---|
-| [`Get(System.DateOnly?, System.DateOnly?, System.Guid?, System.Guid?, System.Threading.CancellationToken)`](../../src/ShiftPlanner.Api/Controllers/DashboardController.cs#L27) ⚠ |  | input: from: DateOnly?, to: DateOnly?, teamId: Guid?, shiftTypeId: Guid?, ct: CancellationToken; output: DashboardDto; authorization: required | 22 |
+| [`Get(System.DateOnly?, System.DateOnly?, System.Guid?, System.Guid?, System.Threading.CancellationToken)`](../../src/ShiftPlanner.Api/Controllers/DashboardController.cs#L27) ⚠ | 🤖 _Generates a dashboard for a given period, team, and shift type._ | input: from: DateOnly?, to: DateOnly?, teamId: Guid?, shiftTypeId: Guid?, ct: CancellationToken; output: DashboardDto; authorization: required; responsibilities 🤖: Fetches and aggregates data for the dashboard, including coverage, pain points, planning status, cost breakdown, and employee utilization.; behaviour 🤖: Resolves the period, fetches relevant schedules and assignments, and aggregates data to build the dashboard DTO.; exception 🤖: Returns 400 if 'to' is before 'from'.; usage 🤖: Called by the frontend when the dashboard page is opened. | 22 |
 
 ### EmployeeDto
 
@@ -260,25 +293,31 @@ _record_ · [EmployeesController.cs](../../src/ShiftPlanner.Api/Controllers/Empl
 
 _class_ · [EmployeesController.cs](../../src/ShiftPlanner.Api/Controllers/EmployeesController.cs#L45) ⚠
 
+🤖 _Manages employee data, including retrieving, creating, and updating employee records._
+
 - **dependencies** _(fact)_: ApplicationDbContext, HoursBalanceCalculator, GermanPublicHolidays, WorkingTimeCalculator, HoursReportDayDto, HoursReportShiftDto, HoursReportDto, HoursAdjustmentDto, Employee, ShiftTypeDto, ShiftTypePreferenceDto, ShiftTypePreference, WeekdayPreferenceDto, WeekdayPreference
+- **responsibilities** _(🤖 draft)_: Handles HTTP requests for employee data, including fetching all employees, retrieving a single employee by ID, calculating hours balance, generating hours reports, and managing employee creation and updates.
+- **behaviour** _(🤖 draft)_: Processes HTTP GET and POST requests to interact with employee data. For GET requests, it retrieves employees based on the route and parameters. For POST requests, it creates new employees and updates existing ones.
+- **side effects** _(🤖 draft)_: Writes to the database when creating or updating employees.
+- **exception** _(🤖 draft)_: Returns 404 when an employee is not found for GET requests. Returns 400 for invalid input, such as negative skip/take values or personnel number conflicts. Returns 409 for personnel number conflicts during creation.
 
 _Evidence:_ [src/ShiftPlanner.Api/Controllers/EmployeesController.cs:45-363](../../src/ShiftPlanner.Api/Controllers/EmployeesController.cs#L45), [src/ShiftPlanner.Infrastructure/Persistence/ApplicationDbContext.cs:17-162](../../src/ShiftPlanner.Infrastructure/Persistence/ApplicationDbContext.cs#L17), [src/ShiftPlanner.Domain/Scheduling/HoursBalanceCalculator.cs:10-53](../../src/ShiftPlanner.Domain/Scheduling/HoursBalanceCalculator.cs#L10), [src/ShiftPlanner.Domain/Scheduling/GermanPublicHolidays.cs:23-103](../../src/ShiftPlanner.Domain/Scheduling/GermanPublicHolidays.cs#L23), [src/ShiftPlanner.Domain/Scheduling/WorkingTimeCalculator.cs:7-154](../../src/ShiftPlanner.Domain/Scheduling/WorkingTimeCalculator.cs#L7), [src/ShiftPlanner.Api/Controllers/EmployeesController.cs:32-33](../../src/ShiftPlanner.Api/Controllers/EmployeesController.cs#L32), [src/ShiftPlanner.Api/Controllers/EmployeesController.cs:30](../../src/ShiftPlanner.Api/Controllers/EmployeesController.cs#L30), [src/ShiftPlanner.Api/Controllers/EmployeesController.cs:35-39](../../src/ShiftPlanner.Api/Controllers/EmployeesController.cs#L35), [src/ShiftPlanner.Api/Controllers/HoursAdjustmentsController.cs:11-12](../../src/ShiftPlanner.Api/Controllers/HoursAdjustmentsController.cs#L11), [src/ShiftPlanner.Domain/Employees/Employee.cs:5-60](../../src/ShiftPlanner.Domain/Employees/Employee.cs#L5), [src/ShiftPlanner.Api/Controllers/ShiftTypesController.cs:10-12](../../src/ShiftPlanner.Api/Controllers/ShiftTypesController.cs#L10), [src/ShiftPlanner.Api/Controllers/EmployeesController.cs:41](../../src/ShiftPlanner.Api/Controllers/EmployeesController.cs#L41), [src/ShiftPlanner.Domain/Employees/ShiftTypePreference.cs:7-14](../../src/ShiftPlanner.Domain/Employees/ShiftTypePreference.cs#L7), [src/ShiftPlanner.Api/Controllers/EmployeesController.cs:42](../../src/ShiftPlanner.Api/Controllers/EmployeesController.cs#L42), [src/ShiftPlanner.Domain/Employees/WeekdayPreference.cs:4-10](../../src/ShiftPlanner.Domain/Employees/WeekdayPreference.cs#L4)
 
 | Member | Summary | Derived from code | Complexity |
 |---|---|---|---|
-| [`GetAll(int?, int?)`](../../src/ShiftPlanner.Api/Controllers/EmployeesController.cs#L53) ⚠ |  | input: skip: int?, take: int?; output: IEnumerable\<EmployeeDto>; authorization: required | 5 |
-| [`GetById(System.Guid)`](../../src/ShiftPlanner.Api/Controllers/EmployeesController.cs#L71) ⚠ |  | input: id: Guid; output: EmployeeDto; authorization: required | 2 |
-| [`HoursBalance(System.Guid, System.DateOnly?)`](../../src/ShiftPlanner.Api/Controllers/EmployeesController.cs#L80) ⚠ |  | input: id: Guid, before: DateOnly?; output: decimal; authorization: required | 5 |
-| [`HoursReport(System.Guid, System.DateOnly, System.DateOnly)`](../../src/ShiftPlanner.Api/Controllers/EmployeesController.cs#L103) ⚠ |  | input: id: Guid, from: DateOnly, to: DateOnly; output: HoursReportDto; authorization: required | 13 |
-| [`Create(ShiftPlanner.Api.Controllers.CreateEmployeeRequest)`](../../src/ShiftPlanner.Api/Controllers/EmployeesController.cs#L163) ⚠ |  | input: request: CreateEmployeeRequest; output: EmployeeDto; authorization: required | 4 |
-| [`Update(System.Guid, ShiftPlanner.Api.Controllers.UpdateEmployeeRequest)`](../../src/ShiftPlanner.Api/Controllers/EmployeesController.cs#L189) ⚠ |  | input: id: Guid, request: UpdateEmployeeRequest; output: IActionResult; authorization: required | 6 |
-| [`Delete(System.Guid, bool)`](../../src/ShiftPlanner.Api/Controllers/EmployeesController.cs#L221) ⚠ |  | input: id: Guid, deleteAssignments: bool; output: IActionResult; authorization: required | 6 |
-| [`GetEligibleShiftTypes(System.Guid)`](../../src/ShiftPlanner.Api/Controllers/EmployeesController.cs#L261) ⚠ |  | input: id: Guid; output: IEnumerable\<ShiftTypeDto>; authorization: required | 2 |
-| [`SetEligibleShiftTypes(System.Guid, ShiftPlanner.Api.Controllers.SetEligibleShiftTypesRequest)`](../../src/ShiftPlanner.Api/Controllers/EmployeesController.cs#L274) ⚠ |  | input: id: Guid, request: SetEligibleShiftTypesRequest; output: IActionResult; authorization: required | 3 |
-| [`GetShiftTypePreferences(System.Guid)`](../../src/ShiftPlanner.Api/Controllers/EmployeesController.cs#L295) ⚠ |  | input: id: Guid; output: IEnumerable\<ShiftTypePreferenceDto>; authorization: required | 2 |
-| [`SetShiftTypePreferences(System.Guid, System.Collections.Generic.List<ShiftPlanner.Api.Controllers.ShiftTypePreferenceDto>)`](../../src/ShiftPlanner.Api/Controllers/EmployeesController.cs#L305) ⚠ |  | input: id: Guid, preferences: List\<ShiftTypePreferenceDto>; output: IActionResult; authorization: required | 3 |
-| [`GetWeekdayPreferences(System.Guid)`](../../src/ShiftPlanner.Api/Controllers/EmployeesController.cs#L331) ⚠ |  | input: id: Guid; output: IEnumerable\<WeekdayPreferenceDto>; authorization: required | 2 |
-| [`SetWeekdayPreferences(System.Guid, System.Collections.Generic.List<ShiftPlanner.Api.Controllers.WeekdayPreferenceDto>)`](../../src/ShiftPlanner.Api/Controllers/EmployeesController.cs#L341) ⚠ |  | input: id: Guid, preferences: List\<WeekdayPreferenceDto>; output: IActionResult; authorization: required | 3 |
+| [`GetAll(int?, int?)`](../../src/ShiftPlanner.Api/Controllers/EmployeesController.cs#L53) ⚠ | 🤖 _Retrieves a list of employees with optional pagination._ | input: skip: int?, take: int?; output: IEnumerable\<EmployeeDto>; authorization: required; behaviour 🤖: Filters and paginates employees based on optional skip and take parameters. Returns a list of EmployeeDto.; exception 🤖: Returns 400 if skip or take is negative.; usage 🤖: Used in the EmployeesView and PlanningBoard components to fetch employee data. | 5 |
+| [`GetById(System.Guid)`](../../src/ShiftPlanner.Api/Controllers/EmployeesController.cs#L71) ⚠ | 🤖 _Retrieves an employee by their unique identifier._ | input: id: Guid; output: EmployeeDto; authorization: required; behaviour 🤖: Fetches the employee from the database using the provided ID and returns it as a DTO.; exception 🤖: Returns a 404 Not Found response if no employee with the given ID exists. | 2 |
+| [`HoursBalance(System.Guid, System.DateOnly?)`](../../src/ShiftPlanner.Api/Controllers/EmployeesController.cs#L80) ⚠ | 🤖 _Calculates the hours balance for an employee up to a specified date._ | input: id: Guid, before: DateOnly?; output: decimal; authorization: required; behaviour 🤖: Fetches the employee's schedules, assignments, contracts, absences, and adjustments, then calculates the cumulative hours balance using the `HoursBalanceCalculator`.; exception 🤖: Returns 404 if the employee with the given ID does not exist.; usage 🤖: The planning board component calls it to display the employee's hours balance. | 5 |
+| [`HoursReport(System.Guid, System.DateOnly, System.DateOnly)`](../../src/ShiftPlanner.Api/Controllers/EmployeesController.cs#L103) ⚠ | 🤖 _Generates a report of hours worked by an employee within a specified date range, including shifts, absences, and balance._ | input: id: Guid, from: DateOnly, to: DateOnly; output: HoursReportDto; authorization: required; responsibilities 🤖: Calculates the expected and actual hours worked by an employee, considering shifts, absences, and public holidays.; behaviour 🤖: Fetches employee details, shift assignments, contracts, absences, and hours adjustments from the database. Calculates expected and actual hours, and computes the hours balance. Returns a `HoursReportDto` object.; exception 🤖: Returns 404 if the employee is not found. Returns 400 if the 'to' date is before the 'from' date.; usage 🤖: The hours report modal in the frontend calls this endpoint to display the hours report for an employee. | 13 |
+| [`Create(ShiftPlanner.Api.Controllers.CreateEmployeeRequest)`](../../src/ShiftPlanner.Api/Controllers/EmployeesController.cs#L163) ⚠ | 🤖 _Creates a new employee and returns the created employee details._ | input: request: CreateEmployeeRequest; output: EmployeeDto; authorization: required; responsibilities 🤖: Manages the creation of new employees.; behaviour 🤖: Validates the request, checks for existing personnel numbers and team IDs, creates a new employee, saves it to the database, and returns the created employee.; side effects 🤖: Writes to the database.; exception 🤖: Returns 400 if the team does not exist; returns 409 if the personnel number already exists.; usage 🤖: Called when a new employee is created through the API. | 4 |
+| [`Update(System.Guid, ShiftPlanner.Api.Controllers.UpdateEmployeeRequest)`](../../src/ShiftPlanner.Api/Controllers/EmployeesController.cs#L189) ⚠ | 🤖 _Updates an employee's details based on the provided request._ | input: id: Guid, request: UpdateEmployeeRequest; output: IActionResult; authorization: required; responsibilities 🤖: Handles the update of an employee's details in the system.; behaviour 🤖: Fetches the employee by ID, validates the request, updates the employee's details if valid, and saves the changes.; side effects 🤖: Updates the database with the new employee details.; exception 🤖: Returns 404 if the employee is not found; returns 400 if the team does not exist or if the personnel number already exists; returns 204 if the update is successful.; usage 🤖: The employee detail modal calls it when the user submits an update. | 6 |
+| [`Delete(System.Guid, bool)`](../../src/ShiftPlanner.Api/Controllers/EmployeesController.cs#L221) ⚠ | 🤖 _Deletes an employee and optionally their assignments._ | input: id: Guid, deleteAssignments: bool; output: IActionResult; authorization: required; responsibilities 🤖: Manages employee deletion and assignment management.; behaviour 🤖: Deletes an employee from the database and optionally removes their assignments. Returns 204 No Content on success, 404 Not Found if the employee does not exist, and 409 Conflict if the employee has assignments and deleteAssignments is false.; exception 🤖: Returns 404 when no employee has that id. Returns 409 when the employee has assignments and deleteAssignments is false.; usage 🤖: The employee management page calls it when a user deletes an employee. | 6 |
+| [`GetEligibleShiftTypes(System.Guid)`](../../src/ShiftPlanner.Api/Controllers/EmployeesController.cs#L261) ⚠ | 🤖 _Retrieves the list of eligible shift types for a given employee._ | input: id: Guid; output: IEnumerable\<ShiftTypeDto>; authorization: required; behaviour 🤖: Fetches the employee from the database, checks if they exist, and returns their eligible shift types sorted by start time.; exception 🤖: Returns 404 if the employee with the given ID does not exist.; usage 🤖: Called from the employee detail modal and planning board components to display eligible shift types. | 2 |
+| [`SetEligibleShiftTypes(System.Guid, ShiftPlanner.Api.Controllers.SetEligibleShiftTypesRequest)`](../../src/ShiftPlanner.Api/Controllers/EmployeesController.cs#L274) ⚠ | 🤖 _Updates the eligible shift types for an employee._ | input: id: Guid, request: SetEligibleShiftTypesRequest; output: IActionResult; authorization: required; responsibilities 🤖: Manages employee shift type eligibility.; behaviour 🤖: Fetches the employee by ID, validates shift type IDs, updates the employee's eligible shift types, and saves changes.; side effects 🤖: Writes to the database.; exception 🤖: Returns 404 if the employee is not found; returns 400 if any shift type ID is invalid.; usage 🤖: Called from the frontend when updating an employee's eligible shift types. | 3 |
+| [`GetShiftTypePreferences(System.Guid)`](../../src/ShiftPlanner.Api/Controllers/EmployeesController.cs#L295) ⚠ | 🤖 _Retrieves shift type preferences for a specific employee._ | input: id: Guid; output: IEnumerable\<ShiftTypePreferenceDto>; authorization: required; behaviour 🤖: Checks if the employee exists; if not, returns 404. Otherwise, fetches and returns the shift type preferences.; exception 🤖: Returns 404 if the employee does not exist.; usage 🤖: The employee detail modal calls it to display shift type preferences. | 2 |
+| [`SetShiftTypePreferences(System.Guid, System.Collections.Generic.List<ShiftPlanner.Api.Controllers.ShiftTypePreferenceDto>)`](../../src/ShiftPlanner.Api/Controllers/EmployeesController.cs#L305) ⚠ | 🤖 _Updates an employee's shift type preferences._ | input: id: Guid, preferences: List\<ShiftTypePreferenceDto>; output: IActionResult; authorization: required; responsibilities 🤖: Validates the employee and shift type preferences, updates the database with new preferences.; side effects 🤖: Writes to the database.; exception 🤖: Returns 404 if the employee does not exist; returns 400 if any shift type id is invalid.; usage 🤖: Called from the frontend when updating an employee's shift type preferences. | 3 |
+| [`GetWeekdayPreferences(System.Guid)`](../../src/ShiftPlanner.Api/Controllers/EmployeesController.cs#L331) ⚠ | 🤖 _Retrieves the weekday preferences for a specific employee._ | input: id: Guid; output: IEnumerable\<WeekdayPreferenceDto>; authorization: required; behaviour 🤖: Checks if the employee exists in the database; if not, returns 404. Otherwise, fetches and returns the weekday preferences.; exception 🤖: Returns 404 if the employee with the given id does not exist.; usage 🤖: The employee detail modal calls this endpoint to display the employee's weekday preferences. | 2 |
+| [`SetWeekdayPreferences(System.Guid, System.Collections.Generic.List<ShiftPlanner.Api.Controllers.WeekdayPreferenceDto>)`](../../src/ShiftPlanner.Api/Controllers/EmployeesController.cs#L341) ⚠ | 🤖 _Updates an employee's weekday preferences._ | input: id: Guid, preferences: List\<WeekdayPreferenceDto>; output: IActionResult; authorization: required; responsibilities 🤖: Ensures the employee exists; validates preferences; updates the database with new preferences.; side effects 🤖: Writes to the database.; exception 🤖: Returns 404 if the employee does not exist; returns 400 if there are duplicate days in preferences.; usage 🤖: Called from the frontend when updating an employee's preferences. | 3 |
 
 ### HoursAdjustmentDto
 
@@ -288,17 +327,23 @@ _record_ · [HoursAdjustmentsController.cs](../../src/ShiftPlanner.Api/Controlle
 
 _class_ · [HoursAdjustmentsController.cs](../../src/ShiftPlanner.Api/Controllers/HoursAdjustmentsController.cs#L22) ⚠
 
+🤖 _Manages hours adjustments for employees, including retrieving, creating, updating, and deleting._
+
 - **dependencies** _(fact)_: ApplicationDbContext, HoursAdjustment
+- **responsibilities** _(🤖 draft)_: Handles HTTP requests for hours adjustments, interacts with the database through the `ApplicationDbContext`.
+- **behaviour** _(🤖 draft)_: Provides endpoints to get hours adjustments for a specific employee, get a single adjustment by ID, create a new adjustment, update an existing adjustment, and delete an adjustment.
+- **side effects** _(🤖 draft)_: Writes to the database when creating, updating, or deleting hours adjustments.
+- **exception** _(🤖 draft)_: Returns 404 when an employee or adjustment is not found. Returns 400 when validation fails.
 
 _Evidence:_ [src/ShiftPlanner.Api/Controllers/HoursAdjustmentsController.cs:22-118](../../src/ShiftPlanner.Api/Controllers/HoursAdjustmentsController.cs#L22), [src/ShiftPlanner.Infrastructure/Persistence/ApplicationDbContext.cs:17-162](../../src/ShiftPlanner.Infrastructure/Persistence/ApplicationDbContext.cs#L17), [src/ShiftPlanner.Domain/Employees/HoursAdjustment.cs:9-47](../../src/ShiftPlanner.Domain/Employees/HoursAdjustment.cs#L9)
 
 | Member | Summary | Derived from code | Complexity |
 |---|---|---|---|
-| [`GetForEmployee(System.Guid)`](../../src/ShiftPlanner.Api/Controllers/HoursAdjustmentsController.cs#L35) ⚠ |  | input: employeeId: Guid; output: IEnumerable\<HoursAdjustmentDto>; authorization: required | 2 |
-| [`GetById(System.Guid)`](../../src/ShiftPlanner.Api/Controllers/HoursAdjustmentsController.cs#L49) ⚠ |  | input: id: Guid; output: HoursAdjustmentDto; authorization: required | 2 |
-| [`Create(System.Guid, ShiftPlanner.Api.Controllers.CreateHoursAdjustmentRequest)`](../../src/ShiftPlanner.Api/Controllers/HoursAdjustmentsController.cs#L56) ⚠ |  | input: employeeId: Guid, request: CreateHoursAdjustmentRequest; output: HoursAdjustmentDto; authorization: required | 3 |
-| [`Update(System.Guid, ShiftPlanner.Api.Controllers.UpdateHoursAdjustmentRequest)`](../../src/ShiftPlanner.Api/Controllers/HoursAdjustmentsController.cs#L80) ⚠ |  | input: id: Guid, request: UpdateHoursAdjustmentRequest; output: IActionResult; authorization: required | 3 |
-| [`Delete(System.Guid)`](../../src/ShiftPlanner.Api/Controllers/HoursAdjustmentsController.cs#L106) ⚠ |  | input: id: Guid; output: IActionResult; authorization: required | 2 |
+| [`GetForEmployee(System.Guid)`](../../src/ShiftPlanner.Api/Controllers/HoursAdjustmentsController.cs#L35) ⚠ | 🤖 _Retrieves hours adjustments for a specific employee._ | input: employeeId: Guid; output: IEnumerable\<HoursAdjustmentDto>; authorization: required; behaviour 🤖: Checks if the employee exists; if not, returns 404. Otherwise, fetches and returns the hours adjustments sorted by date.; exception 🤖: Returns 404 if the employee does not exist.; usage 🤖: Called from the employee detail modal to display hours adjustments. | 2 |
+| [`GetById(System.Guid)`](../../src/ShiftPlanner.Api/Controllers/HoursAdjustmentsController.cs#L49) ⚠ | 🤖 _Retrieves a hours adjustment by its ID._ | input: id: Guid; output: HoursAdjustmentDto; authorization: required; behaviour 🤖: Fetches the hours adjustment from the database and returns it as a DTO.; exception 🤖: Returns 404 if no adjustment with the given ID is found. | 2 |
+| [`Create(System.Guid, ShiftPlanner.Api.Controllers.CreateHoursAdjustmentRequest)`](../../src/ShiftPlanner.Api/Controllers/HoursAdjustmentsController.cs#L56) ⚠ | 🤖 _Creates a new hours adjustment for an employee._ | input: employeeId: Guid, request: CreateHoursAdjustmentRequest; output: HoursAdjustmentDto; authorization: required; responsibilities 🤖: Manages the creation of hours adjustments for employees.; behaviour 🤖: Validates the employee exists, creates a new hours adjustment, and saves it to the database.; side effects 🤖: Writes to the database.; exception 🤖: Returns 404 if the employee does not exist; returns 400 if the creation fails due to invalid arguments.; usage 🤖: Called when creating a new hours adjustment from the frontend. | 3 |
+| [`Update(System.Guid, ShiftPlanner.Api.Controllers.UpdateHoursAdjustmentRequest)`](../../src/ShiftPlanner.Api/Controllers/HoursAdjustmentsController.cs#L80) ⚠ | 🤖 _Updates an existing hours adjustment by its ID._ | input: id: Guid, request: UpdateHoursAdjustmentRequest; output: IActionResult; authorization: required; behaviour 🤖: Fetches the adjustment from the database, updates its properties based on the request, validates the changes, and saves them.; side effects 🤖: Writes to the database.; exception 🤖: Returns 404 if the adjustment does not exist; returns 400 if validation fails. | 3 |
+| [`Delete(System.Guid)`](../../src/ShiftPlanner.Api/Controllers/HoursAdjustmentsController.cs#L106) ⚠ | 🤖 _Deletes a hours adjustment by its id._ | input: id: Guid; output: IActionResult; authorization: required; behaviour 🤖: Finds the hours adjustment through the repository, removes it if found, and returns NoContent if successful.; exception 🤖: Returns 404 if no hours adjustment has that id.; usage 🤖: The employee detail modal calls it when an adjustment is deleted. | 2 |
 
 ### HoursReportDayDto
 
@@ -320,13 +365,19 @@ _record_ · [AuthController.cs](../../src/ShiftPlanner.Api/Controllers/AuthContr
 
 _class_ · [PlanningBoardController.cs](../../src/ShiftPlanner.Api/Controllers/PlanningBoardController.cs#L29) ⚠
 
+🤖 _Retrieves planning board data for a specified date range and team._
+
 - **dependencies** _(fact)_: ApplicationDbContext, GermanPublicHolidays, PlanningBoardAggregator, AbsenceDto, PlanningBoardEmployeeDto, PlanningBoardDto, WorkingTimeCalculator, WageCalculator, ShiftTiming, ShiftAssignmentDto
+- **responsibilities** _(🤖 draft)_: Fetches employee data, shift assignments, contracts, absences, and schedules within a given date range.
+- **behaviour** _(🤖 draft)_: Queries the database for relevant entities, calculates statistics, and constructs a DTO for the planning board.
+- **side effects** _(🤖 draft)_: Reads data from the database.
+- **exception** _(🤖 draft)_: Returns a 400 error if the 'to' date is before the 'from' date.
 
 _Evidence:_ [src/ShiftPlanner.Api/Controllers/PlanningBoardController.cs:29-140](../../src/ShiftPlanner.Api/Controllers/PlanningBoardController.cs#L29), [src/ShiftPlanner.Infrastructure/Persistence/ApplicationDbContext.cs:17-162](../../src/ShiftPlanner.Infrastructure/Persistence/ApplicationDbContext.cs#L17), [src/ShiftPlanner.Domain/Scheduling/GermanPublicHolidays.cs:23-103](../../src/ShiftPlanner.Domain/Scheduling/GermanPublicHolidays.cs#L23), [src/ShiftPlanner.Application/Planning/PlanningBoardAggregator.cs:17-69](../../src/ShiftPlanner.Application/Planning/PlanningBoardAggregator.cs#L17), [src/ShiftPlanner.Api/Controllers/AbsencesController.cs:10](../../src/ShiftPlanner.Api/Controllers/AbsencesController.cs#L10), [src/ShiftPlanner.Api/Controllers/PlanningBoardController.cs:19-25](../../src/ShiftPlanner.Api/Controllers/PlanningBoardController.cs#L19), [src/ShiftPlanner.Api/Controllers/PlanningBoardController.cs:27](../../src/ShiftPlanner.Api/Controllers/PlanningBoardController.cs#L27), [src/ShiftPlanner.Domain/Scheduling/WorkingTimeCalculator.cs:7-154](../../src/ShiftPlanner.Domain/Scheduling/WorkingTimeCalculator.cs#L7), [src/ShiftPlanner.Domain/Scheduling/WageCalculator.cs:13-114](../../src/ShiftPlanner.Domain/Scheduling/WageCalculator.cs#L13), [src/ShiftPlanner.Domain/Scheduling/WageCalculator.cs:9](../../src/ShiftPlanner.Domain/Scheduling/WageCalculator.cs#L9), [src/ShiftPlanner.Api/Controllers/SchedulesController.cs:21-24](../../src/ShiftPlanner.Api/Controllers/SchedulesController.cs#L21)
 
 | Member | Summary | Derived from code | Complexity |
 |---|---|---|---|
-| [`Get(System.DateOnly, System.DateOnly, System.Guid?)`](../../src/ShiftPlanner.Api/Controllers/PlanningBoardController.cs#L34) ⚠ |  | input: from: DateOnly, to: DateOnly, teamId: Guid?; output: PlanningBoardDto; authorization: required | 14 |
+| [`Get(System.DateOnly, System.DateOnly, System.Guid?)`](../../src/ShiftPlanner.Api/Controllers/PlanningBoardController.cs#L34) ⚠ | 🤖 _Retrieves planning board data for a specified date range and optionally a team._ | input: from: DateOnly, to: DateOnly, teamId: Guid?; output: PlanningBoardDto; authorization: required; responsibilities 🤖: Fetches employee data, shift assignments, contracts, absences, and schedules within the specified date range. Calculates planning board statistics and constructs a DTO for the response.; behaviour 🤖: Filters employees based on the provided team ID if specified. Retrieves shift assignments, contracts, absences, and schedules within the given date range. Calculates planning board statistics including target, planned, and balance hours. Constructs a `PlanningBoardDto` containing employee data and statistics.; exception 🤖: Returns a 400 Bad Request if the 'to' date is before the 'from' date. | 14 |
 
 ### PlanningBoardDto
 
@@ -340,13 +391,17 @@ _record_ · [PlanningBoardController.cs](../../src/ShiftPlanner.Api/Controllers/
 
 _class_ · [PublicHolidaysController.cs](../../src/ShiftPlanner.Api/Controllers/PublicHolidaysController.cs#L9) ⚠
 
+🤖 _Provides an API endpoint to retrieve public holidays within a specified date range._
+
 - **dependencies** _(fact)_: GermanPublicHolidays
+- **behaviour** _(🤖 draft)_: Handles GET requests to retrieve public holidays between the provided start and end dates. Optionally filters by Bundesland. Returns a list of public holidays or a 400 Bad Request if the end date is before the start date.
+- **exception** _(🤖 draft)_: Returns 400 Bad Request if the end date is before the start date.
 
 _Evidence:_ [src/ShiftPlanner.Api/Controllers/PublicHolidaysController.cs:9-24](../../src/ShiftPlanner.Api/Controllers/PublicHolidaysController.cs#L9), [src/ShiftPlanner.Domain/Scheduling/GermanPublicHolidays.cs:23-103](../../src/ShiftPlanner.Domain/Scheduling/GermanPublicHolidays.cs#L23)
 
 | Member | Summary | Derived from code | Complexity |
 |---|---|---|---|
-| [`GetInRange(System.DateOnly, System.DateOnly, ShiftPlanner.Domain.Scheduling.Bundesland?)`](../../src/ShiftPlanner.Api/Controllers/PublicHolidaysController.cs#L16) ⚠ |  | input: start: DateOnly, end: DateOnly, bundesland: Bundesland?; output: IEnumerable\<PublicHoliday>; authorization: required | 2 |
+| [`GetInRange(System.DateOnly, System.DateOnly, ShiftPlanner.Domain.Scheduling.Bundesland?)`](../../src/ShiftPlanner.Api/Controllers/PublicHolidaysController.cs#L16) ⚠ | 🤖 _Retrieves public holidays within a specified date range for a given Bundesland._ | input: start: DateOnly, end: DateOnly, bundesland: Bundesland?; output: IEnumerable\<PublicHoliday>; authorization: required; behaviour 🤖: Validates the input dates; if 'end' is before 'start', returns a 400 Bad Request. Otherwise, calls GermanPublicHolidays.InRange to fetch holidays and returns them.; exception 🤖: Returns 400 Bad Request if 'end' is before 'start'.; usage 🤖: Used by the frontend to fetch public holidays for planning purposes. | 2 |
 
 ### ScheduleDetailDto
 
@@ -360,26 +415,32 @@ _record_ · [SchedulesController.cs](../../src/ShiftPlanner.Api/Controllers/Sche
 
 _class_ · [SchedulesController.cs](../../src/ShiftPlanner.Api/Controllers/SchedulesController.cs#L66) ⚠
 
+🤖 _Manages schedules, including creating, updating, and retrieving schedule details._
+
 - **dependencies** _(fact)_: ApplicationDbContext, WorkingTimeCalculator, WageCalculator, ShiftTiming, ShiftAssignmentDto, Contract, GermanPublicHolidays, ScheduleDetailDto, Schedule, ScheduleValidator, ShiftAssignment, CopyMonthResponse, ShiftSuggestionEngine, SchedulingContext, ShiftSuggestionDto, AutoFillProposalDto
+- **responsibilities** _(🤖 draft)_: Handles CRUD operations for schedules, including validation and authorization.
+- **behaviour** _(🤖 draft)_: Loads schedules from the database, validates them, and returns the appropriate HTTP response.
+- **side effects** _(🤖 draft)_: Writes to the database when creating or updating schedules.
+- **exception** _(🤖 draft)_: Returns 404 when a schedule is not found, 400 for invalid input, and 409 for conflicts.
 
 _Evidence:_ [src/ShiftPlanner.Api/Controllers/SchedulesController.cs:66-687](../../src/ShiftPlanner.Api/Controllers/SchedulesController.cs#L66), [src/ShiftPlanner.Infrastructure/Persistence/ApplicationDbContext.cs:17-162](../../src/ShiftPlanner.Infrastructure/Persistence/ApplicationDbContext.cs#L17), [src/ShiftPlanner.Domain/Scheduling/WorkingTimeCalculator.cs:7-154](../../src/ShiftPlanner.Domain/Scheduling/WorkingTimeCalculator.cs#L7), [src/ShiftPlanner.Domain/Scheduling/WageCalculator.cs:13-114](../../src/ShiftPlanner.Domain/Scheduling/WageCalculator.cs#L13), [src/ShiftPlanner.Domain/Scheduling/WageCalculator.cs:9](../../src/ShiftPlanner.Domain/Scheduling/WageCalculator.cs#L9), [src/ShiftPlanner.Api/Controllers/SchedulesController.cs:21-24](../../src/ShiftPlanner.Api/Controllers/SchedulesController.cs#L21), [src/ShiftPlanner.Domain/Contracts/Contract.cs:5-83](../../src/ShiftPlanner.Domain/Contracts/Contract.cs#L5), [src/ShiftPlanner.Domain/Scheduling/GermanPublicHolidays.cs:23-103](../../src/ShiftPlanner.Domain/Scheduling/GermanPublicHolidays.cs#L23), [src/ShiftPlanner.Api/Controllers/SchedulesController.cs:26-29](../../src/ShiftPlanner.Api/Controllers/SchedulesController.cs#L26), [src/ShiftPlanner.Domain/Scheduling/Schedule.cs:6-49](../../src/ShiftPlanner.Domain/Scheduling/Schedule.cs#L6), [src/ShiftPlanner.Application/Validation/ScheduleValidator.cs:9-42](../../src/ShiftPlanner.Application/Validation/ScheduleValidator.cs#L9), [src/ShiftPlanner.Domain/Scheduling/ShiftAssignment.cs:4-40](../../src/ShiftPlanner.Domain/Scheduling/ShiftAssignment.cs#L4), [src/ShiftPlanner.Api/Controllers/SchedulesController.cs:54](../../src/ShiftPlanner.Api/Controllers/SchedulesController.cs#L54), [src/ShiftPlanner.Application/Suggestions/ShiftSuggestionEngine.cs:57-327](../../src/ShiftPlanner.Application/Suggestions/ShiftSuggestionEngine.cs#L57), [src/ShiftPlanner.Application/Suggestions/ShiftSuggestionEngine.cs:36-45](../../src/ShiftPlanner.Application/Suggestions/ShiftSuggestionEngine.cs#L36), [src/ShiftPlanner.Api/Controllers/SchedulesController.cs:39](../../src/ShiftPlanner.Api/Controllers/SchedulesController.cs#L39), [src/ShiftPlanner.Api/Controllers/SchedulesController.cs:43-46](../../src/ShiftPlanner.Api/Controllers/SchedulesController.cs#L43)
 
 | Member | Summary | Derived from code | Complexity |
 |---|---|---|---|
-| [`GetAll(int?, int?)`](../../src/ShiftPlanner.Api/Controllers/SchedulesController.cs#L102) ⚠ |  | input: skip: int?, take: int?; output: IEnumerable\<ScheduleDto>; authorization: required | 5 |
-| [`GetById(System.Guid)`](../../src/ShiftPlanner.Api/Controllers/SchedulesController.cs#L118) ⚠ |  | input: id: Guid; output: ScheduleDetailDto; authorization: required | 6 |
-| [`Create(ShiftPlanner.Api.Controllers.CreateScheduleRequest)`](../../src/ShiftPlanner.Api/Controllers/SchedulesController.cs#L168) ⚠ |  | input: request: CreateScheduleRequest; output: ScheduleDto; authorization: required | 1 |
-| [`Update(System.Guid, ShiftPlanner.Api.Controllers.UpdateScheduleRequest)`](../../src/ShiftPlanner.Api/Controllers/SchedulesController.cs#L185) ⚠ |  | input: id: Guid, request: UpdateScheduleRequest; output: IActionResult; authorization: required | 3 |
-| [`Publish(System.Guid)`](../../src/ShiftPlanner.Api/Controllers/SchedulesController.cs#L253) ⚠ |  | input: id: Guid; output: ScheduleDto; authorization: required | 5 |
-| [`Archive(System.Guid)`](../../src/ShiftPlanner.Api/Controllers/SchedulesController.cs#L286) ⚠ |  | input: id: Guid; output: ScheduleDto; authorization: required | 4 |
-| [`CopyMonth(System.Guid, ShiftPlanner.Api.Controllers.CopyMonthRequest)`](../../src/ShiftPlanner.Api/Controllers/SchedulesController.cs#L315) ⚠ |  | input: id: Guid, request: CopyMonthRequest; output: CopyMonthResponse; authorization: required | 9 |
-| [`Validate(System.Guid, System.Threading.CancellationToken)`](../../src/ShiftPlanner.Api/Controllers/SchedulesController.cs#L373) ⚠ |  | input: id: Guid, ct: CancellationToken; output: ValidationResult; authorization: required | 2 |
-| [`Suggest(System.Guid, System.DateOnly, System.Guid)`](../../src/ShiftPlanner.Api/Controllers/SchedulesController.cs#L385) ⚠ |  | input: id: Guid, date: DateOnly, shiftTypeId: Guid; output: IEnumerable\<ShiftSuggestionDto>; authorization: required | 9 |
-| [`AutoFillPreview(System.Guid, System.DateOnly?, System.DateOnly?, System.Threading.CancellationToken)`](../../src/ShiftPlanner.Api/Controllers/SchedulesController.cs#L435) ⚠ |  | input: id: Guid, from: DateOnly?, to: DateOnly?, ct: CancellationToken; output: IEnumerable\<AutoFillProposalDto>; authorization: required | 11 |
-| [`AutoFillCommit(System.Guid, ShiftPlanner.Api.Controllers.AutoFillCommitRequest)`](../../src/ShiftPlanner.Api/Controllers/SchedulesController.cs#L486) ⚠ |  | input: id: Guid, request: AutoFillCommitRequest; output: IEnumerable\<ShiftAssignmentDto>; authorization: required | 9 |
-| [`CreateAssignment(System.Guid, ShiftPlanner.Api.Controllers.CreateAssignmentRequest)`](../../src/ShiftPlanner.Api/Controllers/SchedulesController.cs#L547) ⚠ |  | input: id: Guid, request: CreateAssignmentRequest; output: ShiftAssignmentDto; authorization: required | 13 |
-| [`UpdateAssignment(System.Guid, ShiftPlanner.Api.Controllers.UpdateAssignmentRequest)`](../../src/ShiftPlanner.Api/Controllers/SchedulesController.cs#L605) ⚠ |  | input: id: Guid, request: UpdateAssignmentRequest; output: IActionResult; authorization: required | 10 |
-| [`DeleteAssignment(System.Guid, uint)`](../../src/ShiftPlanner.Api/Controllers/SchedulesController.cs#L658) ⚠ |  | input: id: Guid, [query] rowVersion: uint; output: IActionResult; authorization: required | 5 |
+| [`GetAll(int?, int?)`](../../src/ShiftPlanner.Api/Controllers/SchedulesController.cs#L102) ⚠ | 🤖 _Retrieves a list of schedules with optional pagination._ | input: skip: int?, take: int?; output: IEnumerable\<ScheduleDto>; authorization: required; behaviour 🤖: Filters schedules by start date, optionally paginates the results, and returns a list of DTOs.; exception 🤖: Returns 400 if 'skip' or 'take' is negative.; usage 🤖: Used by the planning actions and planning board views to fetch schedules. | 5 |
+| [`GetById(System.Guid)`](../../src/ShiftPlanner.Api/Controllers/SchedulesController.cs#L118) ⚠ | 🤖 _Retrieves a schedule by its ID for display._ | input: id: Guid; output: ScheduleDetailDto; authorization: required; responsibilities 🤖: Fetches schedule details, calculates assignment details, and handles public holidays.; behaviour 🤖: Queries the database for a schedule by ID, calculates assignment details, and returns a DTO.; exception 🤖: Returns 404 if no schedule with the given ID exists.; usage 🤖: The frontend calls this endpoint to fetch schedule details for display. | 6 |
+| [`Create(ShiftPlanner.Api.Controllers.CreateScheduleRequest)`](../../src/ShiftPlanner.Api/Controllers/SchedulesController.cs#L168) ⚠ | 🤖 _Creates a new schedule based on the provided request and returns the created schedule._ | input: request: CreateScheduleRequest; output: ScheduleDto; authorization: required; responsibilities 🤖: Handles the creation of a new schedule.; behaviour 🤖: Creates a new schedule object from the request, adds it to the database, and returns the created schedule as a DTO.; side effects 🤖: Writes to the database.; exception 🤖: Returns 401 if the user is not authorized. Returns 400 if the request is invalid.; usage 🤖: The frontend calls this endpoint to create a new schedule. | 1 |
+| [`Update(System.Guid, ShiftPlanner.Api.Controllers.UpdateScheduleRequest)`](../../src/ShiftPlanner.Api/Controllers/SchedulesController.cs#L185) ⚠ | 🤖 _Updates an existing schedule's details._ | input: id: Guid, request: UpdateScheduleRequest; output: IActionResult; authorization: required; responsibilities 🤖: Ensures the schedule is in draft status before updating its name, start date, and end date.; behaviour 🤖: Finds the schedule by ID, checks if it's in draft status, updates the schedule details, and saves the changes.; side effects 🤖: Updates the database with the new schedule details.; exception 🤖: Returns 404 if the schedule with the given ID does not exist. Returns 409 if the schedule is not in draft status. | 3 |
+| [`Publish(System.Guid)`](../../src/ShiftPlanner.Api/Controllers/SchedulesController.cs#L253) ⚠ | 🤖 _Publishes a schedule by its ID._ | input: id: Guid; output: ScheduleDto; authorization: required; behaviour 🤖: Validates the schedule, checks if it's a draft, and then publishes it.; side effects 🤖: Updates the schedule status and saves changes to the database.; exception 🤖: Returns 404 if the schedule is not found; returns 409 if the schedule is not in draft status or validation fails.; usage 🤖: Called when a user wants to publish a schedule from the frontend. | 5 |
+| [`Archive(System.Guid)`](../../src/ShiftPlanner.Api/Controllers/SchedulesController.cs#L286) ⚠ | 🤖 _Archives a schedule by its ID._ | input: id: Guid; output: ScheduleDto; authorization: required; responsibilities 🤖: Manages the archiving of a schedule.; behaviour 🤖: Finds the schedule by ID, checks if it's published, archives it if valid, and returns the updated schedule.; exception 🤖: Returns 404 if the schedule is not found; returns 409 if the schedule is not published or if archiving fails.; usage 🤖: Called from the frontend when a user wants to archive a schedule. | 4 |
+| [`CopyMonth(System.Guid, ShiftPlanner.Api.Controllers.CopyMonthRequest)`](../../src/ShiftPlanner.Api/Controllers/SchedulesController.cs#L315) ⚠ | 🤖 _Creates a copy of a schedule for a different month._ | input: id: Guid, request: CopyMonthRequest; output: CopyMonthResponse; authorization: required; responsibilities 🤖: Handles the copying of a schedule to a new month, ensuring the new schedule is valid and does not conflict with existing data.; behaviour 🤖: Fetches the source schedule, validates the target date range, and copies the assignments to the new schedule, clamping the day-of-month as necessary.; side effects 🤖: Writes new schedule and shift assignments to the database.; exception 🤖: Returns 404 if the source schedule does not exist; returns 400 if the target date range is invalid; returns 409 if the target schedule already exists or has assignments.; usage 🤖: Called when a user requests to copy a schedule to a different month. | 9 |
+| [`Validate(System.Guid, System.Threading.CancellationToken)`](../../src/ShiftPlanner.Api/Controllers/SchedulesController.cs#L373) ⚠ | 🤖 _Validates a schedule by its ID._ | input: id: Guid, ct: CancellationToken; output: ValidationResult; authorization: required; behaviour 🤖: Fetches the schedule from the database and validates it asynchronously.; exception 🤖: Returns 404 if the schedule is not found.; usage 🤖: Used by the planning board to validate schedules. | 2 |
+| [`Suggest(System.Guid, System.DateOnly, System.Guid)`](../../src/ShiftPlanner.Api/Controllers/SchedulesController.cs#L385) ⚠ | 🤖 _Suggests shifts for a given schedule, date, and shift type._ | input: id: Guid, date: DateOnly, shiftTypeId: Guid; output: IEnumerable\<ShiftSuggestionDto>; authorization: required; responsibilities 🤖: Generates shift suggestions based on schedule constraints and employee preferences.; exception 🤖: Returns 404 if the schedule or shift type is not found. Returns 400 if the date is outside the schedule's range.; usage 🤖: The schedule page calls it when it needs shift suggestions. | 9 |
+| [`AutoFillPreview(System.Guid, System.DateOnly?, System.DateOnly?, System.Threading.CancellationToken)`](../../src/ShiftPlanner.Api/Controllers/SchedulesController.cs#L435) ⚠ | 🤖 _Generates auto-fill proposals for a schedule based on historical data and preferences._ | input: id: Guid, from: DateOnly?, to: DateOnly?, ct: CancellationToken; output: IEnumerable\<AutoFillProposalDto>; authorization: required; behaviour 🤖: Fetches necessary data from the database, constructs a scheduling context, and computes auto-fill proposals.; side effects 🤖: Reads data from the database.; exception 🤖: Returns 404 if the schedule with the given ID does not exist. Returns 400 if the date range is invalid.; usage 🤖: Called by the frontend when the user requests an auto-fill preview for a schedule. | 11 |
+| [`AutoFillCommit(System.Guid, ShiftPlanner.Api.Controllers.AutoFillCommitRequest)`](../../src/ShiftPlanner.Api/Controllers/SchedulesController.cs#L486) ⚠ | 🤖 _Automatically fills shift assignments for a schedule based on a request._ | input: id: Guid, request: AutoFillCommitRequest; output: IEnumerable\<ShiftAssignmentDto>; authorization: required; responsibilities 🤖: Handles the logic for auto-filling shift assignments for a schedule.; behaviour 🤖: Validates the request, checks for existing employees and shift types, creates new shift assignments, and saves them to the database.; exception 🤖: Returns 404 if the schedule is not found; returns 400 if the request is invalid (e.g., dates outside the schedule range, non-existent employee or shift type).; usage 🤖: Called by the frontend when the user attempts to auto-fill shift assignments for a schedule. | 9 |
+| [`CreateAssignment(System.Guid, ShiftPlanner.Api.Controllers.CreateAssignmentRequest)`](../../src/ShiftPlanner.Api/Controllers/SchedulesController.cs#L547) ⚠ | 🤖 _Creates a new shift assignment for a given schedule._ | input: id: Guid, request: CreateAssignmentRequest; output: ShiftAssignmentDto; authorization: required; responsibilities 🤖: Validates shift timing, checks for public holidays, and saves the assignment to the database.; behaviour 🤖: Validates the request, checks for existing schedule and employee, creates a new shift assignment, and saves it.; exception 🤖: Returns 404 if the schedule does not exist; returns 409 if the schedule is archived; returns 400 if the date is outside the schedule's range, employee or shift type does not exist, or shift timing is invalid.; usage 🤖: Called from the frontend when a user submits a new shift assignment. | 13 |
+| [`UpdateAssignment(System.Guid, ShiftPlanner.Api.Controllers.UpdateAssignmentRequest)`](../../src/ShiftPlanner.Api/Controllers/SchedulesController.cs#L605) ⚠ | 🤖 _Updates an existing shift assignment based on the provided request._ | input: id: Guid, request: UpdateAssignmentRequest; output: IActionResult; authorization: required; behaviour 🤖: Retrieves the shift assignment by its ID, validates the request, updates the assignment, and saves the changes.; exception 🤖: Returns 404 if the assignment or schedule is not found; returns 400 if the request is invalid; returns 409 if the shift assignment was changed by another user. | 10 |
+| [`DeleteAssignment(System.Guid, uint)`](../../src/ShiftPlanner.Api/Controllers/SchedulesController.cs#L658) ⚠ | 🤖 _Deletes a shift assignment by its ID and row version._ | input: id: Guid, [query] rowVersion: uint; output: IActionResult; authorization: required; behaviour 🤖: Finds the assignment by ID, checks if the schedule is archived, updates the row version, and deletes the assignment.; exception 🤖: Returns 404 if the assignment or schedule is not found; returns 409 if the assignment was changed by another user. | 5 |
 
 ### SetEligibleShiftTypesRequest
 
@@ -405,15 +466,20 @@ _record_ · [EmployeesController.cs](../../src/ShiftPlanner.Api/Controllers/Empl
 
 _class_ · [ShiftTypesController.cs](../../src/ShiftPlanner.Api/Controllers/ShiftTypesController.cs#L35) ⚠
 
+🤖 _Manages shift types through HTTP endpoints._
+
 - **dependencies** _(fact)_: ApplicationDbContext, ShiftTypeDto, WorkingTimeCalculator, ShiftType
+- **responsibilities** _(🤖 draft)_: Handles CRUD operations for shift types.
+- **behaviour** _(🤖 draft)_: Supports GET, POST, and PUT requests to manage shift types.
+- **exception** _(🤖 draft)_: Returns 400 for invalid input, 404 for non-existent shift types, and 409 for conflicting names.
 
 _Evidence:_ [src/ShiftPlanner.Api/Controllers/ShiftTypesController.cs:35-120](../../src/ShiftPlanner.Api/Controllers/ShiftTypesController.cs#L35), [src/ShiftPlanner.Infrastructure/Persistence/ApplicationDbContext.cs:17-162](../../src/ShiftPlanner.Infrastructure/Persistence/ApplicationDbContext.cs#L17), [src/ShiftPlanner.Api/Controllers/ShiftTypesController.cs:10-12](../../src/ShiftPlanner.Api/Controllers/ShiftTypesController.cs#L10), [src/ShiftPlanner.Domain/Scheduling/WorkingTimeCalculator.cs:7-154](../../src/ShiftPlanner.Domain/Scheduling/WorkingTimeCalculator.cs#L7), [src/ShiftPlanner.Domain/Scheduling/ShiftType.cs:4-24](../../src/ShiftPlanner.Domain/Scheduling/ShiftType.cs#L4)
 
 | Member | Summary | Derived from code | Complexity |
 |---|---|---|---|
-| [`GetAll(int?, int?)`](../../src/ShiftPlanner.Api/Controllers/ShiftTypesController.cs#L40) ⚠ |  | input: skip: int?, take: int?; output: IEnumerable\<ShiftTypeDto>; authorization: required | 5 |
-| [`Create(ShiftPlanner.Api.Controllers.CreateShiftTypeRequest)`](../../src/ShiftPlanner.Api/Controllers/ShiftTypesController.cs#L60) ⚠ |  | input: request: CreateShiftTypeRequest; output: ShiftTypeDto; authorization: required | 3 |
-| [`Update(System.Guid, ShiftPlanner.Api.Controllers.UpdateShiftTypeRequest)`](../../src/ShiftPlanner.Api/Controllers/ShiftTypesController.cs#L93) ⚠ |  | input: id: Guid, request: UpdateShiftTypeRequest; output: IActionResult; authorization: required | 5 |
+| [`GetAll(int?, int?)`](../../src/ShiftPlanner.Api/Controllers/ShiftTypesController.cs#L40) ⚠ | 🤖 _Retrieves a list of shift types with optional pagination._ | input: skip: int?, take: int?; output: IEnumerable\<ShiftTypeDto>; authorization: required; behaviour 🤖: Filters and paginates shift types based on optional skip and take parameters. Returns a list of ShiftTypeDto.; exception 🤖: Returns 400 if skip or take is negative.; usage 🤖: Called by various views and composables to fetch shift types for display. | 5 |
+| [`Create(ShiftPlanner.Api.Controllers.CreateShiftTypeRequest)`](../../src/ShiftPlanner.Api/Controllers/ShiftTypesController.cs#L60) ⚠ | 🤖 _Creates a new shift type based on the provided request._ | input: request: CreateShiftTypeRequest; output: ShiftTypeDto; authorization: required; responsibilities 🤖: Handles the creation of a new shift type.; behaviour 🤖: Validates the shift timing, checks for existing shift types, creates a new shift type, and returns it as a DTO.; exception 🤖: Returns 409 if a shift type with the same name already exists. Returns 400 if the shift timing is invalid.; usage 🤖: Called when a new shift type is created through the frontend. | 3 |
+| [`Update(System.Guid, ShiftPlanner.Api.Controllers.UpdateShiftTypeRequest)`](../../src/ShiftPlanner.Api/Controllers/ShiftTypesController.cs#L93) ⚠ | 🤖 _Updates an existing shift type by its ID._ | input: id: Guid, request: UpdateShiftTypeRequest; output: IActionResult; authorization: required; responsibilities 🤖: Validates shift timing, updates shift type details in the database.; side effects 🤖: Writes to the database.; exception 🤖: Returns 404 if shift type not found; returns 409 if shift type name already exists; returns 400 if invalid shift timing.; usage 🤖: Called from the frontend when updating a shift type. | 5 |
 
 ### StaffingRequirementDto
 
@@ -423,17 +489,23 @@ _record_ · [StaffingRequirementsController.cs](../../src/ShiftPlanner.Api/Contr
 
 _class_ · [StaffingRequirementsController.cs](../../src/ShiftPlanner.Api/Controllers/StaffingRequirementsController.cs#L21) ⚠
 
+🤖 _Manages staffing requirements through HTTP endpoints._
+
 - **dependencies** _(fact)_: ApplicationDbContext, StaffingRequirement
+- **responsibilities** _(🤖 draft)_: Handles CRUD operations for staffing requirements.
+- **behaviour** _(🤖 draft)_: Provides endpoints to get all staffing requirements, get a specific requirement by ID, create a new requirement, update an existing requirement, and delete a requirement.
+- **side effects** _(🤖 draft)_: Writes to the database.
+- **exception** _(🤖 draft)_: Returns 404 when a requirement is not found; returns 400 for invalid requests; returns 409 when a conflicting requirement already exists.
 
 _Evidence:_ [src/ShiftPlanner.Api/Controllers/StaffingRequirementsController.cs:21-110](../../src/ShiftPlanner.Api/Controllers/StaffingRequirementsController.cs#L21), [src/ShiftPlanner.Infrastructure/Persistence/ApplicationDbContext.cs:17-162](../../src/ShiftPlanner.Infrastructure/Persistence/ApplicationDbContext.cs#L17), [src/ShiftPlanner.Domain/Scheduling/StaffingRequirement.cs:9-24](../../src/ShiftPlanner.Domain/Scheduling/StaffingRequirement.cs#L9)
 
 | Member | Summary | Derived from code | Complexity |
 |---|---|---|---|
-| [`GetAll()`](../../src/ShiftPlanner.Api/Controllers/StaffingRequirementsController.cs#L29) ⚠ |  | output: IEnumerable\<StaffingRequirementDto>; authorization: required | 1 |
-| [`GetById(System.Guid)`](../../src/ShiftPlanner.Api/Controllers/StaffingRequirementsController.cs#L38) ⚠ |  | input: id: Guid; output: StaffingRequirementDto; authorization: required | 2 |
-| [`Create(ShiftPlanner.Api.Controllers.CreateStaffingRequirementRequest)`](../../src/ShiftPlanner.Api/Controllers/StaffingRequirementsController.cs#L45) ⚠ |  | input: request: CreateStaffingRequirementRequest; output: StaffingRequirementDto; authorization: required | 7 |
-| [`Update(System.Guid, ShiftPlanner.Api.Controllers.UpdateStaffingRequirementRequest)`](../../src/ShiftPlanner.Api/Controllers/StaffingRequirementsController.cs#L72) ⚠ |  | input: id: Guid, request: UpdateStaffingRequirementRequest; output: IActionResult; authorization: required | 9 |
-| [`Delete(System.Guid)`](../../src/ShiftPlanner.Api/Controllers/StaffingRequirementsController.cs#L98) ⚠ |  | input: id: Guid; output: IActionResult; authorization: required | 2 |
+| [`GetAll()`](../../src/ShiftPlanner.Api/Controllers/StaffingRequirementsController.cs#L29) ⚠ | 🤖 _Retrieves all staffing requirements and returns them as DTOs._ | output: IEnumerable\<StaffingRequirementDto>; authorization: required; behaviour 🤖: Fetches staffing requirements from the database, orders them by day of the week and shift type, and converts them to DTOs before returning.; side effects 🤖: Reads data from the database.; exception 🤖: Returns an error if there are no staffing requirements. | 1 |
+| [`GetById(System.Guid)`](../../src/ShiftPlanner.Api/Controllers/StaffingRequirementsController.cs#L38) ⚠ | 🤖 _Retrieves a staffing requirement by its unique identifier._ | input: id: Guid; output: StaffingRequirementDto; authorization: required; behaviour 🤖: Fetches the staffing requirement from the database using the provided ID and returns it as a DTO.; exception 🤖: Returns a 404 Not Found response if no staffing requirement with the given ID exists. | 2 |
+| [`Create(ShiftPlanner.Api.Controllers.CreateStaffingRequirementRequest)`](../../src/ShiftPlanner.Api/Controllers/StaffingRequirementsController.cs#L45) ⚠ | 🤖 _Creates a new staffing requirement based on the provided request._ | input: request: CreateStaffingRequirementRequest; output: StaffingRequirementDto; authorization: required; behaviour 🤖: Validates the request, checks for existing requirements, creates a new staffing requirement, and saves it.; exception 🤖: Returns 400 if the shift type or team is unknown; returns 409 if a staffing requirement already exists for the given team, shift type, and day of the week. | 7 |
+| [`Update(System.Guid, ShiftPlanner.Api.Controllers.UpdateStaffingRequirementRequest)`](../../src/ShiftPlanner.Api/Controllers/StaffingRequirementsController.cs#L72) ⚠ | 🤖 _Updates an existing staffing requirement._ | input: id: Guid, request: UpdateStaffingRequirementRequest; output: IActionResult; authorization: required; responsibilities 🤖: Ensures the staffing requirement exists, validates the update request, and saves the changes.; behaviour 🤖: Finds the staffing requirement by ID, validates the update request, and updates the requirement if valid. Returns 404 if not found, 400 if validation fails, or 204 if successful.; exception 🤖: Returns 404 if the staffing requirement does not exist. Returns 400 if the update request is invalid. Returns 409 if a conflicting staffing requirement already exists. | 9 |
+| [`Delete(System.Guid)`](../../src/ShiftPlanner.Api/Controllers/StaffingRequirementsController.cs#L98) ⚠ | 🤖 _Deletes a staffing requirement by its ID._ | input: id: Guid; output: IActionResult; authorization: required; behaviour 🤖: Finds the staffing requirement by ID, removes it if found, and returns NoContent if successful.; exception 🤖: Returns NotFound if no staffing requirement with the given ID exists. | 2 |
 
 ### TeamDto
 
@@ -443,14 +515,20 @@ _record_ · [TeamsController.cs](../../src/ShiftPlanner.Api/Controllers/TeamsCon
 
 _class_ · [TeamsController.cs](../../src/ShiftPlanner.Api/Controllers/TeamsController.cs#L17) ⚠
 
+🤖 _Manages teams through HTTP endpoints._
+
 - **dependencies** _(fact)_: ApplicationDbContext, TeamDto, Team
+- **responsibilities** _(🤖 draft)_: Provides API for creating and retrieving teams.
+- **behaviour** _(🤖 draft)_: Handles GET requests to retrieve teams, and POST requests to create new teams.
+- **side effects** _(🤖 draft)_: Writes to the database when creating a new team.
+- **exception** _(🤖 draft)_: Returns 400 if 'skip' or 'take' are negative; returns 409 if a team with the same name already exists.
 
 _Evidence:_ [src/ShiftPlanner.Api/Controllers/TeamsController.cs:17-58](../../src/ShiftPlanner.Api/Controllers/TeamsController.cs#L17), [src/ShiftPlanner.Infrastructure/Persistence/ApplicationDbContext.cs:17-162](../../src/ShiftPlanner.Infrastructure/Persistence/ApplicationDbContext.cs#L17), [src/ShiftPlanner.Api/Controllers/TeamsController.cs:11](../../src/ShiftPlanner.Api/Controllers/TeamsController.cs#L11), [src/ShiftPlanner.Domain/Employees/Team.cs:5-17](../../src/ShiftPlanner.Domain/Employees/Team.cs#L5)
 
 | Member | Summary | Derived from code | Complexity |
 |---|---|---|---|
-| [`GetAll(int?, int?)`](../../src/ShiftPlanner.Api/Controllers/TeamsController.cs#L22) ⚠ |  | input: skip: int?, take: int?; output: IEnumerable\<TeamDto>; authorization: required | 5 |
-| [`Create(ShiftPlanner.Api.Controllers.CreateTeamRequest)`](../../src/ShiftPlanner.Api/Controllers/TeamsController.cs#L41) ⚠ |  | input: request: CreateTeamRequest; output: TeamDto; authorization: required | 2 |
+| [`GetAll(int?, int?)`](../../src/ShiftPlanner.Api/Controllers/TeamsController.cs#L22) ⚠ | 🤖 _Retrieves a list of teams with optional pagination._ | input: skip: int?, take: int?; output: IEnumerable\<TeamDto>; authorization: required; behaviour 🤖: Filters teams by name, orders them alphabetically, and applies pagination if provided.; exception 🤖: Returns 400 if 'skip' or 'take' is negative.; usage 🤖: Called by multiple views and composables to fetch teams for display. | 5 |
+| [`Create(ShiftPlanner.Api.Controllers.CreateTeamRequest)`](../../src/ShiftPlanner.Api/Controllers/TeamsController.cs#L41) ⚠ | 🤖 _Creates a new team based on the provided request._ | input: request: CreateTeamRequest; output: TeamDto; authorization: required; responsibilities 🤖: Handles the creation of a new team.; behaviour 🤖: Validates the team name, creates a new team entity, saves it to the database, and returns the created team as a DTO.; side effects 🤖: Writes to the database.; exception 🤖: Returns 409 Conflict if a team with the same name already exists.; usage 🤖: Called from the frontend when a new team is created. | 2 |
 
 ### UpdateAbsenceRequest
 
@@ -489,4 +567,4 @@ _record_ · [StaffingRequirementsController.cs](../../src/ShiftPlanner.Api/Contr
 _record_ · [EmployeesController.cs](../../src/ShiftPlanner.Api/Controllers/EmployeesController.cs#L42)
 
 ---
-_Generated from 123 symbols in [src/ShiftPlanner.Api/Controllers/AbsencesController.cs](../../src/ShiftPlanner.Api/Controllers/AbsencesController.cs), [src/ShiftPlanner.Api/Controllers/AuthController.cs](../../src/ShiftPlanner.Api/Controllers/AuthController.cs), [src/ShiftPlanner.Api/Controllers/ContractsController.cs](../../src/ShiftPlanner.Api/Controllers/ContractsController.cs), [src/ShiftPlanner.Api/Controllers/DashboardController.cs](../../src/ShiftPlanner.Api/Controllers/DashboardController.cs), [src/ShiftPlanner.Api/Controllers/EmployeesController.cs](../../src/ShiftPlanner.Api/Controllers/EmployeesController.cs), [src/ShiftPlanner.Api/Controllers/HoursAdjustmentsController.cs](../../src/ShiftPlanner.Api/Controllers/HoursAdjustmentsController.cs), [src/ShiftPlanner.Api/Controllers/PlanningBoardController.cs](../../src/ShiftPlanner.Api/Controllers/PlanningBoardController.cs), [src/ShiftPlanner.Api/Controllers/PublicHolidaysController.cs](../../src/ShiftPlanner.Api/Controllers/PublicHolidaysController.cs), [src/ShiftPlanner.Api/Controllers/SchedulesController.cs](../../src/ShiftPlanner.Api/Controllers/SchedulesController.cs), [src/ShiftPlanner.Api/Controllers/ShiftTypesController.cs](../../src/ShiftPlanner.Api/Controllers/ShiftTypesController.cs), [src/ShiftPlanner.Api/Controllers/StaffingRequirementsController.cs](../../src/ShiftPlanner.Api/Controllers/StaffingRequirementsController.cs), [src/ShiftPlanner.Api/Controllers/TeamsController.cs](../../src/ShiftPlanner.Api/Controllers/TeamsController.cs) (commit `534b8b5`, profile `default`). Sections marked _fact_ are read from the code, _inferred_ come from heuristics, 🤖 marks AI drafts._
+_Generated from 123 symbols in [src/ShiftPlanner.Api/Controllers/AbsencesController.cs](../../src/ShiftPlanner.Api/Controllers/AbsencesController.cs), [src/ShiftPlanner.Api/Controllers/AuthController.cs](../../src/ShiftPlanner.Api/Controllers/AuthController.cs), [src/ShiftPlanner.Api/Controllers/ContractsController.cs](../../src/ShiftPlanner.Api/Controllers/ContractsController.cs), [src/ShiftPlanner.Api/Controllers/DashboardController.cs](../../src/ShiftPlanner.Api/Controllers/DashboardController.cs), [src/ShiftPlanner.Api/Controllers/EmployeesController.cs](../../src/ShiftPlanner.Api/Controllers/EmployeesController.cs), [src/ShiftPlanner.Api/Controllers/HoursAdjustmentsController.cs](../../src/ShiftPlanner.Api/Controllers/HoursAdjustmentsController.cs), [src/ShiftPlanner.Api/Controllers/PlanningBoardController.cs](../../src/ShiftPlanner.Api/Controllers/PlanningBoardController.cs), [src/ShiftPlanner.Api/Controllers/PublicHolidaysController.cs](../../src/ShiftPlanner.Api/Controllers/PublicHolidaysController.cs), [src/ShiftPlanner.Api/Controllers/SchedulesController.cs](../../src/ShiftPlanner.Api/Controllers/SchedulesController.cs), [src/ShiftPlanner.Api/Controllers/ShiftTypesController.cs](../../src/ShiftPlanner.Api/Controllers/ShiftTypesController.cs), [src/ShiftPlanner.Api/Controllers/StaffingRequirementsController.cs](../../src/ShiftPlanner.Api/Controllers/StaffingRequirementsController.cs), [src/ShiftPlanner.Api/Controllers/TeamsController.cs](../../src/ShiftPlanner.Api/Controllers/TeamsController.cs) (commit `11abf0b`, profile `default`). Sections marked _fact_ are read from the code, _inferred_ come from heuristics, 🤖 marks AI drafts._

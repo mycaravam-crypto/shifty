@@ -5,6 +5,16 @@ project `frontend`
 
 Project navigation: [frontend](../projects/frontend-da6498268e99.md)
 
+## Overview 🤖
+
+Contains data models and utilities for help topics.
+
+**Responsibilities.** Defines data structures for help topics and provides utility functions to work with them.
+
+**Usage.** Used by components to display and interact with help topics.
+
+_AI draft from the facts on this page; review it, then write the module's documentation yourself._
+
 ## Key components
 
 | Component | Kind | Used by | Summary |
@@ -35,4 +45,4 @@ _module_ · [helpTopics.ts](../../frontend/src/data/helpTopics.ts#L1)
 | [`topicIdForRoute`](../../frontend/src/data/helpTopics.ts#L228) |  |  | 3 |
 
 ---
-_Generated from 4 symbols in [frontend/src/data/helpTopics.ts](../../frontend/src/data/helpTopics.ts) (commit `534b8b5`, profile `default`). Sections marked _fact_ are read from the code, _inferred_ come from heuristics, 🤖 marks AI drafts._
+_Generated from 4 symbols in [frontend/src/data/helpTopics.ts](../../frontend/src/data/helpTopics.ts) (commit `11abf0b`, profile `default`). Sections marked _fact_ are read from the code, _inferred_ come from heuristics, 🤖 marks AI drafts._

@@ -168,6 +168,11 @@ main tbody tr:last-child td { border-bottom: 0; }
 <h1 id="srcshiftplannerapplicationdashboard">src/ShiftPlanner.Application/Dashboard</h1>
 <p>Layer <strong>application</strong> · project <code>ShiftPlanner.Application</code></p>
 <p>Project navigation: <a href="../projects/ShiftPlanner-Application-bbdb4cab28c5.html">ShiftPlanner.Application</a></p>
+<h2 id="overview-">Overview 🤖</h2>
+<p>Contains logic for aggregating and building data for the dashboard.</p>
+<p><strong>Responsibilities.</strong> Aggregates data for the dashboard, including coverage, pain points, planning status, cost breakdowns, and employee utilization.</p>
+<p><strong>Usage.</strong> Used by the API controllers to generate data for the dashboard.</p>
+<p><em>AI draft from the facts on this page; review it, then write the module's documentation yourself.</em></p>
 <h2 id="key-components">Key components</h2>
 <div class="table-wrap"><table>
 <thead>
@@ -296,6 +301,7 @@ main tbody tr:last-child td { border-bottom: 0; }
 <p><em>record</em> · <a href="../../src/ShiftPlanner.Application/Dashboard/DashboardDtos.cs#L44">DashboardDtos.cs</a></p>
 <h3 id="coveragedaydto">CoverageDayDto</h3>
 <p><em>record</em> · <a href="../../src/ShiftPlanner.Application/Dashboard/DashboardDtos.cs#L24">DashboardDtos.cs</a></p>
+<p><em>Linked tests:</em> <code>DashboardAggregatorTests.CoveragePercent_AveragesAcrossRowsAndCapsAt100_AndDefaultsTo100WhenEmpty</code> — test code that uses it, not coverage</p>
 <h3 id="dashboardaggregator">DashboardAggregator</h3>
 <p><em>class</em> · <a href="../../src/ShiftPlanner.Application/Dashboard/DashboardAggregator.cs#L14">DashboardAggregator.cs</a></p>
 <p><em>Reached from:</em> <a href="../api.html#flows"><code>GET /api/dashboard</code></a> · <em>Linked tests:</em> <code>DashboardAggregatorTests.BuildCostBreakdown_MatchesWageCalculatorBreakdownPerAssignment</code> (via <code>DashboardAggregator.BuildCostBreakdown(IReadOnlyList&lt;ShiftAssignment&gt;, IReadOnlyList&lt;Contract&gt;, IReadOnlyDictionary&lt;Guid, Bundesland?&gt;, IReadOnlyDictionary&lt;Bundesland, HashSet&lt;DateOnly&gt;&gt;, HashSet&lt;DateOnly&gt;)</code>), <code>DashboardAggregatorTests.BuildCostBreakdown_UsesPerBundeslandHolidaySetWhenEmployeeHasOne</code> (via <code>DashboardAggregator.BuildCostBreakdown(IReadOnlyList&lt;ShiftAssignment&gt;, IReadOnlyList&lt;Contract&gt;, IReadOnlyDictionary&lt;Guid, Bundesland?&gt;, IReadOnlyDictionary&lt;Bundesland, HashSet&lt;DateOnly&gt;&gt;, HashSet&lt;DateOnly&gt;)</code>), <code>DashboardAggregatorTests.BuildCoverage_ComputesPercentAndStatusPerShiftTypeAndDate</code> (via <code>DashboardAggregator.BuildCoverage(IReadOnlyList&lt;ShiftAssignment&gt;, IReadOnlyDictionary&lt;Guid, ShiftType&gt;, IReadOnlyList&lt;StaffingRequirement&gt;, IReadOnlyDictionary&lt;Guid, Employee&gt;, DateOnly, DateOnly, Guid?, Guid?)</code>), <code>DashboardAggregatorTests.BuildEmployeeUtilization_ComputesExpectedActualAndOvertimePerEmployee</code> (via <code>DashboardAggregator.BuildEmployeeUtilization(IReadOnlyList&lt;Employee&gt;, IReadOnlyList&lt;ShiftAssignment&gt;, IReadOnlyList&lt;Contract&gt;, IReadOnlyList&lt;Absence&gt;, DateOnly, DateOnly)</code>), <code>DashboardAggregatorTests.BuildEmployeeUtilization_ZeroExpectedHoursDoesNotDivideByZero</code> (via <code>DashboardAggregator.BuildEmployeeUtilization(IReadOnlyList&lt;Employee&gt;, IReadOnlyList&lt;ShiftAssignment&gt;, IReadOnlyList&lt;Contract&gt;, IReadOnlyList&lt;Absence&gt;, DateOnly, DateOnly)</code>), <code>DashboardAggregatorTests.BuildPainPoints_CollectsValidatorIssuesAndRespectsTeamFilter</code> (via <code>DashboardAggregator.BuildPainPoints(IReadOnlyList&lt;Schedule&gt;, IReadOnlyDictionary&lt;Guid, IReadOnlyList&lt;ShiftAssignment&gt;&gt;, IReadOnlyList&lt;ShiftAssignment&gt;, IReadOnlyDictionary&lt;Guid, Employee&gt;, IReadOnlyList&lt;ShiftType&gt;, IReadOnlyList&lt;Contract&gt;, IReadOnlyList&lt;Absence&gt;, IReadOnlyList&lt;StaffingRequirement&gt;, Guid?)</code>), <code>DashboardAggregatorTests.BuildPlanningStatus_CountsDraftPublishedAndConflicts</code> (via <code>DashboardAggregator.BuildPlanningStatus(IReadOnlyList&lt;Schedule&gt;, IReadOnlyList&lt;PainPointDto&gt;)</code>), <code>DashboardAggregatorTests.BuildUtilization_SumsCapacityAndPlannedAcrossEmployees</code> (via <code>DashboardAggregator.BuildUtilization(IReadOnlyList&lt;EmployeeUtilizationDto&gt;)</code>), +6 more — test code that uses it, not coverage</p>
@@ -323,8 +329,8 @@ main tbody tr:last-child td { border-bottom: 0; }
 </tr>
 <tr>
 <td><a href="../../src/ShiftPlanner.Application/Dashboard/DashboardAggregator.cs#L28"><code>BuildCoverage(System.Collections.Generic.IReadOnlyList&lt;ShiftPlanner.Domain.Scheduling.ShiftAssignment&gt;, System.Collections.Generic.IReadOnlyDictionary&lt;System.Guid, ShiftPlanner.Domain.Scheduling.ShiftType&gt;, System.Collections.Generic.IReadOnlyList&lt;ShiftPlanner.Domain.Scheduling.StaffingRequirement&gt;, System.Collections.Generic.IReadOnlyDictionary&lt;System.Guid, ShiftPlanner.Domain.Employees.Employee&gt;, System.DateOnly, System.DateOnly, System.Guid?, System.Guid?)</code></a> ⚠</td>
-<td></td>
-<td></td>
+<td>🤖 <em>Aggregates coverage data for a dashboard based on shift assignments, requirements, and staff.</em></td>
+<td>responsibilities 🤖: Calculates coverage percentage for each day within a specified period, considering shift types and staffing requirements.; behaviour 🤖: Groups assignments by date and shift type, calculates coverage, and adds missing requirement-driven rows.; exception 🤖: None explicitly stated in the source.; usage 🤖: Called by the DashboardController to generate coverage data for the dashboard.</td>
 <td>22</td>
 </tr>
 <tr>
@@ -335,8 +341,8 @@ main tbody tr:last-child td { border-bottom: 0; }
 </tr>
 <tr>
 <td><a href="../../src/ShiftPlanner.Application/Dashboard/DashboardAggregator.cs#L98"><code>BuildPainPoints(System.Collections.Generic.IReadOnlyList&lt;ShiftPlanner.Domain.Scheduling.Schedule&gt;, System.Collections.Generic.IReadOnlyDictionary&lt;System.Guid, System.Collections.Generic.IReadOnlyList&lt;ShiftPlanner.Domain.Scheduling.ShiftAssignment&gt;&gt;, System.Collections.Generic.IReadOnlyList&lt;ShiftPlanner.Domain.Scheduling.ShiftAssignment&gt;, System.Collections.Generic.IReadOnlyDictionary&lt;System.Guid, ShiftPlanner.Domain.Employees.Employee&gt;, System.Collections.Generic.IReadOnlyList&lt;ShiftPlanner.Domain.Scheduling.ShiftType&gt;, System.Collections.Generic.IReadOnlyList&lt;ShiftPlanner.Domain.Contracts.Contract&gt;, System.Collections.Generic.IReadOnlyList&lt;ShiftPlanner.Domain.Employees.Absence&gt;, System.Collections.Generic.IReadOnlyList&lt;ShiftPlanner.Domain.Scheduling.StaffingRequirement&gt;, System.Guid?)</code></a> ⚠</td>
-<td></td>
-<td></td>
+<td>🤖 <em>Aggregates pain points from schedules, assignments, and other data sources for the dashboard.</em></td>
+<td>responsibilities 🤖: Calculates pain points based on schedule validation results, filtering by team if provided.; behaviour 🤖: Iterates through each schedule, retrieves relevant assignments, and validates them. Collects pain points based on validation results, filtering by team if specified.; exception 🤖: No specific error handling is mentioned in the source.; usage 🤖: Called by the DashboardController to fetch pain points for the dashboard.</td>
 <td>9</td>
 </tr>
 <tr>
@@ -347,8 +353,8 @@ main tbody tr:last-child td { border-bottom: 0; }
 </tr>
 <tr>
 <td><a href="../../src/ShiftPlanner.Application/Dashboard/DashboardAggregator.cs#L152"><code>BuildCostBreakdown(System.Collections.Generic.IReadOnlyList&lt;ShiftPlanner.Domain.Scheduling.ShiftAssignment&gt;, System.Collections.Generic.IReadOnlyList&lt;ShiftPlanner.Domain.Contracts.Contract&gt;, System.Collections.Generic.IReadOnlyDictionary&lt;System.Guid, ShiftPlanner.Domain.Scheduling.Bundesland?&gt;, System.Collections.Generic.IReadOnlyDictionary&lt;ShiftPlanner.Domain.Scheduling.Bundesland, System.Collections.Generic.HashSet&lt;System.DateOnly&gt;&gt;, System.Collections.Generic.HashSet&lt;System.DateOnly&gt;)</code></a> ⚠</td>
-<td></td>
-<td></td>
+<td>🤖 <em>Aggregates cost breakdowns for shifts based on assignments, contracts, and regional holidays.</em></td>
+<td>responsibilities 🤖: Calculates regular, night, Sunday, and holiday costs for shifts.; behaviour 🤖: Iterates through shift assignments, determines active contracts, calculates net hours, and aggregates costs based on regional and national holidays.; exception 🤖: No specific error handling is mentioned in the source.; usage 🤖: Called by the DashboardController to generate cost breakdowns for the dashboard.</td>
 <td>6</td>
 </tr>
 <tr>
@@ -377,8 +383,10 @@ main tbody tr:last-child td { border-bottom: 0; }
 <p><em>record</em> · <a href="../../src/ShiftPlanner.Application/Dashboard/DashboardDtos.cs#L16">DashboardDtos.cs</a></p>
 <h3 id="employeeutilizationdto">EmployeeUtilizationDto</h3>
 <p><em>record</em> · <a href="../../src/ShiftPlanner.Application/Dashboard/DashboardDtos.cs#L54">DashboardDtos.cs</a></p>
+<p><em>Linked tests:</em> <code>DashboardAggregatorTests.BuildUtilization_SumsCapacityAndPlannedAcrossEmployees</code> — test code that uses it, not coverage</p>
 <h3 id="painpointdto">PainPointDto</h3>
 <p><em>record</em> · <a href="../../src/ShiftPlanner.Application/Dashboard/DashboardDtos.cs#L34">DashboardDtos.cs</a></p>
+<p><em>Linked tests:</em> <code>DashboardAggregatorTests.BuildPlanningStatus_CountsDraftPublishedAndConflicts</code> — test code that uses it, not coverage</p>
 <h3 id="planningstatusdto">PlanningStatusDto</h3>
 <p><em>record</em> · <a href="../../src/ShiftPlanner.Application/Dashboard/DashboardDtos.cs#L28">DashboardDtos.cs</a></p>
 <h3 id="schedulerefdto">ScheduleRefDto</h3>
@@ -386,11 +394,11 @@ main tbody tr:last-child td { border-bottom: 0; }
 <h3 id="utilizationdto">UtilizationDto</h3>
 <p><em>record</em> · <a href="../../src/ShiftPlanner.Application/Dashboard/DashboardDtos.cs#L58">DashboardDtos.cs</a></p>
 <hr />
-<p><em>Generated from 23 symbols in <a href="../../src/ShiftPlanner.Application/Dashboard/DashboardAggregator.cs">src/ShiftPlanner.Application/Dashboard/DashboardAggregator.cs</a>, <a href="../../src/ShiftPlanner.Application/Dashboard/DashboardDtos.cs">src/ShiftPlanner.Application/Dashboard/DashboardDtos.cs</a> (commit <code>534b8b5</code>, profile <code>default</code>). Sections marked <em>fact</em> are read from the code, <em>inferred</em> come from heuristics, 🤖 marks AI drafts.</em></p>
+<p><em>Generated from 23 symbols in <a href="../../src/ShiftPlanner.Application/Dashboard/DashboardAggregator.cs">src/ShiftPlanner.Application/Dashboard/DashboardAggregator.cs</a>, <a href="../../src/ShiftPlanner.Application/Dashboard/DashboardDtos.cs">src/ShiftPlanner.Application/Dashboard/DashboardDtos.cs</a> (commit <code>11abf0b</code>, profile <code>default</code>). Sections marked <em>fact</em> are read from the code, <em>inferred</em> come from heuristics, 🤖 marks AI drafts.</em></p>
 
-<footer class="generator">Generated by docwizz 0.7.32-dev.1</footer>
+<footer class="generator">Generated by docwizz 0.7.44-dev.1</footer>
 </main>
-<aside class="toc" aria-label="On this page"><div class="toc-inner"><div class="toc-title">On this page</div><ul><li><a href="#key-components">Key components</a></li><li><a href="#flows-through-this-module">Flows through this module</a></li><li><a href="#documentation-gaps">Documentation gaps</a></li><li><a href="#architecture-observations">Architecture observations</a></li><li><a href="#dependencies">Dependencies</a></li><li><a href="#components">Components</a></li></ul></div></aside>
+<aside class="toc" aria-label="On this page"><div class="toc-inner"><div class="toc-title">On this page</div><ul><li><a href="#overview-">Overview 🤖</a></li><li><a href="#key-components">Key components</a></li><li><a href="#flows-through-this-module">Flows through this module</a></li><li><a href="#documentation-gaps">Documentation gaps</a></li><li><a href="#architecture-observations">Architecture observations</a></li><li><a href="#dependencies">Dependencies</a></li><li><a href="#components">Components</a></li></ul></div></aside>
 </div>
 <script src="../search.js"></script>
 <script>(() => {
